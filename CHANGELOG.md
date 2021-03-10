@@ -2,6 +2,20 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.0.8
+
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.0.7...d83eaa498023ef1085e69846e7b2ddfbd8848012))
+
+- Update create-release.yml [#37](https://github.com/jovyan123-playground/release-helper-playground/pull/37) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-10&to=2021-03-10&type=c))
+
+[@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-10..2021-03-10&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.0.7
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.0.6...a0d012bbfdfcd6d2d280a99315186365eb87b7de))
@@ -13,8 +27,6 @@
 ([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-10&to=2021-03-10&type=c))
 
 [@jupyter1029](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajupyter1029+updated%3A2021-03-10..2021-03-10&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.0.6
 
