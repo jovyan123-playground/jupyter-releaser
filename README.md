@@ -50,10 +50,7 @@ A set of helper scripts and example GitHub Action workflows to aid in automated 
 - Run the Workflow with the same version spec as before, and an optional post version spec if you want to go back to a dev version in the target branch. Select the appropriate branch as well
 - When the workflow completes, go to the releases page in the main repository and verify that the new release is there with the correct changelog. You can also go to PyPI and/or npm to verify the package(s) are available.
 
-<p align="center">
-<img src="media/github_release.png" alt="GitHub Release"
-	title="GitHub Release" width="80%" />
-</p>
+<!-- TODO: Add Github release image here -->
 
 ## Installation
 
