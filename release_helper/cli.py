@@ -816,12 +816,14 @@ def publish_release(
         prerelease=prerelease,
     )
 
-    if dry_run:
-        release.delete_release()
-
-    elif assets:
+    if assets:
         for asset in assets:
-            release.upload_asset(asset)
+            upload = release.upload_asset(asset)
+            # if dry_run:
+            #     upload.delete_asset()
+
+    # if dry_run:
+    #     release.delete_release()
 
     # Bump to post version if given
     if post_version_spec:
