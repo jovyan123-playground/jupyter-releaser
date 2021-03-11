@@ -280,10 +280,8 @@ def test_get_workflow_path():
     repo = "foo/bar"
     with patch.object(
         cli.Github, "get_repo", return_value=gh_repo
-    ) as mock_method, patch.dict(
-        os.environ, {"GITHUB_WORKFLOW": name, "GITHUB_REPOSITORY": repo}
-    ):
-        assert cli.get_workflow_path() == path
+    ) as mock_method, patch.dict(os.environ, {"GITHUB_WORKFLOW": name}):
+        assert cli.get_workflow_path(repo) == path
         mock.assert_called_once()
         mock_method.assert_called_with(repo)
 

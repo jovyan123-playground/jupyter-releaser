@@ -122,10 +122,9 @@ def format_pr_entry(target, number, auth=None):
     return f"- {title} [{number}]({url}) [@{user_name}]({user_url})"
 
 
-def get_workflow_path(auth=None):
+def get_workflow_path(repo, auth=None):
     """Get the path for the current running workflow"""
     name = os.environ["GITHUB_WORKFLOW"]
-    repo = os.environ["GITHUB_REPOSITORY"]
     g = Github(auth)
     r = g.get_repo(repo)
     workflows = r.get_workflows()
@@ -409,7 +408,7 @@ def prep_env(version_spec, version_cmd, branch, remote, repo, auth, output):
 
     # Make sure the local workflow file is the same as the target one
     if "GITHUB_WORKFLOW" in os.environ:
-        path = get_workflow_path()
+        path = get_workflow_path(repo)
         assert osp.exists(path), f"Could not find workflow {path}"
         diff = run(f"git --no-pager diff HEAD {remote}/{branch} -- {path}")
         msg = f"Workflow file {path} differs from {remote} repo {repo}:\n{diff}"
