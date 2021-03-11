@@ -34,4 +34,4 @@ runs:
         release-helper check-manifest
         release-helper check-md-links
         release-helper tag-release
-        release-helper publish-release --assets dist/*
+        release-helper publish-release dist/*
