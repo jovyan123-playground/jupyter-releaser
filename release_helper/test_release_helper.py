@@ -16,6 +16,7 @@ from unittest.mock import PropertyMock
 
 from click.testing import CliRunner
 from github.GitRelease import GitRelease
+from github.GitReleaseAsset import GitReleaseAsset
 from github.NamedUser import NamedUser
 from github.PaginatedList import PaginatedList
 from github.PullRequest import PullRequest
@@ -402,7 +403,6 @@ def test_prep_env_full(py_package, tmp_path, mocker):
             call("git remote"),
             call("git remote add upstream http://snuffy:abc123@github.com/foo/bar.git"),
             call("git fetch upstream foo --tags"),
-            call("git checkout -B foo upstream/foo"),
             call(
                 "git --no-pager diff HEAD upstream/foo -- .github/workflows/check-release.yml"
             ),
@@ -590,15 +590,19 @@ def test_publish_release_draft(py_package, mocker):
     # Publish the release - dry run
     repo = Repository(None, dict(), dict(), True)
     release = GitRelease(None, dict(), dict(), True)
+    asset = GitReleaseAsset(None, dict(), dict(), True)
+    asset.delete_asset = delete_asset_mock = MagicMock()
+    release.upload_asset = upload_mock = MagicMock(return_value=asset)
 
     repo.create_git_release = release_mock = MagicMock(return_value=release)
     release.delete_release = delete_mock = MagicMock()
 
     mocked_method = mocker.patch.object(cli.Github, "get_repo", return_value=repo)
-    result = runner.invoke(cli.main, ["publish-release", "--dry-run"])
+    result = runner.invoke(cli.main, ["publish-release", "--dry-run"] + glob("dist/*"))
     assert result.exit_code == 0, result.output
     release_mock.assert_called_once()
     delete_mock.assert_called_once()
+    delete_asset_mock.assert_called()
 
 
 def test_publish_release_final(py_package, mocker):
@@ -625,14 +629,19 @@ def test_publish_release_final(py_package, mocker):
     # Publish the release
     repo = Repository(None, dict(), dict(), True)
     release = GitRelease(None, dict(), dict(), True)
+    asset = GitReleaseAsset(None, dict(), dict(), True)
+    asset.delete_asset = delete_asset_mock = MagicMock()
+    release.upload_asset = upload_mock = MagicMock(return_value=asset)
 
     repo.create_git_release = release_mock = MagicMock(return_value=release)
     release.delete_release = delete_mock = MagicMock()
 
     mock_method = mocker.patch.object(cli.Github, "get_repo", return_value=repo)
     result = runner.invoke(
-        cli.main, ["publish-release", "--post-version-spec", "1.5.2.dev0"]
+        cli.main,
+        ["publish-release", "--post-version-spec", "1.5.2.dev0"] + glob("dist/*"),
     )
     assert result.exit_code == 0, result.output
     release_mock.assert_called_once()
     delete_mock.assert_not_called()
+    delete_asset_mock.assert_not_called()
