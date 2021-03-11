@@ -12,10 +12,16 @@ from pathlib import Path
 from unittest.mock import call
 from unittest.mock import MagicMock
 from unittest.mock import patch
+from unittest.mock import PropertyMock
 
 from click.testing import CliRunner
 from github.GitRelease import GitRelease
+from github.NamedUser import NamedUser
+from github.PaginatedList import PaginatedList
+from github.PullRequest import PullRequest
 from github.Repository import Repository
+from github.Requester import Requester
+from github.Workflow import Workflow
 from pytest import fixture
 
 from release_helper import cli
@@ -218,6 +224,15 @@ def test_get_repo(git_repo):
     repo = f"{git_repo.parent.name}/{git_repo.name}"
     assert cli.get_repo("upstream") == repo
 
+    gh_repo_name = "foo/bar"
+    gh_repo = Repository(None, dict(), dict(), True)
+
+    with patch.dict(os.environ, {"GITHUB_REPOSITORY": gh_repo_name}), patch.object(
+        cli.Github, "get_repo", return_value=gh_repo
+    ) as mock_method:
+        resp = cli.get_repo(gh_repo_name, auth="baz")
+        mock_method.assert_called_with(gh_repo_name)
+
 
 def test_get_version_python(py_package):
     assert cli.get_version() == "0.0.1"
@@ -233,23 +248,44 @@ def test_get_version_npm(npm_package):
 
 
 def test_format_pr_entry():
-    with patch("release_helper.cli.requests.get") as mocked_get:
+    gh_repo = Repository(None, dict(), dict(), True)
+    pull = PullRequest(None, dict(), dict(), True)
+    user = NamedUser(None, dict(), dict(), True)
+    gh_repo.get_pull = mock = MagicMock(return_value=pull)
+    with patch.object(
+        cli.Github, "get_repo", return_value=gh_repo
+    ) as mock_method, patch(
+        "github.PullRequest.PullRequest.user", new_callable=PropertyMock
+    ) as mock_user:
+        mock_user.return_value = user
         resp = cli.format_pr_entry("foo", 121, auth="baz")
-        mocked_get.assert_called_with(
-            "https://api.github.com/repos/foo/pulls/121",
-            headers={"Authorization": "token baz"},
-        )
+        mock_method.assert_called_with("foo")
+        mock.assert_called_once()
 
     assert resp.startswith("- ")
 
 
-def test_get_source_repo():
-    with patch("release_helper.cli.requests.get") as mocked_get:
-        resp = cli.get_source_repo("foo/bar", auth="baz")
-        mocked_get.assert_called_with(
-            "https://api.github.com/repos/foo/bar",
-            headers={"Authorization": "token baz"},
-        )
+def test_get_workflow_path():
+    gh_repo = Repository(None, dict(), dict(), True)
+    requester = MagicMock()
+    name = "Foo Bar"
+    path = ".github/workflows/foo_bar.yml"
+
+    def requestJsonAndCheck(*args, **kwargs):
+        return dict(), [dict(name=name, path=path)]
+
+    requester.requestJsonAndCheck = requestJsonAndCheck
+    workflows = PaginatedList(Workflow, requester, "", dict(), dict())
+    gh_repo.get_workflows = mock = MagicMock(return_value=workflows)
+    repo = "foo/bar"
+    with patch.object(
+        cli.Github, "get_repo", return_value=gh_repo
+    ) as mock_method, patch.dict(
+        os.environ, {"GITHUB_WORKFLOW": name, "GITHUB_REPOSITORY": repo}
+    ):
+        assert cli.get_workflow_path() == path
+        mock.assert_called_once()
+        mock_method.assert_called_with(repo)
 
 
 def test_get_changelog_entry(py_package):
@@ -338,7 +374,8 @@ def test_prep_env_full(py_package, tmp_path):
     runner = CliRunner()
     version_spec = "1.0.1a1"
 
-    workflow = Path(f"{cli.HERE}/../.github/workflows/check-release.yml")
+    workflow_path = ".github/workflows/check-release.yml"
+    workflow = Path(f"{cli.HERE}/../{workflow_path}")
     workflow = workflow.resolve()
     os.makedirs(py_package / ".github/workflows")
     shutil.copy(workflow, py_package / ".github/workflows")
@@ -356,11 +393,14 @@ def test_prep_env_full(py_package, tmp_path):
         GITHUB_ACCESS_TOKEN="abc123",
     )
     with patch("release_helper.cli.run") as mock_run, patch(
-        "release_helper.cli.get_source_repo"
-    ) as mocked_get_source_repo:
+        "release_helper.cli.get_repo"
+    ) as mocked_get_repo, patch(
+        "release_helper.cli.get_workflow_path"
+    ) as mocked_get_workflow_path:
         # Fake out the version and source repo responses
         mock_run.return_value = version_spec
-        mocked_get_source_repo.return_value = "foo/bar"
+        mocked_get_workflow_path.return_value = workflow_path
+        mocked_get_repo.return_value = "foo/bar"
         result = runner.invoke(cli.main, ["prep-env"], env=env)
         mock_run.assert_has_calls(
             [
@@ -374,11 +414,6 @@ def test_prep_env_full(py_package, tmp_path):
                 ),
                 call("git fetch upstream foo --tags"),
                 call("git checkout -B foo upstream/foo"),
-                call(
-                    "git --no-pager diff HEAD upstream/foo -- ./github/workflows/check-release.yml"
-                ),
-                call("tbump --non-interactive --only-patch 1.0.1a1"),
-                call("python setup.py --version", quiet=True),
             ]
         )
 

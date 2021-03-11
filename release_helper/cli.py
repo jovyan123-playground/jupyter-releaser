@@ -16,9 +16,9 @@ from subprocess import check_output
 from tempfile import TemporaryDirectory
 
 import click
-import requests
 from github import Github
 from github_activity import generate_activity_md
+from pep440 import is_canonical
 
 from release_helper import __version__
 
@@ -64,7 +64,13 @@ def get_repo(remote, auth=None):
     """Get the remote repo org and name"""
     gh_repo = os.environ.get("GITHUB_REPOSITORY")
     if gh_repo:
-        return get_source_repo(gh_repo, auth=auth)
+        g = Github(auth)
+        repo = g.get_repo(gh_repo)
+        # If this is the source repo, return the original target
+        if repo.source:
+            return repo.source.full_name
+        else:
+            return gh_repo
 
     url = run(f"git remote get-url {remote}")
     url = normalize_path(url)
@@ -106,43 +112,32 @@ def format_pr_entry(target, number, auth=None):
     str
         A formatted PR entry
     """
-    api_token = auth or os.environ["GITHUB_ACCESS_TOKEN"]
-    headers = {"Authorization": "token %s" % api_token}
-    r = requests.get(
-        f"https://api.github.com/repos/{target}/pulls/{number}", headers=headers
-    )
-    data = r.json()
-    title = data["title"]
-    number = data["number"]
-    url = data["url"]
-    user_name = data["user"]["login"]
-    user_url = data["user"]["html_url"]
+    g = Github(auth)
+    repo = g.get_repo(target)
+    pull = repo.get_pull(number)
+    title = pull.title
+    url = pull.url
+    user_name = pull.user.login
+    user_url = pull.user.html_url
     return f"- {title} [{number}]({url}) [@{user_name}]({user_url})"
 
 
-def get_source_repo(target, auth=None):
-    """Get the source repo for a given repo.
+def get_workflow_path(auth=None):
+    """Get the path for the current running workflow"""
+    name = os.environ["GITHUB_WORKFLOW"]
+    repo = os.environ["GITHUB_REPOSITORY"]
+    g = Github(auth)
+    r = g.get_repo(repo)
+    workflows = r.get_workflows()
 
-    Parameters
-    ----------
-    target : str
-        The GitHub organization/repo
-    auth : str, optional
-        The GitHub authorization token
-
-    Returns
-    -------
-    str
-        A formatted PR entry
-    """
-    api_token = auth or os.environ.get("GITHUB_ACCESS_TOKEN")
-    headers = {"Authorization": "token %s" % api_token}
-    r = requests.get(f"https://api.github.com/repos/{target}", headers=headers)
-    data = r.json()
-    # If this is the source repo, return the original target
-    if "source" not in data:
-        return target
-    return data["source"]["full_name"]
+    found = False
+    for workflow in workflows:
+        if workflow.name == name:
+            path = workflow.path
+            found = True
+    if not found:  # pragma: no cover
+        raise ValueError(f"Could not validate workflow {name}")
+    return path
 
 
 def get_changelog_entry(branch, repo, version, *, auth=None, resolve_backports=False):
@@ -414,10 +409,10 @@ def prep_env(version_spec, version_cmd, branch, remote, repo, auth, output):
 
     # Make sure the local workflow file is the same as the target one
     if "GITHUB_WORKFLOW" in os.environ:
-        workflow = os.environ["GITHUB_WORKFLOW"]
-        path = f"./github/workflows/{workflow}.yml"
+        path = get_workflow_path()
+        assert osp.exists(path), f"Could not find workflow {path}"
         diff = run(f"git --no-pager diff HEAD {remote}/{branch} -- {path}")
-        msg = f"Workflow file {workflow} differs from {remote} repo {repo}:\n{diff}"
+        msg = f"Workflow file {path} differs from {remote} repo {repo}:\n{diff}"
         if path in diff:  # pragma: no cover
             raise ValueError(msg)
 
@@ -425,6 +420,10 @@ def prep_env(version_spec, version_cmd, branch, remote, repo, auth, output):
     bump_version(version_spec, version_cmd=version_cmd)
 
     version = get_version()
+
+    if "setup.py" in os.listdir(".") and not is_canonical(version):  # pragma: no cover
+        raise ValueError(f"Invalid version {version}")
+
     print(f"version={version}")
     is_prerelease_str = str(is_prerelease(version)).lower()
     print(f"is_prerelease={is_prerelease_str}")
@@ -761,6 +760,11 @@ def publish_release(
     if post_version_spec:
         bump_version(post_version_spec, version_cmd)
         post_version = get_version()
+        if "setup.py" in os.listdir(".") and not is_canonical(
+            version
+        ):  # pragma: no cover
+            raise ValueError(f"\n\nInvalid post version {version}")
+
         print(f"Bumped version to {post_version}")
         run(f'git commit -a -m "Bump to {post_version}"')
 
