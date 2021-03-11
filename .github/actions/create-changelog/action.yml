@@ -28,4 +28,4 @@ runs:
         export DRY_RUN=${{ inputs.dry_run }}
         release-helper prep-env
         release-helper prep-changelog
-        release-helper publish-changelog --body ${{ inputs.pull_request_body }}
+        release-helper publish-changelog --body "${{ inputs.pull_request_body }}"
