@@ -9,6 +9,7 @@ import shlex
 import shutil
 import sys
 import tarfile
+import uuid
 from glob import glob
 from pathlib import Path
 from subprocess import CalledProcessError
@@ -326,6 +327,14 @@ auth_options = [
     click.option("--auth", envvar="GITHUB_ACCESS_TOKEN", help="The GitHub auth token"),
 ]
 
+username_options = [
+    click.option("--username", envvar="GITHUB_ACTOR", help="The git username")
+]
+
+dry_run_options = [
+    click.option("--dry-run", is_flag=True, envvar="DRY_RUN", help="Run as a dry run")
+]
+
 changelog_path_options = [
     click.option(
         "--changelog-path",
@@ -371,8 +380,9 @@ def add_options(options):
 )
 @add_options(branch_options)
 @add_options(auth_options)
+@add_options(username_options)
 @click.option("--output", envvar="GITHUB_ENV", help="Output file for env variables")
-def prep_env(version_spec, version_cmd, branch, remote, repo, auth, output):
+def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, output):
     """Prep git and env variables and bump version"""
 
     # Get the branch
@@ -396,7 +406,6 @@ def prep_env(version_spec, version_cmd, branch, remote, repo, auth, output):
         remotes = run("git remote").splitlines()
         if remote not in remotes:
             if auth:
-                username = os.environ["GITHUB_ACTOR"]
                 url = f"http://{username}:{auth}@github.com/{repo}.git"
             else:
                 url = f"http://github.com/{repo}.git"
@@ -496,6 +505,40 @@ def prep_changelog(branch, remote, repo, auth, changelog_path, resolve_backports
 
     # Stage changelog
     run(f"git add {normalize_path(changelog_path)}")
+
+
+@main.command()
+@add_options(branch_options)
+@add_options(auth_options)
+@add_options(username_options)
+@add_options(dry_run_options)
+@click.option("--body", help="The Pull Request body text")
+def publish_changelog(branch, remote, repo, auth, username, dry_run, body):
+    """Publish a changelog entry PR"""
+    repo = repo or get_repo(remote, auth=auth)
+    branch = branch or get_branch()
+    version = get_version()
+
+    # Make a new branch with a uuid suffix
+    pr_branch = f"{branch}-{uuid.uuid1().hex})"
+    run(f"git checkout -b {pr_branch} {remote}/{branch}")
+
+    # Add a commit with the message
+    run(f'git commit -a -m "Generate changelog for {version}"')
+
+    # Create the pull
+    g = Github(auth)
+    r = g.get_repo(repo)
+    title = f"Automated Changelog for {version} on {branch}"
+    body = body or title
+    base = branch
+    head = f"{username}:{pr_branch}"
+    maintainer_can_modify = True
+
+    if dry_run:
+        return
+
+    r.create_pull(title, body, base, head, maintainer_can_modify)
 
 
 @main.command()
@@ -717,14 +760,14 @@ def tag_release(branch, remote, repo):
 @add_options(auth_options)
 @add_options(changelog_path_options)
 @add_options(version_cmd_options)
+@add_options(dry_run_options)
 @click.option(
     "--post-version-spec",
     envvar="POST_VERSION_SPEC",
     help="The post release version (usually dev)",
 )
-@click.option("--dry-run", is_flag=True, help="Run as a dry run")
 def publish_release(
-    branch, remote, repo, auth, changelog_path, version_cmd, post_version_spec, dry_run
+    branch, remote, repo, auth, changelog_path, version_cmd, dry_run, post_version_spec
 ):
     """Publish GitHub release and handle post version bump"""
     branch = branch or get_branch()

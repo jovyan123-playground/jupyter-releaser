@@ -46,19 +46,14 @@ jobs:
             ${{ runner.os }}-pip-
       - name: Install Dependencies
         run: |
-          pip install -e .[test]
+          pip install -e .
       - name: Create GitHub Release
-        env:
-          GITHUB_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
-        run: |
-          release-helper prep-env
-          release-helper check-changelog
-          release-helper build-python
-          release-helper check-python dist/*
-          release-helper check-manifest
-          release-helper check-md-links
-          release-helper tag-release
-          release-helper publish-release
+        uses: ./.github/actions/create-release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version_spec: ${{ inputs.version_spec }}
+          post_version_spec: ${{ inputs.post_version_spec }}
+          branch: ${{ inputs.branch }}
       - name: Publish PyPI Package
         env:
           TWINE_USERNAME: __token__
