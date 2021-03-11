@@ -12,10 +12,16 @@ from pathlib import Path
 from unittest.mock import call
 from unittest.mock import MagicMock
 from unittest.mock import patch
+from unittest.mock import PropertyMock
 
 from click.testing import CliRunner
 from github.GitRelease import GitRelease
+from github.NamedUser import NamedUser
+from github.PaginatedList import PaginatedList
+from github.PullRequest import PullRequest
 from github.Repository import Repository
+from github.Requester import Requester
+from github.Workflow import Workflow
 from pytest import fixture
 
 from release_helper import cli
@@ -120,14 +126,14 @@ Initial commit
 
 
 @fixture(autouse=True)
-def mock_env_vars():
+def mock_env_vars(mocker):
     """Clear any GitHub related environment variables"""
     env = os.environ.copy()
     for key in list(env.keys()):
         if key.startswith("GITHUB_"):
             del env[key]
-    with patch.dict(os.environ, env, clear=True):
-        yield
+    mocker.patch.dict(os.environ, env, clear=True)
+    yield
 
 
 @fixture
@@ -214,9 +220,17 @@ def test_get_branch(git_repo):
     assert cli.get_branch() == "foo"
 
 
-def test_get_repo(git_repo):
+def test_get_repo(git_repo, mocker):
     repo = f"{git_repo.parent.name}/{git_repo.name}"
     assert cli.get_repo("upstream") == repo
+
+    gh_repo_name = "foo/bar"
+    gh_repo = Repository(None, dict(), dict(), True)
+
+    mocker.patch.dict(os.environ, {"GITHUB_REPOSITORY": gh_repo_name})
+    mock_method = mocker.patch.object(cli.Github, "get_repo", return_value=gh_repo)
+    resp = cli.get_repo(gh_repo_name, auth="baz")
+    mock_method.assert_called_with(gh_repo_name)
 
 
 def test_get_version_python(py_package):
@@ -232,43 +246,59 @@ def test_get_version_npm(npm_package):
     assert cli.get_version() == "1.0.1"
 
 
-def test_format_pr_entry():
-    with patch("release_helper.cli.requests.get") as mocked_get:
-        resp = cli.format_pr_entry("foo", 121, auth="baz")
-        mocked_get.assert_called_with(
-            "https://api.github.com/repos/foo/pulls/121",
-            headers={"Authorization": "token baz"},
-        )
+def test_format_pr_entry(mocker):
+    gh_repo = Repository(None, dict(), dict(), True)
+    pull = PullRequest(None, dict(), dict(), True)
+    user = NamedUser(None, dict(), dict(), True)
+    gh_repo.get_pull = mock = MagicMock(return_value=pull)
+    mock_method = mocker.patch.object(cli.Github, "get_repo", return_value=gh_repo)
+    mock_user = mocker.patch(
+        "github.PullRequest.PullRequest.user", new_callable=PropertyMock
+    )
+    mock_user.return_value = user
+    resp = cli.format_pr_entry("foo", 121, auth="baz")
+    mock_method.assert_called_with("foo")
+    mock.assert_called_once()
 
     assert resp.startswith("- ")
 
 
-def test_get_source_repo():
-    with patch("release_helper.cli.requests.get") as mocked_get:
-        resp = cli.get_source_repo("foo/bar", auth="baz")
-        mocked_get.assert_called_with(
-            "https://api.github.com/repos/foo/bar",
-            headers={"Authorization": "token baz"},
-        )
+def test_get_workflow_path(mocker):
+    gh_repo = Repository(None, dict(), dict(), True)
+    requester = MagicMock()
+    name = "Foo Bar"
+    path = ".github/workflows/foo_bar.yml"
+
+    def requestJsonAndCheck(*args, **kwargs):
+        return dict(), [dict(name=name, path=path)]
+
+    requester.requestJsonAndCheck = requestJsonAndCheck
+    workflows = PaginatedList(Workflow, requester, "", dict(), dict())
+    gh_repo.get_workflows = mock = MagicMock(return_value=workflows)
+    repo = "foo/bar"
+    mock_method = mocker.patch.object(cli.Github, "get_repo", return_value=gh_repo)
+    mocker.patch.dict(os.environ, {"GITHUB_WORKFLOW": name})
+    assert cli.get_workflow_path(repo) == path
+    mock.assert_called_once()
+    mock_method.assert_called_with(repo)
 
 
-def test_get_changelog_entry(py_package):
+def test_get_changelog_entry(py_package, mocker):
     version = cli.get_version()
 
-    with patch("release_helper.cli.generate_activity_md") as mocked_gen:
-        mocked_gen.return_value = CHANGELOG_ENTRY
-        resp = cli.get_changelog_entry("foo", "bar/baz", version)
-        mocked_gen.assert_called_with("bar/baz", since="v0.0.1", kind="pr", auth=None)
+    mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
+    mocked_gen.return_value = CHANGELOG_ENTRY
+    resp = cli.get_changelog_entry("foo", "bar/baz", version)
+    mocked_gen.assert_called_with("bar/baz", since="v0.0.1", kind="pr", auth=None)
 
     assert f"## {version}" in resp
     assert PR_ENTRY in resp
 
-    with patch("release_helper.cli.generate_activity_md") as mocked_gen:
-        mocked_gen.return_value = CHANGELOG_ENTRY
-        resp = cli.get_changelog_entry(
-            "foo", "bar/baz", version, resolve_backports=True, auth="bizz"
-        )
-        mocked_gen.assert_called_with("bar/baz", since="v0.0.1", kind="pr", auth="bizz")
+    mocked_gen.return_value = CHANGELOG_ENTRY
+    resp = cli.get_changelog_entry(
+        "foo", "bar/baz", version, resolve_backports=True, auth="bizz"
+    )
+    mocked_gen.assert_called_with("bar/baz", since="v0.0.1", kind="pr", auth="bizz")
 
     assert f"## {version}" in resp
     assert PR_ENTRY in resp
@@ -289,11 +319,10 @@ def test_create_release_commit(py_package):
 
     # Add an npm package and test with that
     create_npm_package(py_package)
-    with open(py_package / "package.json") as fid:
-        data = json.load(fid)
+    pkg_json = py_package / "package.json"
+    data = json.loads(pkg_json.read_text(encoding="utf-8"))
     data["version"] = version
-    with open(py_package / "package.json", "w") as fid:
-        json.dump(data, fid, indent=4)
+    pkg_json.write_text(json.dumps(data, indent=4), encoding="utf-8")
     txt = (py_package / "tbump.toml").read_text(encoding="utf-8")
     txt += TBUMP_NPM_TEMPLATE
     (py_package / "tbump.toml").write_text(txt, encoding="utf-8")
@@ -333,12 +362,13 @@ def test_prep_env_pr(py_package):
     assert "branch=foo" in result.output
 
 
-def test_prep_env_full(py_package, tmp_path):
+def test_prep_env_full(py_package, tmp_path, mocker):
     """Full GitHub Actions simulation (Push)"""
     runner = CliRunner()
     version_spec = "1.0.1a1"
 
-    workflow = Path(f"{cli.HERE}/../.github/workflows/check-release.yml")
+    workflow_path = ".github/workflows/check-release.yml"
+    workflow = Path(f"{cli.HERE}/../{workflow_path}")
     workflow = workflow.resolve()
     os.makedirs(py_package / ".github/workflows")
     shutil.copy(workflow, py_package / ".github/workflows")
@@ -355,32 +385,31 @@ def test_prep_env_full(py_package, tmp_path):
         GITHUB_ACTOR="snuffy",
         GITHUB_ACCESS_TOKEN="abc123",
     )
-    with patch("release_helper.cli.run") as mock_run, patch(
-        "release_helper.cli.get_source_repo"
-    ) as mocked_get_source_repo:
-        # Fake out the version and source repo responses
-        mock_run.return_value = version_spec
-        mocked_get_source_repo.return_value = "foo/bar"
-        result = runner.invoke(cli.main, ["prep-env"], env=env)
-        mock_run.assert_has_calls(
-            [
-                call(
-                    'git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"'
-                ),
-                call('git config --global user.name "GitHub Action"'),
-                call("git remote"),
-                call(
-                    "git remote add upstream http://snuffy:abc123@github.com/foo/bar.git"
-                ),
-                call("git fetch upstream foo --tags"),
-                call("git checkout -B foo upstream/foo"),
-                call(
-                    "git --no-pager diff HEAD upstream/foo -- ./github/workflows/check-release.yml"
-                ),
-                call("tbump --non-interactive --only-patch 1.0.1a1"),
-                call("python setup.py --version", quiet=True),
-            ]
-        )
+    mock_run = mocker.patch("release_helper.cli.run")
+    mocked_get_repo = mocker.patch("release_helper.cli.get_repo")
+    mocked_get_workflow_patch = mocker.patch("release_helper.cli.get_workflow_path")
+    # Fake out the version and source repo responses
+    mock_run.return_value = version_spec
+    mocked_get_workflow_patch.return_value = workflow_path
+    mocked_get_repo.return_value = "foo/bar"
+    result = runner.invoke(cli.main, ["prep-env"], env=env)
+    mock_run.assert_has_calls(
+        [
+            call(
+                'git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"'
+            ),
+            call('git config --global user.name "GitHub Action"'),
+            call("git remote"),
+            call("git remote add upstream http://snuffy:abc123@github.com/foo/bar.git"),
+            call("git fetch upstream foo --tags"),
+            call("git checkout -B foo upstream/foo"),
+            call(
+                "git --no-pager diff HEAD upstream/foo -- .github/workflows/check-release.yml"
+            ),
+            call("tbump --non-interactive --only-patch 1.0.1a1"),
+            call("python setup.py --version", quiet=True),
+        ]
+    )
 
     assert result.exit_code == 0, result.output
     text = env_file.read_text(encoding="utf-8")
@@ -390,7 +419,7 @@ def test_prep_env_full(py_package, tmp_path):
     assert "REPOSITORY=foo/bar" in text
 
 
-def test_prep_changelog(py_package):
+def test_prep_changelog(py_package, mocker):
     runner = CliRunner()
 
     run("pre-commit run -a")
@@ -400,11 +429,9 @@ def test_prep_changelog(py_package):
     result = runner.invoke(cli.main, ["prep-env", "--version-spec", "1.0.1"])
     assert result.exit_code == 0, result.output
 
-    with patch("release_helper.cli.generate_activity_md") as mocked_gen:
-        mocked_gen.return_value = CHANGELOG_ENTRY
-        result = runner.invoke(
-            cli.main, ["prep-changelog", "--changelog-path", changelog]
-        )
+    mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
+    mocked_gen.return_value = CHANGELOG_ENTRY
+    result = runner.invoke(cli.main, ["prep-changelog", "--changelog-path", changelog])
     assert result.exit_code == 0, result.output
     text = changelog.read_text(encoding="utf-8")
     assert cli.START_MARKER in text
@@ -417,18 +444,16 @@ def test_prep_changelog(py_package):
     run("pre-commit run -a")
 
 
-def test_prep_changelog_existing(py_package):
+def test_prep_changelog_existing(py_package, mocker):
     runner = CliRunner()
     changelog = py_package / "CHANGELOG.md"
 
     result = runner.invoke(cli.main, ["prep-env", "--version-spec", "1.0.1"])
     assert result.exit_code == 0, result.output
 
-    with patch("release_helper.cli.generate_activity_md") as mocked_gen:
-        mocked_gen.return_value = CHANGELOG_ENTRY
-        result = runner.invoke(
-            cli.main, ["prep-changelog", "--changelog-path", changelog]
-        )
+    mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
+    mocked_gen.return_value = CHANGELOG_ENTRY
+    result = runner.invoke(cli.main, ["prep-changelog", "--changelog-path", changelog])
     assert result.exit_code == 0, result.output
     text = changelog.read_text(encoding="utf-8")
     text = text.replace("defining contributions", "Definining contributions")
@@ -437,11 +462,8 @@ def test_prep_changelog_existing(py_package):
     # Commit the change
     run('git commit -a -m "commit changelog"')
 
-    with patch("release_helper.cli.generate_activity_md") as mocked_gen:
-        mocked_gen.return_value = CHANGELOG_ENTRY
-        result = runner.invoke(
-            cli.main, ["prep-changelog", "--changelog-path", changelog]
-        )
+    mocked_gen.return_value = CHANGELOG_ENTRY
+    result = runner.invoke(cli.main, ["prep-changelog", "--changelog-path", changelog])
     assert result.exit_code == 0, result.output
     text = changelog.read_text(encoding="utf-8")
     assert "Definining contributions" in text, text
@@ -473,7 +495,7 @@ def test_check_md_links(py_package):
     assert result.exit_code == 0, result.output
 
 
-def test_check_changelog(py_package, tmp_path):
+def test_check_changelog(py_package, tmp_path, mocker):
     runner = CliRunner()
     changelog = py_package / "CHANGELOG.md"
     output = tmp_path / "output.md"
@@ -483,21 +505,19 @@ def test_check_changelog(py_package, tmp_path):
     result = runner.invoke(cli.main, ["prep-env", "--version-spec", version_spec])
     assert result.exit_code == 0, result.output
 
-    with patch("release_helper.cli.generate_activity_md") as mocked_gen:
-        mocked_gen.return_value = CHANGELOG_ENTRY
-        result = runner.invoke(
-            cli.main, ["prep-changelog", "--changelog-path", changelog]
-        )
+    mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
+    mocked_gen.return_value = CHANGELOG_ENTRY
+    result = runner.invoke(cli.main, ["prep-changelog", "--changelog-path", changelog])
     assert result.exit_code == 0, result.output
 
     # then prep the release
     bump_version(version_spec)
-    with patch("release_helper.cli.generate_activity_md") as mocked_gen:
-        mocked_gen.return_value = CHANGELOG_ENTRY
-        result = runner.invoke(
-            cli.main,
-            ["check-changelog", "--changelog-path", changelog, "--output", output],
-        )
+
+    mocked_gen.return_value = CHANGELOG_ENTRY
+    result = runner.invoke(
+        cli.main,
+        ["check-changelog", "--changelog-path", changelog, "--output", output],
+    )
     assert result.exit_code == 0, result.output
 
     assert PR_ENTRY in output.read_text(encoding="utf-8")
@@ -546,7 +566,7 @@ def test_tag_release(py_package):
     assert result.exit_code == 0, result.output
 
 
-def test_publish_release_draft(py_package):
+def test_publish_release_draft(py_package, mocker):
     runner = CliRunner()
     version_spec = "1.5.1"
     changelog = py_package / "CHANGELOG.md"
@@ -556,11 +576,9 @@ def test_publish_release_draft(py_package):
     assert result.exit_code == 0, result.output
 
     # Prep the changelog
-    with patch("release_helper.cli.generate_activity_md") as mocked_gen:
-        mocked_gen.return_value = CHANGELOG_ENTRY
-        result = runner.invoke(
-            cli.main, ["prep-changelog", "--changelog-path", changelog]
-        )
+    mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
+    mocked_gen.return_value = CHANGELOG_ENTRY
+    result = runner.invoke(cli.main, ["prep-changelog", "--changelog-path", changelog])
     assert result.exit_code == 0, result.output
 
     # Create the dist files
@@ -576,14 +594,14 @@ def test_publish_release_draft(py_package):
     repo.create_git_release = release_mock = MagicMock(return_value=release)
     release.delete_release = delete_mock = MagicMock()
 
-    with patch.object(cli.Github, "get_repo", return_value=repo) as mock_method:
-        result = runner.invoke(cli.main, ["publish-release", "--dry-run"])
+    mocked_method = mocker.patch.object(cli.Github, "get_repo", return_value=repo)
+    result = runner.invoke(cli.main, ["publish-release", "--dry-run"])
     assert result.exit_code == 0, result.output
     release_mock.assert_called_once()
     delete_mock.assert_called_once()
 
 
-def test_publish_release_final(py_package):
+def test_publish_release_final(py_package, mocker):
     runner = CliRunner()
     version_spec = "1.5.1rc0"
     changelog = py_package / "CHANGELOG.md"
@@ -593,11 +611,9 @@ def test_publish_release_final(py_package):
     assert result.exit_code == 0, result.output
 
     # Prep the changelog
-    with patch("release_helper.cli.generate_activity_md") as mocked_gen:
-        mocked_gen.return_value = CHANGELOG_ENTRY
-        result = runner.invoke(
-            cli.main, ["prep-changelog", "--changelog-path", changelog]
-        )
+    mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
+    mocked_gen.return_value = CHANGELOG_ENTRY
+    result = runner.invoke(cli.main, ["prep-changelog", "--changelog-path", changelog])
     assert result.exit_code == 0, result.output
 
     # Create the dist files
@@ -613,10 +629,10 @@ def test_publish_release_final(py_package):
     repo.create_git_release = release_mock = MagicMock(return_value=release)
     release.delete_release = delete_mock = MagicMock()
 
-    with patch.object(cli.Github, "get_repo", return_value=repo) as mock_method:
-        result = runner.invoke(
-            cli.main, ["publish-release", "--post-version-spec", "1.5.2.dev0"]
-        )
+    mock_method = mocker.patch.object(cli.Github, "get_repo", return_value=repo)
+    result = runner.invoke(
+        cli.main, ["publish-release", "--post-version-spec", "1.5.2.dev0"]
+    )
     assert result.exit_code == 0, result.output
     release_mock.assert_called_once()
     delete_mock.assert_not_called()
