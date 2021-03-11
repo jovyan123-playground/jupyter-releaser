@@ -414,6 +414,11 @@ def test_prep_env_full(py_package, tmp_path):
                 ),
                 call("git fetch upstream foo --tags"),
                 call("git checkout -B foo upstream/foo"),
+                call(
+                    "git --no-pager diff HEAD upstream/foo -- .github/workflows/check-release.yml"
+                ),
+                call("tbump --non-interactive --only-patch 1.0.1a1"),
+                call("python setup.py --version", quiet=True),
             ]
         )
 
