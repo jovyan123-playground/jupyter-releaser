@@ -543,6 +543,7 @@ def publish_changelog(branch, remote, repo, auth, username, dry_run, body):
     maintainer_can_modify = True
 
     if dry_run:
+        print("Skipping pull request due to dry run")
         return
 
     r.create_pull(title, body, base, head, maintainer_can_modify)

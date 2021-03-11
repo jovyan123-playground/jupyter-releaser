@@ -21,6 +21,7 @@ runs:
   steps:
     - shell: bash
       run: |
+        set -eux
         pip install release-helper
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
         export VERSION_SPEC=${{ inputs.version_spec }}
@@ -29,3 +30,4 @@ runs:
         release-helper prep-env
         release-helper prep-changelog
         release-helper publish-changelog --body "${{ inputs.pull_request_body }}"
+        cat $CHANGELOG
