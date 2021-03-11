@@ -519,9 +519,15 @@ def publish_changelog(branch, remote, repo, auth, username, dry_run, body):
     branch = branch or get_branch()
     version = get_version()
 
-    # Make a new branch with a uuid suffix
-    pr_branch = f"{branch}-{uuid.uuid1().hex})"
-    run(f"git checkout -b {pr_branch} {remote}/{branch}")
+    # Check out any unstaged files from version bump
+    run("git checkout -- .")
+
+    if not dry_run:
+        # Make a new branch with a uuid suffix
+        pr_branch = f"{branch}-{uuid.uuid1().hex})"
+        run("git stash")
+        run(f"git checkout -b {pr_branch} {remote}/{branch}")
+        run("git stash apply")
 
     # Add a commit with the message
     run(f'git commit -a -m "Generate changelog for {version}"')
@@ -536,8 +542,6 @@ def publish_changelog(branch, remote, repo, auth, username, dry_run, body):
     maintainer_can_modify = True
 
     if dry_run:
-        # Check out any unstaged files from version bump
-        run("git checkout -- .")
         return
 
     r.create_pull(title, body, base, head, maintainer_can_modify)
