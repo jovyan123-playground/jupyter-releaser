@@ -327,10 +327,6 @@ auth_options = [
     click.option("--auth", envvar="GITHUB_ACCESS_TOKEN", help="The GitHub auth token"),
 ]
 
-username_options = [
-    click.option("--username", envvar="GITHUB_ACTOR", help="The git username")
-]
-
 dry_run_options = [
     click.option("--dry-run", is_flag=True, envvar="DRY_RUN", help="Run as a dry run")
 ]
@@ -380,7 +376,7 @@ def add_options(options):
 )
 @add_options(branch_options)
 @add_options(auth_options)
-@add_options(username_options)
+@click.option("--username", envvar="GITHUB_ACTOR", help="The git username")
 @click.option("--output", envvar="GITHUB_ENV", help="Output file for env variables")
 def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, output):
     """Prep git and env variables and bump version"""
@@ -509,10 +505,12 @@ def prep_changelog(branch, remote, repo, auth, changelog_path, resolve_backports
 @main.command()
 @add_options(branch_options)
 @add_options(auth_options)
-@add_options(username_options)
 @add_options(dry_run_options)
+@click.option(
+    "--username", envvar="GITHUB_ACTOR", required=True, help="The git username"
+)
 @click.option("--body", help="The Pull Request body text")
-def publish_changelog(branch, remote, repo, auth, username, dry_run, body):
+def publish_changelog(branch, remote, repo, auth, dry_run, username, body):
     """Publish a changelog entry PR"""
     repo = repo or get_repo(remote, auth=auth)
     branch = branch or get_branch()
