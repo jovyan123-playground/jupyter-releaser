@@ -413,7 +413,6 @@ def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, ou
 
     # Check out the remote branch so we can push to it
     run(f"git fetch {remote} {branch} --tags")
-    run(f"git checkout -B {branch} {remote}/{branch}")
 
     # Make sure the local workflow file is the same as the target one
     if "GITHUB_WORKFLOW" in os.environ:
@@ -530,8 +529,8 @@ def publish_changelog(branch, remote, repo, auth, username, dry_run, body):
         run(f"git checkout -b {pr_branch} {remote}/{branch}")
         run("git stash apply")
 
-    # Add a commit with the message
-    run(f'git commit -a -m "Generate changelog for {version}"')
+        # Add a commit with the message
+        run(f'git commit -a -m "Generate changelog for {version}"')
 
     # Create the pull
     g = Github(auth)
@@ -748,12 +747,16 @@ def check_md_links(ignore, cache_file, links_expire):
 @main.command()
 @add_options(branch_options)
 def tag_release(branch, remote, repo):
-    """Create release commit and tag"""
+    """Create release commit and tag the target branch"""
     # Get the new version
     version = get_version()
 
     # Get the branch
     branch = branch or get_branch()
+
+    run("git stash")
+    run(f"git checkout -B {branch} {remote}/{branch}")
+    run("git stash apply")
 
     # Create the release commit
     create_release_commit(version)
