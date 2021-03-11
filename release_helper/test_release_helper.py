@@ -475,6 +475,10 @@ def test_prep_changelog_existing(py_package, mocker):
     run("pre-commit run -a")
 
 
+def test_publish_changelog(mocker):
+    assert False
+
+
 def test_check_md_links(py_package):
     runner = CliRunner()
     readme = py_package / "README.md"
