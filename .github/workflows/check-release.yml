@@ -42,8 +42,8 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install -e .
-      - name: Prep Changelog
-        uses: ./.github/actions/prep-changelog
+      - name: Create Changelog
+        uses: ./.github/actions/create-changelog
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version_spec: 0.0.1a0

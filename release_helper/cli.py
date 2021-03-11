@@ -766,8 +766,17 @@ def tag_release(branch, remote, repo):
     envvar="POST_VERSION_SPEC",
     help="The post release version (usually dev)",
 )
+@click.argument("assets", nargs=-1)
 def publish_release(
-    branch, remote, repo, auth, changelog_path, version_cmd, dry_run, post_version_spec
+    branch,
+    remote,
+    repo,
+    auth,
+    changelog_path,
+    version_cmd,
+    dry_run,
+    post_version_spec,
+    assets,
 ):
     """Publish GitHub release and handle post version bump"""
     branch = branch or get_branch()
@@ -795,8 +804,13 @@ def publish_release(
         draft=dry_run,
         prerelease=prerelease,
     )
+
     if dry_run:
         release.delete_release()
+
+    elif assets:
+        for asset in assets:
+            release.upload_asset(asset)
 
     # Bump to post version if given
     if post_version_spec:
