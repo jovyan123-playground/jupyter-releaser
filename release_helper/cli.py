@@ -536,6 +536,8 @@ def publish_changelog(branch, remote, repo, auth, username, dry_run, body):
     maintainer_can_modify = True
 
     if dry_run:
+        # Check out any unstaged files from version bump
+        run("git checkout -- .")
         return
 
     r.create_pull(title, body, base, head, maintainer_can_modify)
