@@ -4,17 +4,21 @@
 
 ## 0.0.8
 
-([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.0.7...06f118db1b80a47d8f38996f1c146737385546e7))
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.0.7...042d644363f60cac6278f3fdfd234aa082700ca7))
 
+- push the branch before making PR [#43](https://github.com/jovyan123-playground/release-helper-playground/pull/43) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- update workflows [#42](https://github.com/jovyan123-playground/release-helper-playground/pull/42) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Add actions [#41](https://github.com/jovyan123-playground/release-helper-playground/pull/41) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Automated Changelog for 0.0.8 on main [#40](https://github.com/jovyan123-playground/release-helper-playground/pull/40) ([@github-actions](https://github.com/github-actions))
 - Cleanup - Version Validation, Workflow Validation, more PyGitHub, pytest-mock [#39](https://github.com/jovyan123-playground/release-helper-playground/pull/39) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 - Automated Changelog for 0.0.8 on main [#38](https://github.com/jovyan123-playground/release-helper-playground/pull/38) ([@github-actions](https://github.com/github-actions))
 - Update create-release.yml [#37](https://github.com/jovyan123-playground/release-helper-playground/pull/37) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 
 ### Contributors to this release
 
-([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-10&to=2021-03-11&type=c))
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-10&to=2021-03-12&type=c))
 
-[@github-actions](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Agithub-actions+updated%3A2021-03-10..2021-03-11&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-10..2021-03-11&type=Issues)
+[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-10..2021-03-12&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Agithub-actions+updated%3A2021-03-10..2021-03-12&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-10..2021-03-12&type=Issues)
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
