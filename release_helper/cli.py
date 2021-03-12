@@ -30,6 +30,15 @@ END_MARKER = "<!-- <END NEW CHANGELOG ENTRY> -->"
 BUF_SIZE = 65536
 TBUMP_CMD = "tbump --non-interactive --only-patch"
 
+# Of the form:
+# https://github.com/{owner}/{repo}/releases/tag/{tag}
+RELEASE_HTML_PATTERN = (
+    "https://github.com/(?P<org>[^/]+)/(?P<repo>[^/]+)/releases/tag/(?P<tag>.*)"
+)
+
+# Of the form:
+# https://api.github.com/repos/{owner}/{repo}/releases/tags/{tag}
+RELEASE_API_PATTERN = "https://api.github.com/repos/(?P<org>[^/]+)/(?P<repo>[^/]+)/releases/tags/(?P<tag>.*)"
 
 # """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 # Helper Functions
@@ -830,7 +839,7 @@ def publish_release(
     )
 
     # Set the GitHub action output
-    print(f"::set-output name=url::{release.url}")
+    print(f"::set-output name=url::{release.html_url}")
 
     if assets:
         for asset in assets:
@@ -853,8 +862,22 @@ def publish_release(
 
 
 @main.command()
-def delete_release():
-    raise ValueError()
+@add_options(auth_options)
+@click.argument("release_url", nargs=1)
+def delete_release(auth, release_url):
+    """Delete a GitHub release by url to the release page"""
+    match = re.match(RELEASE_HTML_PATTERN, release_url)
+    match = match or re.match(RELEASE_API_PATTERN, release_url)
+    if not match:
+        raise ValueError(f"Release url is not valid: {release_url}")
+    repo = f'{match["org"]}/{match["repo"]}'
+    g = Github(auth)
+
+    r = g.get_repo(repo)
+    release = r.get_release(match["tag"])
+    for asset in release.get_assets():
+        asset.delete_asset()
+    release.delete_release()
 
 
 @main.command()
@@ -874,14 +897,11 @@ def delete_release():
 )
 @click.argument("release_url", nargs=1)
 def publish_dist(auth, npm_token, npm_cmd, twine_cmd, release_url):
-    """Publish dist file(s) from a GitHub release to PyPI/npm"""
-    # https://github.com/foo/bar/releases/tag/untagged-abcdef
-    pattern = (
-        "https://github.com/(?P<org>[^/]+)/(?P<repo>[^/]+)/releases/tag/(?P<tag>.*)"
-    )
-    match = re.match(pattern, release_url)
+    """Publish dist file(s) to registry and finalize GitHub Release"""
+    match = re.match(RELEASE_HTML_PATTERN, release_url)
+    match = match or re.match(RELEASE_API_PATTERN, release_url)
     if not match:
-        raise ValueError(f"Release url must be of the form: {pattern}")
+        raise ValueError(f"Release url is not valid: {release_url}")
 
     if npm_token:
         npmrc = Path(".npmrc")
@@ -946,6 +966,14 @@ def publish_dist(auth, npm_token, npm_cmd, twine_cmd, release_url):
             run(f"{npm_cmd} {asset.name}")
         else:
             print(f"Nothing to upload for {asset.name}")
+
+    # Finalize the release
+    release.update_release(
+        name=release.name,
+        message=release.message,
+        draft=False,
+        prerelease=release.prerelease,
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover
