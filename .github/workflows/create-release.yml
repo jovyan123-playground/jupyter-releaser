@@ -7,8 +7,6 @@ on:
         required: true
       post_version_spec:
         description: "Post Version Specifier"
-      branch:
-        description: "The target branch name"
 jobs:
   release:
     runs-on: ${{ matrix.os }}-latest
@@ -20,7 +18,6 @@ jobs:
     env:
       VERSION_SPEC: ${{ github.event.inputs.version_spec }}
       POST_VERSION_SPEC: ${{ github.event.inputs.post_version_spec }}
-      BRANCH: ${{ github.event.inputs.branch }}
     steps:
       - name: Checkout
         uses: actions/checkout@v1
@@ -51,6 +48,5 @@ jobs:
         uses: ./.github/actions/create-release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          version_spec: ${{ inputs.version_spec }}
-          post_version_spec: ${{ inputs.post_version_spec }}
-          branch: ${{ inputs.branch }}
+          version_spec: ${{ github.event.inputs.version_spec }}
+          post_version_spec: ${{ github.event.inputs.post_version_spec }}
