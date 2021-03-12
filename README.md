@@ -154,7 +154,10 @@ test = coverage; pytest; pytest-cov; release-helper
 
   - Allow declaritve `pre-` and `post-` scripts to be run for the different steps so we can support more complex packages
   - Handle the config at the main cli level
-  - Allow `skip-` to be declared, only works when running `release-helper --all`
+  - Add `release-helpers release-script` command and use in the release
+    It invokes the other [commands](https://click.palletsprojects.com/en/6.x/advanced/#invoking-other-commands)
+  - Also add `changelog-script`
+  - Allow `skip-` to be declared, only works when running the scripts
   - Make sure all steps can run gracefully if files are missing (like no `package.json` in a python package)
 
 - jupyter/notebook migration:

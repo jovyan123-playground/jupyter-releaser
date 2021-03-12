@@ -549,8 +549,8 @@ def test_check_python(py_package, runner):
     assert result.exit_code == 0, result.output
 
 
-def test_check_npm(npm_package, runner):
-    result = runner.invoke(cli.main, ["check-npm"])
+def test_handle_npm(npm_package, runner):
+    result = runner.invoke(cli.main, ["handle-npm"])
     assert result.exit_code == 0, result.output
 
 
@@ -620,23 +620,32 @@ def test_publish_release_final(changelog_entry, runner, mocker):
     delete_asset_mock.assert_not_called()
 
 
-def test_publish_dist(pkg_env, runner, mocker):
-    version = "0.0.2"
+class MockReponse:
+    def __init__(self, filename):
+        self.filename = filename
+
+    def raise_for_status(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def iter_content(self, *args, **kwargs):
+        with open(self.filename, "rb") as fid:
+            return [fid.read()]
+
+
+def gh_release(sha, version, mocker):
     tag_name = f"v{version}"
     url = f"https://github.com/foo/bar/releases/tag/{tag_name}"
-    cli.bump_version(version)
+
     branch = cli.get_branch()
-
-    # Create the dist files
-    run("python -m build .")
-
-    # Create a tag with shas
-    result = runner.invoke(cli.main, ["tag-release"])
-    sha = run("git rev-parse HEAD")
-
-    repo = Repository(None, dict(), dict(url=normalize_path(pkg_env)), True)
+    repo = Repository(None, dict(), dict(url=normalize_path(os.getcwd())), True)
     release = GitRelease(
-        None, dict(), dict(target_commitish=branch, tag_name=tag_name), True
+        None, dict(), dict(target_commitish=branch, tag_name=tag_name, url=url), True
     )
     repo.get_release = MagicMock(return_value=release)
 
@@ -645,6 +654,24 @@ def test_publish_dist(pkg_env, runner, mocker):
     mock_commit = mocker.patch("github.Tag.Tag.commit", new_callable=PropertyMock)
     mock_commit.return_value = commit
     repo.get_tags = MagicMock(return_value=[tag])
+    mock_method = mocker.patch.object(cli.Github, "get_repo", return_value=repo)
+
+    return release
+
+
+def test_publish_dist_py(py_package, runner, mocker):
+    version = "0.0.2"
+    cli.bump_version(version)
+
+    # Create the dist files
+    run("python -m build .")
+
+    # Create a tag with shas
+    result = runner.invoke(cli.main, ["tag-release"])
+    sha = run("git rev-parse HEAD")
+
+    # Make the release mock
+    release = gh_release(sha, version, mocker)
 
     sdist_name = osp.basename(glob("dist/*.gz")[0])
     wheel_name = osp.basename(glob("dist/*.whl")[0])
@@ -656,27 +683,8 @@ def test_publish_dist(pkg_env, runner, mocker):
     )
     release.get_assets = MagicMock(return_value=[sdist, wheel])
 
-    mock_method = mocker.patch.object(cli.Github, "get_repo", return_value=repo)
-
-    class Reponse:
-        def __init__(self, filename):
-            self.filename = filename
-
-        def raise_for_status(self):
-            pass
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-        def iter_content(self, *args, **kwargs):
-            with open(self.filename, "rb") as fid:
-                return [fid.read()]
-
-    sdist_resp = Reponse(Path("dist") / sdist_name)
-    wheel_resp = Reponse(Path("dist") / wheel_name)
+    sdist_resp = MockReponse(Path("dist") / sdist_name)
+    wheel_resp = MockReponse(Path("dist") / wheel_name)
     get_mock = mocker.patch("requests.get", side_effect=[sdist_resp, wheel_resp])
 
     orig_run = cli.run
@@ -691,7 +699,49 @@ def test_publish_dist(pkg_env, runner, mocker):
 
     mock_run = mocker.patch("release_helper.cli.run", wraps=wrapped)
 
-    result = runner.invoke(cli.main, ["publish-dist", url])
+    result = runner.invoke(cli.main, ["publish-dist", release.url])
     assert result.exit_code == 0, result.output
 
     assert called == 2, called
+
+
+def test_publish_dist_npm(npm_package, runner, mocker):
+    version = "0.0.2"
+    cli.bump_version(version)
+
+    # Create the dist files
+    result = runner.invoke(cli.main, ["handle-npm"])
+    assert result.exit_code == 0, result.output
+
+    # Create a tag with shas
+    result = runner.invoke(cli.main, ["tag-release"])
+    sha = run("git rev-parse HEAD")
+
+    # Make the release mock
+    release = gh_release(sha, version, mocker)
+
+    dist_name = osp.basename(glob("dist/*.tgz")[0])
+    dist = GitReleaseAsset(
+        None, dict(), dict(name=dist_name, url="http://foo.com"), True
+    )
+    release.get_assets = MagicMock(return_value=[dist])
+
+    dist_resp = MockReponse(Path("dist") / dist_name)
+    get_mock = mocker.patch("requests.get", side_effect=[dist_resp])
+
+    orig_run = cli.run
+    called = 0
+
+    def wrapped(cmd, **kwargs):
+        nonlocal called
+        if cmd.startswith("npm publish"):
+            called += 1
+            return ""
+        return orig_run(cmd, **kwargs)
+
+    mock_run = mocker.patch("release_helper.cli.run", wraps=wrapped)
+
+    result = runner.invoke(cli.main, ["publish-dist", release.url])
+    assert result.exit_code == 0, result.output
+
+    assert called == 1, called

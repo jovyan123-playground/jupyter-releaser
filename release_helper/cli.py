@@ -64,17 +64,6 @@ def get_branch():
 
 def get_repo(remote, auth=None):
     """Get the remote repo org and name"""
-    gh_repo = os.environ.get("GITHUB_REPOSITORY")
-    if gh_repo:
-        g = Github(auth)
-        repo = g.get_repo(gh_repo)
-        # Do not allow running from a fork, it is too hard to keep
-        # In synch things like workflow files and config.
-        if repo.source:
-            raise ValueError("Can only run the workflow on the main repo")
-        else:
-            return gh_repo
-
     url = run(f"git remote get-url {remote}")
     url = normalize_path(url)
     parts = url.split("/")[-2:]
@@ -264,6 +253,9 @@ def bump_version(version_spec, version_cmd=""):
             if "bumpversion" in Path("setup.cfg").read_text(encoding="utf-8"):
                 version_cmd = version_cmd or "bump2version"
 
+    if not version_cmd and osp.exists("package.json"):
+        version_cmd = "npm version --git-tag-version false"
+
     if not version_cmd:  # pragma: no cover
         raise ValueError("Please specify a version bump command to run")
 
@@ -306,8 +298,8 @@ def check_python_local(*dist_files, test_cmd=""):
             run(f"{bin_path}/{test_cmd}")
 
 
-def check_npm_local(package, test_cmd=""):
-    """Check a npm package locally (not as a cli)"""
+def handle_npm_local(package, test_cmd=""):
+    """Handle a local npm package (not as a cli)"""
     if not osp.exists("./package.json"):
         return
 
@@ -319,7 +311,13 @@ def check_npm_local(package, test_cmd=""):
     else:
         tarball = package
 
-    tarball = normalize_path(tarball)
+    # Move the tarball into the dist folder
+    os.makedirs("dist", exist_ok=True)
+    dest = Path("dist") / osp.basename(tarball)
+    if dest.exists():
+        dest.unlink()
+    shutil.move(tarball, dest)
+    tarball = osp.abspath(normalize_path(dest))
 
     # Get the package json info from the tarball
     fid = tarfile.open(tarball)
@@ -351,9 +349,6 @@ def check_npm_local(package, test_cmd=""):
         run(f"{npm} install {tarball}", cwd=tempdir)
         run(test_cmd, cwd=tempdir)
 
-    # Move the tarball into the dist folder
-    shutil.move(tarball, "dist")
-
 
 # """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 # Start CLI
@@ -383,7 +378,7 @@ branch_options = [
     click.option(
         "--remote", envvar="REMOTE", default="upstream", help="The git remote name"
     ),
-    click.option("--repo", envvar="REPOSITORY", help="The git repo"),
+    click.option("--repo", envvar="GITHUB_REPOSITORY", help="The git repo"),
 ]
 
 auth_options = [
@@ -454,8 +449,17 @@ def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, ou
     repo = repo or get_repo(remote, auth=auth)
     print(f"repository={repo}")
 
+    is_action = bool(os.environ.get("GITHUB_ACTIONS"))
+
+    if is_action:
+        g = Github(auth)
+        r = g.get_repo(repo)
+        # Do not allow running from a fork, it is too hard to keep
+        # In sync things like workflow files and config.
+        if r.source:
+            raise ValueError("Can only run the workflow on the main repo")
+
     # Set up git config if on GitHub Actions
-    is_action = "GITHUB_ACTIONS" in os.environ and os.environ["GITHUB_ACTIONS"]
     if is_action:
         # Use email address for the GitHub Actions bot
         # https://github.community/t/github-actions-bot-email-address/17204/6
@@ -708,9 +712,9 @@ def check_python(dist_files, test_cmd):
 @click.option(
     "--test-cmd", envvar="NPM_TEST_CMD", help="The command to run in isolated install."
 )
-def check_npm(package, test_cmd):
-    """Check npm package"""
-    check_npm_local(package, test_cmd=test_cmd)
+def handle_npm(package, test_cmd):
+    """Handle npm package"""
+    handle_npm_local(package, test_cmd=test_cmd)
 
 
 @main.command()
@@ -727,11 +731,15 @@ def check_manifest():
     help="Comma separated list of glob patterns to ignore",
 )
 @click.option(
-    "--cache-file", default="~/.cache/pytest-link-check", help="The cache file to use"
+    "--cache-file",
+    envvar="CACHE_FILE",
+    default="~/.cache/pytest-link-check",
+    help="The cache file to use",
 )
 @click.option(
     "--links-expire",
     default=604800,
+    envvar="LINKS_EXPIRE",
     help="Duration in seconds for links to be cached (default one week)",
 )
 def check_md_links(ignore, cache_file, links_expire):
@@ -850,7 +858,10 @@ def publish_release(
 @add_options(auth_options)
 @click.option("--npm_token", help="A token for the npm release", envvar="NPM_TOKEN")
 @click.option(
-    "--npm_cmd", help="The command to run for npm release", default="npm publish"
+    "--npm_cmd",
+    help="The command to run for npm release",
+    envvar="NPM_COMMAND",
+    default="npm publish",
 )
 @click.argument("release_url", nargs=1)
 def publish_dist(auth, npm_token, npm_cmd, release_url):
@@ -922,7 +933,7 @@ def publish_dist(auth, npm_token, npm_cmd, release_url):
             check_python_local(asset.name)
             run(f"twine upload {asset.name}")
         elif suffix == ".tgz":
-            check_npm_local(asset.name)
+            handle_npm_local(asset.name)
             run(f"{npm_cmd} {asset.name}")
         else:
             print(f"Nothing to upload for {asset.name}")
