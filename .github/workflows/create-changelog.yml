@@ -13,8 +13,6 @@ jobs:
       matrix:
         os: [ubuntu]
         python-version: ["3.9"]
-    env:
-      VERSION_SPEC: ${{ github.event.inputs.version_spec }}
     steps:
       - name: Checkout
         uses: actions/checkout@v1
@@ -28,21 +26,9 @@ jobs:
           pip install --upgrade pip setuptools wheel --user
       - name: Install Dependencies
         run: |
-          pip install -e .[test]
-      - name: Run the changelog prep
-        env:
-          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          release-helper prep-env
-          release-helper prep-changelog
-          # Checkout any unstaged files from version bump
-          git checkout -- .
-      - name: Make a PR with the changelog entry change
-        uses: peter-evans/create-pull-request@v3
+          pip install -e .
+      - name: Create Changelog
+        uses: ./.github/actions/create-changelog
         with:
-          title: "Automated Changelog for ${{ env.VERSION }} on ${{ env.BRANCH }}"
-          branch-suffix: timestamp
-          delete-branch: true
-          base: ${{ env.BRANCH }}
-          commit-message: "Generate changelog for ${{ env.VERSION }}"
-          body: "Automated Changelog for ${{ env.VERSION }} on ${{ env.BRANCH }}"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version_spec: ${{ inputs.version_spec }}

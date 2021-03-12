@@ -5,9 +5,6 @@ on:
 jobs:
   check_release:
     runs-on: ubuntu-latest
-    env:
-      VERSION_SPEC: "0.0.1a1"
-      POST_VERSION_SPEC: "0.0.2.dev0"
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.8.0
@@ -44,30 +41,17 @@ jobs:
           pip install --upgrade pip setuptools wheel --user
       - name: Install Dependencies
         run: |
-          pip install -e .[test]
+          pip install -e .
       - name: Create Changelog
-        env:
-          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          release-helper prep-env
-          release-helper prep-changelog
+        uses: ./.github/actions/create-changelog
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version_spec: 0.0.1a0
+          dry_run: true
       - name: Create GitHub Release
-        env:
-          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          release-helper check-changelog
-          release-helper build-python
-          release-helper check-python dist/*
-          release-helper check-manifest
-          release-helper check-md-links
-          release-helper tag-release
-          release-helper publish-release --dry-run
-          echo "which dists?"
-          ls dist/*
-      - name: Publish PyPI Package
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
-          REGISTRY: https://test.pypi.org/legacy/
-        run: |
-          twine upload --repository-url ${REGISTRY} --skip-existing dist/*
+        uses: ./.github/actions/create-release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version_spec: 0.0.1a0
+          post_version_spec: 0.1.0.dev0
+          dry_run: true

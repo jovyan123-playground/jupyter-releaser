@@ -9,6 +9,7 @@ import shlex
 import shutil
 import sys
 import tarfile
+import uuid
 from glob import glob
 from pathlib import Path
 from subprocess import CalledProcessError
@@ -56,7 +57,7 @@ def get_branch():
         # e.g. refs/heads/feature-branch-1
         branch = os.environ["GITHUB_REF"].split("/")[-1]
     else:
-        branch = run("git branch --show-current", quiet=True)
+        branch = run("git branch --show-current")
     return branch
 
 
@@ -66,9 +67,10 @@ def get_repo(remote, auth=None):
     if gh_repo:
         g = Github(auth)
         repo = g.get_repo(gh_repo)
-        # If this is the source repo, return the original target
+        # Do not allow running from a fork, it is too hard to keep
+        # In synch things like workflow files and config.
         if repo.source:
-            return repo.source.full_name
+            raise ValueError("Can only run the workflow on the main repo")
         else:
             return gh_repo
 
@@ -83,7 +85,7 @@ def get_repo(remote, auth=None):
 def get_version():
     """Get the current package version"""
     if osp.exists("setup.py"):
-        return run("python setup.py --version", quiet=True)
+        return run("python setup.py --version")
     elif osp.exists("package.json"):
         return json.loads(Path("package.json").read_text(encoding="utf-8"))["version"]
     else:  # pragma: no cover
@@ -120,23 +122,6 @@ def format_pr_entry(target, number, auth=None):
     user_name = pull.user.login
     user_url = pull.user.html_url
     return f"- {title} [{number}]({url}) [@{user_name}]({user_url})"
-
-
-def get_workflow_path(repo, auth=None):
-    """Get the path for the current running workflow"""
-    name = os.environ["GITHUB_WORKFLOW"]
-    g = Github(auth)
-    r = g.get_repo(repo)
-    workflows = r.get_workflows()
-
-    found = False
-    for workflow in workflows:
-        if workflow.name == name:
-            path = workflow.path
-            found = True
-    if not found:  # pragma: no cover
-        raise ValueError(f"Could not validate workflow {name}")
-    return path
 
 
 def get_changelog_entry(branch, repo, version, *, auth=None, resolve_backports=False):
@@ -326,6 +311,10 @@ auth_options = [
     click.option("--auth", envvar="GITHUB_ACCESS_TOKEN", help="The GitHub auth token"),
 ]
 
+dry_run_options = [
+    click.option("--dry-run", is_flag=True, envvar="DRY_RUN", help="Run as a dry run")
+]
+
 changelog_path_options = [
     click.option(
         "--changelog-path",
@@ -371,8 +360,9 @@ def add_options(options):
 )
 @add_options(branch_options)
 @add_options(auth_options)
+@click.option("--username", envvar="GITHUB_ACTOR", help="The git username")
 @click.option("--output", envvar="GITHUB_ENV", help="Output file for env variables")
-def prep_env(version_spec, version_cmd, branch, remote, repo, auth, output):
+def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, output):
     """Prep git and env variables and bump version"""
 
     # Get the branch
@@ -396,7 +386,6 @@ def prep_env(version_spec, version_cmd, branch, remote, repo, auth, output):
         remotes = run("git remote").splitlines()
         if remote not in remotes:
             if auth:
-                username = os.environ["GITHUB_ACTOR"]
                 url = f"http://{username}:{auth}@github.com/{repo}.git"
             else:
                 url = f"http://github.com/{repo}.git"
@@ -404,16 +393,11 @@ def prep_env(version_spec, version_cmd, branch, remote, repo, auth, output):
 
     # Check out the remote branch so we can push to it
     run(f"git fetch {remote} {branch} --tags")
-    run(f"git checkout -B {branch} {remote}/{branch}")
-
-    # Make sure the local workflow file is the same as the target one
-    if "GITHUB_WORKFLOW" in os.environ:
-        path = get_workflow_path(repo)
-        assert osp.exists(path), f"Could not find workflow {path}"
-        diff = run(f"git --no-pager diff HEAD {remote}/{branch} -- {path}")
-        msg = f"Workflow file {path} differs from {remote} repo {repo}:\n{diff}"
-        if path in diff:  # pragma: no cover
-            raise ValueError(msg)
+    branches = run("git branch").replace("* ", "").splitlines()
+    if branch in branches:
+        run(f"git checkout {branch}")
+    else:
+        run(f"git checkout -B {branch} {remote}/{branch}")
 
     # Bump the version
     bump_version(version_spec, version_cmd=version_cmd)
@@ -496,6 +480,50 @@ def prep_changelog(branch, remote, repo, auth, changelog_path, resolve_backports
 
     # Stage changelog
     run(f"git add {normalize_path(changelog_path)}")
+
+
+@main.command()
+@add_options(branch_options)
+@add_options(auth_options)
+@add_options(dry_run_options)
+@click.option(
+    "--username", envvar="GITHUB_ACTOR", required=True, help="The git username"
+)
+@click.option("--body", help="The Pull Request body text")
+def publish_changelog(branch, remote, repo, auth, dry_run, username, body):
+    """Publish a changelog entry PR"""
+    repo = repo or get_repo(remote, auth=auth)
+    branch = branch or get_branch()
+    version = get_version()
+
+    # Check out any unstaged files from version bump
+    run("git checkout -- .")
+
+    # Make a new branch with a uuid suffix
+    pr_branch = f"{branch}-{uuid.uuid1().hex})"
+
+    if not dry_run:
+        run("git stash")
+        run(f"git checkout -b {pr_branch} {remote}/{branch}")
+        run("git stash apply")
+
+    # Add a commit with the message
+    run(f'git commit -a -m "Generate changelog for {version}"')
+
+    # Create the pull
+    g = Github(auth)
+    r = g.get_repo(repo)
+    title = f"Automated Changelog for {version} on {branch}"
+    body = body or title
+    base = branch
+    head = f"{username}:{pr_branch}"
+    maintainer_can_modify = True
+
+    if dry_run:
+        print("Skipping pull request due to dry run")
+        return
+
+    r.create_pull(title, body, base, head, maintainer_can_modify)
 
 
 @main.command()
@@ -697,7 +725,7 @@ def check_md_links(ignore, cache_file, links_expire):
 @main.command()
 @add_options(branch_options)
 def tag_release(branch, remote, repo):
-    """Create release commit and tag"""
+    """Create release commit and tag the target branch"""
     # Get the new version
     version = get_version()
 
@@ -717,14 +745,23 @@ def tag_release(branch, remote, repo):
 @add_options(auth_options)
 @add_options(changelog_path_options)
 @add_options(version_cmd_options)
+@add_options(dry_run_options)
 @click.option(
     "--post-version-spec",
     envvar="POST_VERSION_SPEC",
     help="The post release version (usually dev)",
 )
-@click.option("--dry-run", is_flag=True, help="Run as a dry run")
+@click.argument("assets", nargs=-1)
 def publish_release(
-    branch, remote, repo, auth, changelog_path, version_cmd, post_version_spec, dry_run
+    branch,
+    remote,
+    repo,
+    auth,
+    changelog_path,
+    version_cmd,
+    dry_run,
+    post_version_spec,
+    assets,
 ):
     """Publish GitHub release and handle post version bump"""
     branch = branch or get_branch()
@@ -744,14 +781,22 @@ def publish_release(
     end = changelog.find(END_MARKER)
     message = changelog[start + len(START_MARKER) : end]
 
+    # Create a draft release
     prerelease = is_prerelease(version)
     release = r.create_git_release(
         f"v{version}",
         f"Release v{version}",
         message,
-        draft=dry_run,
+        draft=True,
         prerelease=prerelease,
     )
+
+    if assets:
+        for asset in assets:
+            upload = release.upload_asset(asset)
+            if dry_run:
+                upload.delete_asset()
+
     if dry_run:
         release.delete_release()
 
