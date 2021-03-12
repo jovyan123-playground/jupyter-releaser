@@ -277,6 +277,84 @@ def is_prerelease(version):
     return final_version != version
 
 
+def check_python_local(*dist_files, test_cmd=""):
+    """Check a Python package locally (not as a cli)"""
+    for dist_file in dist_files:
+        dist_file = normalize_path(dist_file)
+        run(f"twine check {dist_file}")
+
+        if not test_cmd:
+            # Get the package name from the dist file name
+            name = re.match(r"(\S+)-\d", osp.basename(dist_file)).groups()[0]
+            name = name.replace("-", "_")
+            test_cmd = f'python -c "import {name}"'
+
+        # Create venvs to install dist file
+        # run the test command in the venv
+        with TemporaryDirectory() as td:
+            env_path = normalize_path(osp.abspath(td))
+            if os.name == "nt":  # pragma: no cover
+                bin_path = f"{env_path}/Scripts/"
+            else:
+                bin_path = f"{env_path}/bin"
+
+            # Create the virtual env, upgrade pip,
+            # install, and run test command
+            run(f"python -m venv {env_path}")
+            run(f"{bin_path}/python -m pip install -U pip")
+            run(f"{bin_path}/pip install -q {dist_file}")
+            run(f"{bin_path}/{test_cmd}")
+
+
+def check_npm_local(package, test_cmd=""):
+    """Check a npm package locally (not as a cli)"""
+    if not osp.exists("./package.json"):
+        return
+
+    npm = normalize_path(shutil.which("npm"))
+    node = normalize_path(shutil.which("node"))
+
+    if osp.isdir(package):
+        tarball = osp.join(os.getcwd(), run(f"{npm} pack"))
+    else:
+        tarball = package
+
+    tarball = normalize_path(tarball)
+
+    # Get the package json info from the tarball
+    fid = tarfile.open(tarball)
+    data = fid.extractfile("package/package.json").read()
+    data = json.loads(data.decode("utf-8"))
+    fid.close()
+
+    # Bail if it is a monorepo and we don't have the monorepo helper
+    if "workspaces" in data:  # pragma: no cover
+        # TODO: make this available in @jupyterlab/builder
+        if shutil.which("check-lerna-packages"):
+            run("check-lerna-packages")
+            return
+        else:
+            print("Do not handle monorepos here")
+        return
+
+    # Bail if it is a private package or monorepo
+    if data.get("private", False):  # pragma: no cover
+        raise ValueError("No need to prep a private package")
+
+    if not test_cmd:
+        name = data["name"]
+        test_cmd = f"{node} -e \"require('{name}')\""
+
+    # Install in a temporary directory and verify import
+    with TemporaryDirectory() as tempdir:
+        run(f"{npm} init -y", cwd=tempdir)
+        run(f"{npm} install {tarball}", cwd=tempdir)
+        run(test_cmd, cwd=tempdir)
+
+    # Move the tarball into the dist folder
+    shutil.move(tarball, "dist")
+
+
 # """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 # Start CLI
 # """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -622,31 +700,7 @@ def build_python():
 )
 def check_python(dist_files, test_cmd):
     """Check Python dist files"""
-    for dist_file in dist_files:
-        dist_file = normalize_path(dist_file)
-        run(f"twine check {dist_file}")
-
-        if not test_cmd:
-            # Get the package name from the dist file name
-            name = re.match(r"(\S+)-\d", osp.basename(dist_file)).groups()[0]
-            name = name.replace("-", "_")
-            test_cmd = f'python -c "import {name}"'
-
-        # Create venvs to install dist file
-        # run the test command in the venv
-        with TemporaryDirectory() as td:
-            env_path = normalize_path(osp.abspath(td))
-            if os.name == "nt":  # pragma: no cover
-                bin_path = f"{env_path}/Scripts/"
-            else:
-                bin_path = f"{env_path}/bin"
-
-            # Create the virtual env, upgrade pip,
-            # install, and run test command
-            run(f"python -m venv {env_path}")
-            run(f"{bin_path}/python -m pip install -U pip")
-            run(f"{bin_path}/pip install -q {dist_file}")
-            run(f"{bin_path}/{test_cmd}")
+    check_python_local(*dist_files, test_cmd=test_cmd)
 
 
 @main.command()
@@ -656,51 +710,7 @@ def check_python(dist_files, test_cmd):
 )
 def check_npm(package, test_cmd):
     """Check npm package"""
-    if not osp.exists("./package.json"):
-        return
-
-    npm = normalize_path(shutil.which("npm"))
-    node = normalize_path(shutil.which("node"))
-
-    if osp.isdir(package):
-        tarball = osp.join(os.getcwd(), run(f"{npm} pack"))
-    else:
-        tarball = package
-
-    tarball = normalize_path(tarball)
-
-    # Get the package json info from the tarball
-    fid = tarfile.open(tarball)
-    data = fid.extractfile("package/package.json").read()
-    data = json.loads(data.decode("utf-8"))
-    fid.close()
-
-    # Bail if it is a monorepo and we don't have the monorepo helper
-    if "workspaces" in data:  # pragma: no cover
-        # TODO: make this available in @jupyterlab/builder
-        if shutil.which("check-lerna-packages"):
-            run("check-lerna-packages")
-            return
-        else:
-            print("Do not handle monorepos here")
-        return
-
-    # Bail if it is a private package or monorepo
-    if data.get("private", False):  # pragma: no cover
-        raise ValueError("No need to prep a private package")
-
-    if not test_cmd:
-        name = data["name"]
-        test_cmd = f"{node} -e \"require('{name}')\""
-
-    # Install in a temporary directory and verify import
-    with TemporaryDirectory() as tempdir:
-        run(f"{npm} init -y", cwd=tempdir)
-        run(f"{npm} install {tarball}", cwd=tempdir)
-        run(test_cmd, cwd=tempdir)
-
-    # Move the tarball into the dist folder
-    shutil.move(tarball, "dist")
+    check_npm_local(package, test_cmd=test_cmd)
 
 
 @main.command()
@@ -877,9 +887,10 @@ def publish_dist(auth, npm_token, npm_cmd, release_url):
     # Get the commmit message for the branch
     commit_message = ""
     with TemporaryDirectory() as td:
-        run(f"git clone https://github.com/{repo} local --depth 1", cwd=td)
+        run(f"git clone {r.url} local --depth 1", cwd=td)
         checkout = osp.join(td, "local")
-        run(f"git fetch origin {branch} --unshallow", cwd=checkout)
+        if not osp.exists(r.url):
+            run(f"git fetch origin {branch} --unshallow", cwd=checkout)
         commit_message = run(f"git log --format=%B -n 1 {sha}", cwd=checkout)
 
     # Fetch, validate, and publish assets
@@ -887,6 +898,7 @@ def publish_dist(auth, npm_token, npm_cmd, release_url):
         print(f"Fetching {asset.name}...")
         url = asset.url
         headers = dict(Authorization=f"token {auth}", Accept="application/octet-stream")
+
         with requests.get(url, headers=headers, stream=True) as r:
             r.raise_for_status()
             with open(asset.name, "wb") as f:
@@ -894,9 +906,10 @@ def publish_dist(auth, npm_token, npm_cmd, release_url):
                     f.write(chunk)
         # now check the sha against the published sha
         valid = False
+        sha = compute_sha256(asset.name)
+
         for line in commit_message.splitlines():
             if asset.name in line:
-                sha = compute_sha256(asset.name)
                 if sha in line:
                     valid = True
                 else:
@@ -906,10 +919,10 @@ def publish_dist(auth, npm_token, npm_cmd, release_url):
 
         suffix = Path(asset.name).suffix
         if suffix in [".gz", ".whl"]:
-            check_python([asset.name], "")
+            check_python_local(asset.name)
             run(f"twine upload {asset.name}")
         elif suffix == ".tgz":
-            check_npm([asset.name], "")
+            check_npm_local(asset.name)
             run(f"{npm_cmd} {asset.name}")
         else:
             print(f"Nothing to upload for {asset.name}")

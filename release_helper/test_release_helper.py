@@ -15,6 +15,7 @@ from unittest.mock import patch
 from unittest.mock import PropertyMock
 
 from click.testing import CliRunner
+from github.Commit import Commit
 from github.GitRelease import GitRelease
 from github.GitReleaseAsset import GitReleaseAsset
 from github.NamedUser import NamedUser
@@ -22,6 +23,7 @@ from github.PaginatedList import PaginatedList
 from github.PullRequest import PullRequest
 from github.Repository import Repository
 from github.Requester import Requester
+from github.Tag import Tag
 from github.Workflow import Workflow
 from pytest import fixture
 
@@ -616,3 +618,80 @@ def test_publish_release_final(changelog_entry, runner, mocker):
     release_mock.assert_called_once()
     delete_mock.assert_not_called()
     delete_asset_mock.assert_not_called()
+
+
+def test_publish_dist(pkg_env, runner, mocker):
+    version = "0.0.2"
+    tag_name = f"v{version}"
+    url = f"https://github.com/foo/bar/releases/tag/{tag_name}"
+    cli.bump_version(version)
+    branch = cli.get_branch()
+
+    # Create the dist files
+    run("python -m build .")
+
+    # Create a tag with shas
+    result = runner.invoke(cli.main, ["tag-release"])
+    sha = run("git rev-parse HEAD")
+
+    repo = Repository(None, dict(), dict(url=normalize_path(pkg_env)), True)
+    release = GitRelease(
+        None, dict(), dict(target_commitish=branch, tag_name=tag_name), True
+    )
+    repo.get_release = MagicMock(return_value=release)
+
+    commit = Commit(None, dict(), dict(sha=sha), True)
+    tag = Tag(None, dict(), dict(name=tag_name), True)
+    mock_commit = mocker.patch("github.Tag.Tag.commit", new_callable=PropertyMock)
+    mock_commit.return_value = commit
+    repo.get_tags = MagicMock(return_value=[tag])
+
+    sdist_name = osp.basename(glob("dist/*.gz")[0])
+    wheel_name = osp.basename(glob("dist/*.whl")[0])
+    sdist = GitReleaseAsset(
+        None, dict(), dict(name=sdist_name, url="http://foo.com"), True
+    )
+    wheel = GitReleaseAsset(
+        None, dict(), dict(name=wheel_name, url="http://bar.com"), True
+    )
+    release.get_assets = MagicMock(return_value=[sdist, wheel])
+
+    mock_method = mocker.patch.object(cli.Github, "get_repo", return_value=repo)
+
+    class Reponse:
+        def __init__(self, filename):
+            self.filename = filename
+
+        def raise_for_status(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def iter_content(self, *args, **kwargs):
+            with open(self.filename, "rb") as fid:
+                return [fid.read()]
+
+    sdist_resp = Reponse(Path("dist") / sdist_name)
+    wheel_resp = Reponse(Path("dist") / wheel_name)
+    get_mock = mocker.patch("requests.get", side_effect=[sdist_resp, wheel_resp])
+
+    orig_run = cli.run
+    called = 0
+
+    def wrapped(cmd, **kwargs):
+        nonlocal called
+        if cmd.startswith("twine upload"):
+            called += 1
+            return ""
+        return orig_run(cmd, **kwargs)
+
+    mock_run = mocker.patch("release_helper.cli.run", wraps=wrapped)
+
+    result = runner.invoke(cli.main, ["publish-dist", url])
+    assert result.exit_code == 0, result.output
+
+    assert called == 2, called
