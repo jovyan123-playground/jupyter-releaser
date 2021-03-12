@@ -1,0 +1,14 @@
+name: "Publish Dist"
+description: "Publish dist file(s) from a GitHub release"
+inputs:
+  release_url:
+    description: "The full url to the GitHub release page"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        set -eux
+        pip install release-helper
+        release-helper publish-dist ${{ inputs.release_url }}

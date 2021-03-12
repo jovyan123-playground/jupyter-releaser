@@ -829,14 +829,12 @@ def publish_release(
         prerelease=prerelease,
     )
 
+    # Set the GitHub action output
+    print(f"::set-output name=url::{release.url}")
+
     if assets:
         for asset in assets:
             upload = release.upload_asset(asset, label="")
-            if dry_run:
-                upload.delete_asset()
-
-    if dry_run:
-        release.delete_release()
 
     # Bump to post version if given
     if post_version_spec:
@@ -855,6 +853,11 @@ def publish_release(
 
 
 @main.command()
+def delete_release():
+    raise ValueError()
+
+
+@main.command()
 @add_options(auth_options)
 @click.option("--npm_token", help="A token for the npm release", envvar="NPM_TOKEN")
 @click.option(
@@ -863,8 +866,14 @@ def publish_release(
     envvar="NPM_COMMAND",
     default="npm publish",
 )
+@click.option(
+    "--twine_cmd",
+    help="The twine to run for Python release",
+    envvar="TWINE_COMMAND",
+    default="twine upload",
+)
 @click.argument("release_url", nargs=1)
-def publish_dist(auth, npm_token, npm_cmd, release_url):
+def publish_dist(auth, npm_token, npm_cmd, twine_cmd, release_url):
     """Publish dist file(s) from a GitHub release to PyPI/npm"""
     # https://github.com/foo/bar/releases/tag/untagged-abcdef
     pattern = (
@@ -931,7 +940,7 @@ def publish_dist(auth, npm_token, npm_cmd, release_url):
         suffix = Path(asset.name).suffix
         if suffix in [".gz", ".whl"]:
             check_python_local(asset.name)
-            run(f"twine upload {asset.name}")
+            run(f"{twine_cmd} {asset.name}")
         elif suffix == ".tgz":
             handle_npm_local(asset.name)
             run(f"{npm_cmd} {asset.name}")
