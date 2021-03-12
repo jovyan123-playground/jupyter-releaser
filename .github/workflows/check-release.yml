@@ -55,10 +55,3 @@ jobs:
           version_spec: 0.0.1a0
           post_version_spec: 0.1.0.dev0
           dry_run: true
-      - name: Publish PyPI Package
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
-          REGISTRY: https://test.pypi.org/legacy/
-        run: |
-          twine upload --repository-url ${REGISTRY} --skip-existing dist/*

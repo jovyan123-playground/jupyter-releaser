@@ -54,10 +54,3 @@ jobs:
           version_spec: ${{ inputs.version_spec }}
           post_version_spec: ${{ inputs.post_version_spec }}
           branch: ${{ inputs.branch }}
-      - name: Publish PyPI Package
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
-          REGISTRY: https://test.pypi.org/legacy/
-        run: |
-          twine upload --repository-url ${REGISTRY} --skip-existing dist/*

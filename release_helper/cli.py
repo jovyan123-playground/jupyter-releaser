@@ -57,7 +57,7 @@ def get_branch():
         # e.g. refs/heads/feature-branch-1
         branch = os.environ["GITHUB_REF"].split("/")[-1]
     else:
-        branch = run("git branch --show-current", quiet=True)
+        branch = run("git branch --show-current")
     return branch
 
 
@@ -67,9 +67,10 @@ def get_repo(remote, auth=None):
     if gh_repo:
         g = Github(auth)
         repo = g.get_repo(gh_repo)
-        # If this is the source repo, return the original target
+        # Do not allow running from a fork, it is too hard to keep
+        # In synch things like workflow files and config.
         if repo.source:
-            return repo.source.full_name
+            raise ValueError("Can only run the workflow on the main repo")
         else:
             return gh_repo
 
@@ -84,7 +85,7 @@ def get_repo(remote, auth=None):
 def get_version():
     """Get the current package version"""
     if osp.exists("setup.py"):
-        return run("python setup.py --version", quiet=True)
+        return run("python setup.py --version")
     elif osp.exists("package.json"):
         return json.loads(Path("package.json").read_text(encoding="utf-8"))["version"]
     else:  # pragma: no cover
@@ -121,23 +122,6 @@ def format_pr_entry(target, number, auth=None):
     user_name = pull.user.login
     user_url = pull.user.html_url
     return f"- {title} [{number}]({url}) [@{user_name}]({user_url})"
-
-
-def get_workflow_path(repo, auth=None):
-    """Get the path for the current running workflow"""
-    name = os.environ["GITHUB_WORKFLOW"]
-    g = Github(auth)
-    r = g.get_repo(repo)
-    workflows = r.get_workflows()
-
-    found = False
-    for workflow in workflows:
-        if workflow.name == name:
-            path = workflow.path
-            found = True
-    if not found:  # pragma: no cover
-        raise ValueError(f"Could not validate workflow {name}")
-    return path
 
 
 def get_changelog_entry(branch, repo, version, *, auth=None, resolve_backports=False):
@@ -409,15 +393,10 @@ def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, ou
 
     # Check out the remote branch so we can push to it
     run(f"git fetch {remote} {branch} --tags")
-
-    # Make sure the local workflow file is the same as the target one
-    if "GITHUB_WORKFLOW" in os.environ:
-        path = get_workflow_path(repo)
-        assert osp.exists(path), f"Could not find workflow {path}"
-        diff = run(f"git --no-pager diff HEAD {remote}/{branch} -- {path}")
-        msg = f"Workflow file {path} differs from {remote} repo {repo}:\n{diff}"
-        if path in diff:  # pragma: no cover
-            raise ValueError(msg)
+    if branch in run("git branch").splitlines():
+        run(f"git checkout {branch}")
+    else:
+        run(f"git checkout -B {branch} {remote}/{branch}")
 
     # Bump the version
     bump_version(version_spec, version_cmd=version_cmd)
@@ -527,8 +506,8 @@ def publish_changelog(branch, remote, repo, auth, dry_run, username, body):
         run(f"git checkout -b {pr_branch} {remote}/{branch}")
         run("git stash apply")
 
-        # Add a commit with the message
-        run(f'git commit -a -m "Generate changelog for {version}"')
+    # Add a commit with the message
+    run(f'git commit -a -m "Generate changelog for {version}"')
 
     # Create the pull
     g = Github(auth)
@@ -752,10 +731,6 @@ def tag_release(branch, remote, repo):
     # Get the branch
     branch = branch or get_branch()
 
-    run("git stash")
-    run(f"git checkout -B {branch} {remote}/{branch}")
-    run("git stash apply")
-
     # Create the release commit
     create_release_commit(version)
 
@@ -805,12 +780,13 @@ def publish_release(
     end = changelog.find(END_MARKER)
     message = changelog[start + len(START_MARKER) : end]
 
+    # Create a draft release
     prerelease = is_prerelease(version)
     release = r.create_git_release(
         f"v{version}",
         f"Release v{version}",
         message,
-        draft=dry_run,
+        draft=True,
         prerelease=prerelease,
     )
 

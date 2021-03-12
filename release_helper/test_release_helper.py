@@ -289,26 +289,6 @@ def test_format_pr_entry(mocker):
     assert resp.startswith("- ")
 
 
-def test_get_workflow_path(mocker):
-    gh_repo = Repository(None, dict(), dict(), True)
-    requester = MagicMock()
-    name = "Foo Bar"
-    path = ".github/workflows/foo_bar.yml"
-
-    def requestJsonAndCheck(*args, **kwargs):
-        return dict(), [dict(name=name, path=path)]
-
-    requester.requestJsonAndCheck = requestJsonAndCheck
-    workflows = PaginatedList(Workflow, requester, "", dict(), dict())
-    gh_repo.get_workflows = mock = MagicMock(return_value=workflows)
-    repo = "foo/bar"
-    mock_method = mocker.patch.object(cli.Github, "get_repo", return_value=gh_repo)
-    mocker.patch.dict(os.environ, {"GITHUB_WORKFLOW": name})
-    assert cli.get_workflow_path(repo) == path
-    mock.assert_called_once()
-    mock_method.assert_called_with(repo)
-
-
 def test_get_changelog_entry(py_package, mocker):
     version = cli.get_version()
 
@@ -412,10 +392,8 @@ def test_prep_env_full(py_package, tmp_path, mocker, runner):
     )
     mock_run = mocker.patch("release_helper.cli.run")
     mocked_get_repo = mocker.patch("release_helper.cli.get_repo")
-    mocked_get_workflow_patch = mocker.patch("release_helper.cli.get_workflow_path")
     # Fake out the version and source repo responses
     mock_run.return_value = version_spec
-    mocked_get_workflow_patch.return_value = workflow_path
     mocked_get_repo.return_value = "foo/bar"
     result = runner.invoke(cli.main, ["prep-env"], env=env)
     mock_run.assert_has_calls(
@@ -427,11 +405,10 @@ def test_prep_env_full(py_package, tmp_path, mocker, runner):
             call("git remote"),
             call("git remote add upstream http://snuffy:abc123@github.com/foo/bar.git"),
             call("git fetch upstream foo --tags"),
-            call(
-                "git --no-pager diff HEAD upstream/foo -- .github/workflows/check-release.yml"
-            ),
+            call("git branch"),
+            call("git checkout -B foo upstream/foo"),
             call("tbump --non-interactive --only-patch 1.0.1a1"),
-            call("python setup.py --version", quiet=True),
+            call("python setup.py --version"),
         ]
     )
 
