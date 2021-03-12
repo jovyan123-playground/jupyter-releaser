@@ -31,4 +31,4 @@ jobs:
         uses: ./.github/actions/create-changelog
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          version_spec: ${{ inputs.version_spec }}
+          version_spec: ${{ github.event.inputs.version_spec }}
