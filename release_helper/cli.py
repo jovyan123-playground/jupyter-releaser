@@ -486,11 +486,8 @@ def prep_changelog(branch, remote, repo, auth, changelog_path, resolve_backports
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(dry_run_options)
-@click.option(
-    "--username", envvar="GITHUB_ACTOR", required=True, help="The git username"
-)
 @click.option("--body", help="The Pull Request body text")
-def publish_changelog(branch, remote, repo, auth, dry_run, username, body):
+def publish_changelog(branch, remote, repo, auth, dry_run, body):
     """Publish a changelog entry PR"""
     repo = repo or get_repo(remote, auth=auth)
     branch = branch or get_branch()
@@ -500,7 +497,7 @@ def publish_changelog(branch, remote, repo, auth, dry_run, username, body):
     run("git checkout -- .")
 
     # Make a new branch with a uuid suffix
-    pr_branch = f"{branch}-{uuid.uuid1().hex})"
+    pr_branch = f"changelog-{uuid.uuid1().hex})"
 
     if not dry_run:
         run("git stash")
@@ -516,13 +513,14 @@ def publish_changelog(branch, remote, repo, auth, dry_run, username, body):
     title = f"Automated Changelog for {version} on {branch}"
     body = body or title
     base = branch
-    head = f"{username}:{pr_branch}"
+    head = pr_branch
     maintainer_can_modify = True
 
     if dry_run:
         print("Skipping pull request due to dry run")
         return
 
+    run(f"git push {remote} {pr_branch}")
     r.create_pull(title, body, base, head, maintainer_can_modify)
 
 
