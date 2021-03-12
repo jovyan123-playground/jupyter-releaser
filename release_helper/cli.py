@@ -281,6 +281,9 @@ def is_prerelease(version):
 def check_python_local(*dist_files, test_cmd=""):
     """Check a Python package locally (not as a cli)"""
     for dist_file in dist_files:
+        if Path(dist_file).suffix not in [".gz", ".whl"]:
+            print(f"Skipping non-python dist file {dist_file}")
+            continue
         dist_file = normalize_path(dist_file)
         run(f"twine check {dist_file}")
 
@@ -310,6 +313,7 @@ def check_python_local(*dist_files, test_cmd=""):
 def handle_npm_local(package, test_cmd=""):
     """Handle a local npm package (not as a cli)"""
     if not osp.exists("./package.json"):
+        print("Skipping handle-npm since there is no package.json file")
         return
 
     npm = normalize_path(shutil.which("npm"))
@@ -704,6 +708,8 @@ def build_python():
     elif osp.exists("./setup.py"):
         run("python setup.py sdist")
         run("python setup.py bdist_wheel")
+    else:
+        print("Skipping build-python since there are no python package files")
 
 
 @main.command()
@@ -729,8 +735,10 @@ def handle_npm(package, test_cmd):
 @main.command()
 def check_manifest():
     """Check the project manifest"""
-    if Path("setup.py").exists():
+    if Path("setup.py").exists() or Path("pyproject.toml").exists():
         run("check-manifest -v")
+    else:
+        print("Skipping build-python since there are no python package files")
 
 
 @main.command()
