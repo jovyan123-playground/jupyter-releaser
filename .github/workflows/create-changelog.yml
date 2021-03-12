@@ -27,14 +27,3 @@ jobs:
           env
           git remote -v
           git branch --show-current
-      - name: Upgrade packaging dependencies
-        run: |
-          pip install --upgrade pip setuptools wheel --user
-      - name: Install Dependencies
-        run: |
-          pip install -e .
-      - name: Create Changelog
-        uses: ./.github/actions/create-changelog
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          version_spec: ${{ inputs.version_spec }}
