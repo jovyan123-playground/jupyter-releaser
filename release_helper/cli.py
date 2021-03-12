@@ -393,6 +393,8 @@ def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, ou
 
     # Check out the remote branch so we can push to it
     run(f"git fetch {remote} {branch} --tags")
+    print(run("git branch").splitlines())
+    print("looking for ", branch)
     if branch in run("git branch").splitlines():
         run(f"git checkout {branch}")
     else:
