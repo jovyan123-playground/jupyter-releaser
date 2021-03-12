@@ -17,6 +17,7 @@ from subprocess import check_output
 from tempfile import TemporaryDirectory
 
 import click
+import requests
 from github import Github
 from github_activity import generate_activity_md
 from pep440 import is_canonical
@@ -364,6 +365,8 @@ def add_options(options):
 @click.option("--output", envvar="GITHUB_ENV", help="Output file for env variables")
 def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, output):
     """Prep git and env variables and bump version"""
+    # Clear the dist directory
+    shutil.rmtree("./dist", ignore_errors=True)
 
     # Get the branch
     branch = branch or get_branch()
@@ -486,8 +489,7 @@ def prep_changelog(branch, remote, repo, auth, changelog_path, resolve_backports
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(dry_run_options)
-@click.option("--body", help="The Pull Request body text")
-def publish_changelog(branch, remote, repo, auth, dry_run, body):
+def publish_changelog(branch, remote, repo, auth, dry_run):
     """Publish a changelog entry PR"""
     repo = repo or get_repo(remote, auth=auth)
     branch = branch or get_branch()
@@ -511,7 +513,23 @@ def publish_changelog(branch, remote, repo, auth, dry_run, body):
     g = Github(auth)
     r = g.get_repo(repo)
     title = f"Automated Changelog for {version} on {branch}"
-    body = body or title
+    body = title
+
+    # Check for multiple versions
+    if Path("package.json").exists():
+        data = json.loads(Path("package.json").read_text(encoding="utf-8"))
+        if data["version"] != version:
+            body += f"\nPython version: {version}"
+            body += f'\nnpm version: {data["name"]}: {data["version"]}'
+        if "workspaces" in data:
+            body += "\nnpm workspace versions:"
+            packages = data["workspaces"].get("packages", [])
+            for pattern in packages:
+                for path in glob(pattern, recursive=True):
+                    text = Path(path / "package.json").read_text()
+                    data = json.loads(text)
+                    body += f'\n{data["name"]}: {data["version"]}'
+
     base = branch
     head = pr_branch
     maintainer_can_modify = True
@@ -590,11 +608,9 @@ def check_changelog(
 @main.command()
 def build_python():
     """Build Python dist files"""
-    shutil.rmtree("./dist", ignore_errors=True)
-
     if osp.exists("./pyproject.toml"):
         run("python -m build .")
-    else:
+    elif osp.exists("./setup.py"):
         run("python setup.py sdist")
         run("python setup.py bdist_wheel")
 
@@ -640,14 +656,15 @@ def check_python(dist_files, test_cmd):
 )
 def check_npm(package, test_cmd):
     """Check npm package"""
+    if not osp.exists("./package.json"):
+        return
+
     npm = normalize_path(shutil.which("npm"))
     node = normalize_path(shutil.which("node"))
 
     if osp.isdir(package):
-        should_remove = True
         tarball = osp.join(os.getcwd(), run(f"{npm} pack"))
     else:
-        should_remove = True
         tarball = package
 
     tarball = normalize_path(tarball)
@@ -658,14 +675,19 @@ def check_npm(package, test_cmd):
     data = json.loads(data.decode("utf-8"))
     fid.close()
 
+    # Bail if it is a monorepo and we don't have the monorepo helper
+    if "workspaces" in data:  # pragma: no cover
+        # TODO: make this available in @jupyterlab/builder
+        if shutil.which("check-lerna-packages"):
+            run("check-lerna-packages")
+            return
+        else:
+            print("Do not handle monorepos here")
+        return
+
     # Bail if it is a private package or monorepo
     if data.get("private", False):  # pragma: no cover
         raise ValueError("No need to prep a private package")
-
-    # Bail if it is a monorepo
-    if "workspaces" in data:  # pragma: no cover
-        print("Do not handle monorepos here")
-        return
 
     if not test_cmd:
         name = data["name"]
@@ -677,15 +699,15 @@ def check_npm(package, test_cmd):
         run(f"{npm} install {tarball}", cwd=tempdir)
         run(test_cmd, cwd=tempdir)
 
-    # Remove the tarball
-    if should_remove:
-        os.remove(tarball)
+    # Move the tarball into the dist folder
+    shutil.move(tarball, "dist")
 
 
 @main.command()
 def check_manifest():
     """Check the project manifest"""
-    run("check-manifest -v")
+    if Path("setup.py").exists():
+        run("check-manifest -v")
 
 
 @main.command()
@@ -791,7 +813,7 @@ def publish_release(
 
     if assets:
         for asset in assets:
-            upload = release.upload_asset(asset)
+            upload = release.upload_asset(asset, label="")
             if dry_run:
                 upload.delete_asset()
 
@@ -812,6 +834,85 @@ def publish_release(
 
         if not dry_run:
             run(f"git push {remote} {branch}")
+
+
+@main.command()
+@add_options(auth_options)
+@click.option("--npm_token", help="A token for the npm release", envvar="NPM_TOKEN")
+@click.option(
+    "--npm_cmd", help="The command to run for npm release", default="npm publish"
+)
+@click.argument("release_url", nargs=1)
+def publish_dist(auth, npm_token, npm_cmd, release_url):
+    """Publish dist file(s) from a GitHub release to PyPI/npm"""
+    # https://github.com/foo/bar/releases/tag/untagged-abcdef
+    pattern = (
+        "https://github.com/(?P<org>[^/]+)/(?P<repo>[^/]+)/releases/tag/(?P<tag>.*)"
+    )
+    match = re.match(pattern, release_url)
+    if not match:
+        raise ValueError(f"Release url must be of the form: {pattern}")
+
+    if npm_token:
+        npmrc = Path(".npmrc")
+        text = "//registry.npmjs.org/:_authToken={npm_token}"
+        if npmrc.exists():
+            text = npmrc.read_text(encoding="utf-8") + text
+        npmrc.write_text(text, encoding="utf-8")
+
+    repo = f'{match["org"]}/{match["repo"]}'
+    g = Github(auth)
+    r = g.get_repo(repo)
+    release = r.get_release(match["tag"])
+    branch = release.target_commitish
+    sha = None
+    for tag in r.get_tags():
+        if tag.name == release.tag_name:
+            sha = tag.commit.sha
+    if not sha:
+        raise ValueError(f'Tag {match["tag"]} not found')
+
+    # Run a git checkout
+    # Fetch the branch
+    # Get the commmit message for the branch
+    commit_message = ""
+    with TemporaryDirectory() as td:
+        run(f"git clone https://github.com/{repo} local --depth 1", cwd=td)
+        checkout = osp.join(td, "local")
+        run(f"git fetch origin {branch} --unshallow", cwd=checkout)
+        commit_message = run(f"git log --format=%B -n 1 {sha}", cwd=checkout)
+
+    # Fetch, validate, and publish assets
+    for asset in release.get_assets():
+        print(f"Fetching {asset.name}...")
+        url = asset.url
+        headers = dict(Authorization=f"token {auth}", Accept="application/octet-stream")
+        with requests.get(url, headers=headers, stream=True) as r:
+            r.raise_for_status()
+            with open(asset.name, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        # now check the sha against the published sha
+        valid = False
+        for line in commit_message.splitlines():
+            if asset.name in line:
+                sha = compute_sha256(asset.name)
+                if sha in line:
+                    valid = True
+                else:
+                    print("Mismatched sha!")
+        if not valid:
+            raise ValueError(f"Invalid file {asset.name}")
+
+        suffix = Path(asset.name).suffix
+        if suffix in [".gz", ".whl"]:
+            check_python([asset.name], "")
+            run(f"twine upload {asset.name}")
+        elif suffix == ".tgz":
+            check_npm([asset.name], "")
+            run(f"{npm_cmd} {asset.name}")
+        else:
+            print(f"Nothing to upload for {asset.name}")
 
 
 if __name__ == "__main__":  # pragma: no cover

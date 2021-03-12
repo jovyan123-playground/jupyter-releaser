@@ -29,6 +29,7 @@ runs:
         export DRY_RUN=${{ inputs.dry_run }}
         release-helper prep-env
         release-helper check-changelog
+        release-helper check-npm
         release-helper build-python
         release-helper check-python dist/*
         release-helper check-manifest
