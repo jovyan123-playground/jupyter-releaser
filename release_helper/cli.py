@@ -50,8 +50,11 @@ def run(cmd, **kwargs):
     if not kwargs.pop("quiet", False):
         print(f"+ {cmd}")
 
+    parts = shlex.split(cmd)
+    parts[0] = shutil.which(parts[0])
+
     try:
-        return check_output(shlex.split(cmd), **kwargs).decode("utf-8").strip()
+        return check_output(parts, **kwargs).decode("utf-8").strip()
     except CalledProcessError as e:
         print(e.output.decode("utf-8").strip())
         raise e
@@ -231,8 +234,7 @@ def create_release_commit(version):
     if osp.exists("package.json"):
         data = json.loads(Path("package.json").read_text(encoding="utf-8"))
         if not data.get("private", False):
-            npm = normalize_path(shutil.which("npm"))
-            filename = normalize_path(run(f"{npm} pack"))
+            filename = normalize_path(run("npm pack"))
             sha256 = compute_sha256(filename)
             shas[filename] = sha256
             os.remove(filename)
@@ -316,11 +318,8 @@ def handle_npm_local(package, test_cmd=""):
         print("Skipping handle-npm since there is no package.json file")
         return
 
-    npm = normalize_path(shutil.which("npm"))
-    node = normalize_path(shutil.which("node"))
-
     if osp.isdir(package):
-        tarball = osp.join(os.getcwd(), run(f"{npm} pack"))
+        tarball = osp.join(os.getcwd(), run("npm pack"))
     else:
         tarball = package
 
@@ -354,12 +353,12 @@ def handle_npm_local(package, test_cmd=""):
 
     if not test_cmd:
         name = data["name"]
-        test_cmd = f"{node} -e \"require('{name}')\""
+        test_cmd = f"node -e \"require('{name}')\""
 
     # Install in a temporary directory and verify import
     with TemporaryDirectory() as tempdir:
-        run(f"{npm} init -y", cwd=tempdir)
-        run(f"{npm} install {tarball}", cwd=tempdir)
+        run("npm init -y", cwd=tempdir)
+        run(f"npm install {tarball}", cwd=tempdir)
         run(test_cmd, cwd=tempdir)
 
 
