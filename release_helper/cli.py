@@ -744,6 +744,7 @@ def check_manifest():
 @main.command()
 @click.option(
     "--ignore",
+    envvar="IGNORE_MD",
     default="CHANGELOG.md",
     help="Comma separated list of glob patterns to ignore",
 )
@@ -830,11 +831,14 @@ def publish_release(
     g = Github(auth)
     r = g.get_repo(repo)
 
-    changelog = Path(changelog_path).read_text(encoding="utf-8")
+    message = ""
+    if changelog_path and Path(changelog_path).exists():
+        changelog = Path(changelog_path).read_text(encoding="utf-8")
 
-    start = changelog.find(START_MARKER)
-    end = changelog.find(END_MARKER)
-    message = changelog[start + len(START_MARKER) : end]
+        start = changelog.find(START_MARKER)
+        end = changelog.find(END_MARKER)
+        if start != -1 and end != -1:
+            message = changelog[start + len(START_MARKER) : end]
 
     # Create a draft release
     prerelease = is_prerelease(version)
@@ -977,8 +981,8 @@ def publish_dist(auth, npm_token, npm_cmd, twine_cmd, release_url):
 
     # Finalize the release
     release.update_release(
-        name=release.name,
-        message=release.message,
+        name=release.title,
+        message=release.body,
         draft=False,
         prerelease=release.prerelease,
     )

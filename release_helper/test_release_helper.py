@@ -488,8 +488,6 @@ def test_check_md_links(py_package, runner):
     foo = py_package / "FOO.md"
     foo.write_text("http://127.0.0.1:5555")
 
-    runner(["check-md-links"])
-
     runner(["check-md-links", "--ignore", "FOO.md"])
 
 
@@ -536,11 +534,14 @@ def test_tag_release(pkg_env, runner):
 
 def make_release_mock(mocker):
     repo = Repository(None, dict(), dict(), True)
-    release = GitRelease(None, dict(), dict(), True)
+    url = "https://github.com/foo/bar/releases/tag/v0.0.1"
+    release = GitRelease(None, dict(), dict(html_url=url), True)
     asset = GitReleaseAsset(None, dict(), dict(), True)
     asset.delete_asset = delete_mock = MagicMock()
+    release.get_assets = MagicMock(return_value=[asset])
     release.upload_asset = upload_mock = MagicMock(return_value=asset)
     repo.create_git_release = create_mock = MagicMock(return_value=release)
+    repo.get_release = create_mock
 
     mock_method = mocker.patch.object(cli.Github, "get_repo", return_value=repo)
     release.upload_mock = upload_mock
@@ -583,14 +584,11 @@ def test_publish_release_final(npm_package, runner, mocker):
     release = make_release_mock(mocker)
 
     runner(
-        ["publish-release", "--post-version-spec", "1.5.2.dev0"] + glob("dist/*"),
+        ["publish-release"] + glob("dist/*"),
     )
     release.create_mock.assert_called_once()
     release.upload_mock.assert_has_calls(
-        [
-            call("dist/foo-1.0.1-py3-none-any.whl", label=""),
-            call("dist/foo-1.0.1.tar.gz", label=""),
-        ]
+        [call("dist/test_publish_release_final0-1.0.1.tgz", label="")]
     )
     release.delete_mock.assert_not_called()
 
@@ -605,12 +603,18 @@ def test_delete_release(npm_package, runner, mocker):
 
     # Publish the release
     release = make_release_mock(mocker)
-    runner(["publish-release", "--dry-run"] + glob("dist/*"))
+    result = runner(["publish-release", "--dry-run"] + glob("dist/*"))
+
+    url = ""
+    for line in result.output.splitlines():
+        match = re.match(r"::set-output name=url::(.*)", line)
+        if match:
+            url = match.groups()[0]
 
     # Delete the release
     release.delete_release = delete_mock = MagicMock()
 
-    runner(["delete-release"])
+    runner(["delete-release", url])
     release.delete_mock.assert_called_with()
     delete_mock.assert_called_once()
 
@@ -694,8 +698,9 @@ def test_publish_dist_py(py_package, runner, mocker):
 
     mock_run = mocker.patch("release_helper.cli.run", wraps=wrapped)
 
+    release.update_release = update_mock = MagicMock()
     runner(["publish-dist", release.url])
-
+    update_mock.assert_called_once()
     assert called == 2, called
 
 
@@ -733,7 +738,7 @@ def test_publish_dist_npm(npm_package, runner, mocker):
         return orig_run(cmd, **kwargs)
 
     mock_run = mocker.patch("release_helper.cli.run", wraps=wrapped)
-
+    release.update_release = update_mock = MagicMock()
     runner(["publish-dist", release.url])
-
+    update_mock.assert_called_once()
     assert called == 1, called
