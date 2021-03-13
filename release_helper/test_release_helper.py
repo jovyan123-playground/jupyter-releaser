@@ -598,12 +598,12 @@ def test_check_python(py_package, runner):
 
 def test_handle_npm(npm_package, runner):
     runner(["build-npm"])
-    runner(["check-npm"] + glob("dist/*"))
+    runner(["check-npm"])
 
 
 def test_handle_npm_lerna(lerna_package, runner):
     runner(["build-npm"])
-    runner(["check-npm"] + glob("dist/*"))
+    runner(["check-npm"])
 
 
 def test_check_manifest(py_package, runner):
@@ -643,10 +643,7 @@ def test_draft_release_dry_run(py_dist, mocker, runner, gh_repo):
     # Publish the release - dry run
     release = make_release_mock(mocker, gh_repo)
 
-    runner(
-        ["draft-release", "--dry-run", "--post-version-spec", "1.1.0.dev0"]
-        + glob("dist/*")
-    )
+    runner(["draft-release", "--dry-run", "--post-version-spec", "1.1.0.dev0"])
 
     release.create_mock.assert_called_once()
     release.upload_mock.assert_has_calls(
@@ -662,9 +659,7 @@ def test_draft_release_final(npm_dist, runner, mocker, gh_repo):
     # Publish the release
     release = make_release_mock(mocker, gh_repo)
 
-    runner(
-        ["draft-release"] + glob("dist/*"),
-    )
+    runner(["draft-release"])
     release.create_mock.assert_called_once()
     release.upload_mock.assert_has_calls(
         [call("dist/test_draft_release_final0-1.0.1.tgz", label="")]
@@ -675,7 +670,7 @@ def test_draft_release_final(npm_dist, runner, mocker, gh_repo):
 def test_delete_release(npm_dist, runner, mocker, gh_repo):
     # Publish the release
     release = make_release_mock(mocker, gh_repo)
-    result = runner(["draft-release", "--dry-run"] + glob("dist/*"))
+    result = runner(["draft-release", "--dry-run"])
 
     url = ""
     for line in result.output.splitlines():

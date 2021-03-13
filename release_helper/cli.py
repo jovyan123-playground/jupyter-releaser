@@ -283,6 +283,8 @@ def is_prerelease(version):
 
 def check_python_local(*dist_files, test_cmd=""):
     """Check a Python package locally (not as a cli)"""
+    if not dist_files:
+        dist_files = glob("./dist/*")
     for dist_file in dist_files:
         if Path(dist_file).suffix not in [".gz", ".whl"]:
             print(f"Skipping non-python dist file {dist_file}")
@@ -357,6 +359,9 @@ def check_npm_local(*packages, test_cmd=None):
     if not osp.exists("./package.json"):
         print("Skipping check-npm since there is no package.json file")
         return
+
+    if not packages:
+        packages = glob("./dist/*.tgz")
 
     if not test_cmd:
         test_cmd = "node index.js"
@@ -880,6 +885,8 @@ def draft_release(
     """Publish Draft GitHub release and handle post version bump"""
     branch = branch or get_branch()
     repo = repo or get_repo(remote, auth=auth)
+
+    assets = assets or glob("dist/*")
 
     if not dry_run:
         run(f"git push {remote} HEAD:{branch} --follow-tags --tags")
