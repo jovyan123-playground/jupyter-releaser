@@ -25,6 +25,6 @@ runs:
         export CHANGELOG=${{ inputs.changelog }}
         export DRY_RUN=${{ inputs.dry_run }}
         release-helper prep-env
-        release-helper prep-changelog
+        release-helper build-changelog
         release-helper draft-changelog
         cat $CHANGELOG

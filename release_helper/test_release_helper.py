@@ -7,6 +7,7 @@ import re
 import shlex
 import shutil
 import sys
+import traceback
 from glob import glob
 from pathlib import Path
 from unittest.mock import call
@@ -239,10 +240,22 @@ def lerna_package(npm_package):
 
     prev_dir = Path(os.getcwd())
     for name in ["foo", "bar", "baz"]:
-        new_dir = prev_dir / name
+        new_dir = prev_dir / "packages" / name
         os.makedirs(new_dir)
         os.chdir(new_dir)
         run("npm init -y")
+        index = new_dir / "index.js"
+        index.write_text('console.log("hello")', encoding="utf-8")
+        if name == "foo":
+            pkg_json = new_dir / "package.json"
+            sub_data = json.loads(pkg_json.read_text(encoding="utf-8"))
+            sub_data["dependencies"] = dict(bar="*")
+            pkg_json.write_text(json.dumps(sub_data), encoding="utf-8")
+        elif name == "baz":
+            pkg_json = new_dir / "package.json"
+            sub_data = json.loads(pkg_json.read_text(encoding="utf-8"))
+            sub_data["dependencies"] = dict(foo="*")
+            pkg_json.write_text(json.dumps(sub_data), encoding="utf-8")
     os.chdir(prev_dir)
     return npm_package
 
@@ -252,7 +265,7 @@ def mock_changelog_entry(package_path, runner, mocker):
     changelog = package_path / "CHANGELOG.md"
     mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
     mocked_gen.return_value = CHANGELOG_ENTRY
-    runner(["prep-changelog", "--changelog-path", changelog])
+    runner(["build-changelog", "--changelog-path", changelog])
     return changelog
 
 
@@ -274,7 +287,7 @@ def npm_dist(npm_package, runner, mocker):
     changelog_entry = mock_changelog_entry(npm_package, runner, mocker)
 
     # Create the dist files
-    runner(["handle-npm"])
+    runner(["build-npm"])
 
     # Finalize the release
     runner(["tag-release"])
@@ -288,7 +301,7 @@ def runner():
 
     def run(*args, **kwargs):
         result = cli_runner.invoke(cli.main, *args, **kwargs)
-        assert result.exit_code == 0, result.output
+        assert result.exit_code == 0, traceback.print_exception(*result.exc_info)
         return result
 
     return run
@@ -449,7 +462,7 @@ def test_prep_env_full(py_package, tmp_path, mocker, runner, gh_repo):
     assert "REPOSITORY=baz/bar" in text
 
 
-def test_prep_changelog(py_package, mocker, runner):
+def test_build_changelog(py_package, mocker, runner):
     run("pre-commit run -a")
 
     changelog = py_package / "CHANGELOG.md"
@@ -458,7 +471,7 @@ def test_prep_changelog(py_package, mocker, runner):
 
     mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
     mocked_gen.return_value = CHANGELOG_ENTRY
-    runner(["prep-changelog", "--changelog-path", changelog])
+    runner(["build-changelog", "--changelog-path", changelog])
     text = changelog.read_text(encoding="utf-8")
     assert cli.START_MARKER in text
     assert cli.END_MARKER in text
@@ -470,14 +483,14 @@ def test_prep_changelog(py_package, mocker, runner):
     run("pre-commit run -a")
 
 
-def test_prep_changelog_existing(py_package, mocker, runner):
+def test_build_changelog_existing(py_package, mocker, runner):
     changelog = py_package / "CHANGELOG.md"
 
     runner(["prep-env", "--version-spec", VERSION_SPEC])
 
     mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
     mocked_gen.return_value = CHANGELOG_ENTRY
-    runner(["prep-changelog", "--changelog-path", changelog])
+    runner(["build-changelog", "--changelog-path", changelog])
     text = changelog.read_text(encoding="utf-8")
     text = text.replace("defining contributions", "Definining contributions")
     changelog.write_text(text, encoding="utf-8")
@@ -486,7 +499,7 @@ def test_prep_changelog_existing(py_package, mocker, runner):
     run('git commit -a -m "commit changelog"')
 
     mocked_gen.return_value = CHANGELOG_ENTRY
-    runner(["prep-changelog", "--changelog-path", changelog])
+    runner(["build-changelog", "--changelog-path", changelog])
     text = changelog.read_text(encoding="utf-8")
     assert "Definining contributions" in text, text
     assert not "defining contributions" in text, text
@@ -533,18 +546,18 @@ def test_draft_changelog_lerna(lerna_package, mocker, runner, gh_repo):
     pull_mock.assert_not_called()
 
 
-def test_check_md_links(py_package, runner):
+def test_check_links(py_package, runner):
     readme = py_package / "README.md"
     text = readme.read_text(encoding="utf-8")
     text += "\nhttps://apod.nasa.gov/apod/astropix.html"
     readme.write_text(text, encoding="utf-8")
 
-    runner(["check-md-links"])
+    runner(["check-links"])
 
     foo = py_package / "FOO.md"
     foo.write_text("http://127.0.0.1:5555")
 
-    runner(["check-md-links", "--ignore", "FOO.md"])
+    runner(["check-links", "--ignore", "FOO.md"])
 
 
 def test_check_changelog(py_package, tmp_path, mocker, runner):
@@ -584,11 +597,13 @@ def test_check_python(py_package, runner):
 
 
 def test_handle_npm(npm_package, runner):
-    runner(["handle-npm"])
+    runner(["build-npm"])
+    runner(["check-npm"] + glob("dist/*"))
 
 
 def test_handle_npm_lerna(lerna_package, runner):
-    runner(["handle-npm"])
+    runner(["build-npm"])
+    runner(["check-npm"] + glob("dist/*"))
 
 
 def test_check_manifest(py_package, runner):
@@ -713,14 +728,17 @@ def gh_release(sha, mocker, gh_repo):
     return release
 
 
-def test_extract_dist_py(py_dist, runner, mocker, gh_repo):
+def test_extract_dist_py(py_dist, runner, mocker, gh_repo, tmp_path):
     sha = run("git rev-parse HEAD")
 
     # Make the release mock
     release = gh_release(sha, mocker, gh_repo)
 
     sdist_name = osp.basename(glob("dist/*.gz")[0])
+    shutil.move(osp.join("dist", sdist_name), tmp_path)
     wheel_name = osp.basename(glob("dist/*.whl")[0])
+    shutil.move(osp.join("dist", wheel_name), tmp_path)
+
     sdist = GitReleaseAsset(
         None, dict(), dict(name=sdist_name, url="http://foo.com"), True
     )
@@ -729,26 +747,28 @@ def test_extract_dist_py(py_dist, runner, mocker, gh_repo):
     )
     release.get_assets = MagicMock(return_value=[sdist, wheel])
 
-    sdist_resp = MockReponse(Path("dist") / sdist_name)
-    wheel_resp = MockReponse(Path("dist") / wheel_name)
+    sdist_resp = MockReponse(tmp_path / sdist_name)
+    wheel_resp = MockReponse(tmp_path / wheel_name)
     get_mock = mocker.patch("requests.get", side_effect=[sdist_resp, wheel_resp])
 
     runner(["extract-release", release.url])
 
 
-def test_extract_dist_npm(npm_dist, runner, mocker, gh_repo):
+def test_extract_dist_npm(npm_dist, runner, mocker, gh_repo, tmp_path):
     sha = run("git rev-parse HEAD")
 
     # Make the release mock
     release = gh_release(sha, mocker, gh_repo)
 
     dist_name = osp.basename(glob("dist/*.tgz")[0])
+    shutil.move(osp.join("dist", dist_name), tmp_path)
+
     dist = GitReleaseAsset(
         None, dict(), dict(name=dist_name, url="http://foo.com"), True
     )
     release.get_assets = MagicMock(return_value=[dist])
 
-    dist_resp = MockReponse(Path("dist") / dist_name)
+    dist_resp = MockReponse(tmp_path / dist_name)
     get_mock = mocker.patch("requests.get", side_effect=[dist_resp])
 
     runner(["extract-release", release.url])

@@ -312,54 +312,99 @@ def check_python_local(*dist_files, test_cmd=""):
             run(f"{bin_path}/{test_cmd}")
 
 
-def handle_npm_local(package, test_cmd=""):
+def extract_npm_tarball(path):
+    """Get the package json info from the tarball"""
+    fid = tarfile.open(path)
+    data = fid.extractfile("package/package.json").read()
+    data = json.loads(data.decode("utf-8"))
+    fid.close()
+    return data
+
+
+def build_npm_local(package):
     """Handle a local npm package (not as a cli)"""
     if not osp.exists("./package.json"):
-        print("Skipping handle-npm since there is no package.json file")
+        print("Skipping build-npm since there is no package.json file")
         return
+
+    # Clean the dist folder of existing npm tarballs
+    os.makedirs("dist", exist_ok=True)
+    dest = Path("dist")
+    for pkg in glob("dist/.tgz"):
+        os.remove(pkg)
 
     if osp.isdir(package):
         tarball = osp.join(os.getcwd(), run("npm pack"))
     else:
         tarball = package
 
+    data = extract_npm_tarball(tarball)
+
     # Move the tarball into the dist folder
-    os.makedirs("dist", exist_ok=True)
-    dest = Path("dist") / osp.basename(tarball)
-    if dest.exists():
-        dest.unlink()
     shutil.move(tarball, dest)
-    tarball = osp.abspath(normalize_path(dest))
 
-    # Get the package json info from the tarball
-    fid = tarfile.open(tarball)
-    data = fid.extractfile("package/package.json").read()
-    data = json.loads(data.decode("utf-8"))
-    fid.close()
+    if "workspaces" in data:
+        packages = data["workspaces"].get("packages", [])
+        for pattern in packages:
+            for path in glob(pattern, recursive=True):
+                path = Path(path)
+                tarball = path / run("npm pack", cwd=path)
+                shutil.move(tarball, dest)
 
-    # Bail if it is a monorepo and we don't have the monorepo helper
-    if "workspaces" in data:  # pragma: no cover
-        # TODO: make this available in @jupyterlab/builder
-        if shutil.which("check-lerna-packages"):
-            run("check-lerna-packages")
-            return
-        else:
-            print("Do not handle monorepos here")
+
+def check_npm_local(*packages, test_cmd=None):
+    if not osp.exists("./package.json"):
+        print("Skipping check-npm since there is no package.json file")
         return
 
-    # Bail if it is a private package or monorepo
-    if data.get("private", False):  # pragma: no cover
-        raise ValueError("No need to prep a private package")
-
     if not test_cmd:
-        name = data["name"]
-        test_cmd = f"node -e \"require('{name}')\""
+        test_cmd = "node index.js"
 
-    # Install in a temporary directory and verify import
-    with TemporaryDirectory() as tempdir:
-        run("npm init -y", cwd=tempdir)
-        run(f"npm install {tarball}", cwd=tempdir)
-        run(test_cmd, cwd=tempdir)
+    tmp_dir = Path(TemporaryDirectory().name)
+    os.makedirs(tmp_dir)
+
+    run("npm init -y", cwd=tmp_dir)
+    names = []
+    staging = tmp_dir / "staging"
+
+    deps = []
+
+    for package in packages:
+        path = Path(package)
+        if path.suffix != ".tgz":
+            print(f"Skipping non-npm package {path.name}")
+            continue
+
+        data = extract_npm_tarball(path)
+        name = data["name"]
+
+        # Skip if it is a private package
+        if data.get("private", False):  # pragma: no cover
+            print(f"Skipping private package {name}")
+            continue
+
+        names.append(name)
+
+        pkg_dir = staging / name
+        if not pkg_dir.parent.exists():
+            os.makedirs(pkg_dir.parent)
+
+        tar = tarfile.open(path)
+        tar.extractall(staging)
+        tar.close()
+
+        shutil.move(staging / "package", pkg_dir)
+
+    install_str = " ".join(f"./staging/{name}" for name in names)
+
+    run(f"npm install {install_str}", cwd=tmp_dir)
+
+    text = "\n".join([f'require("{name}")' for name in names])
+    tmp_dir.joinpath("index.js").write_text(text, encoding="utf-8")
+
+    run(test_cmd, cwd=tmp_dir)
+
+    shutil.rmtree(tmp_dir)
 
 
 # """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -523,8 +568,8 @@ IS_PRERELEASE={is_prerelease_str}
 
 @main.command()
 @add_options(changelog_options)
-def prep_changelog(branch, remote, repo, auth, changelog_path, resolve_backports):
-    """Prep changelog entry"""
+def build_changelog(branch, remote, repo, auth, changelog_path, resolve_backports):
+    """Build changelog entry"""
     branch = branch or get_branch()
 
     # Get the new version
@@ -702,6 +747,12 @@ def check_changelog(
 @main.command()
 def build_python():
     """Build Python dist files"""
+    # Clean the dist folder of existing npm tarballs
+    os.makedirs("dist", exist_ok=True)
+    dest = Path("dist")
+    for pkg in glob("dist/*.gz") + glob("dist/*.whl"):
+        os.remove(pkg)
+
     if osp.exists("./pyproject.toml"):
         run("python -m build .")
     elif osp.exists("./setup.py"):
@@ -723,12 +774,19 @@ def check_python(dist_files, test_cmd):
 
 @main.command()
 @click.argument("package", default=".")
+def build_npm(package):
+    """Build npm package"""
+    build_npm_local(package)
+
+
+@main.command()
+@click.argument("packages", nargs=-1)
 @click.option(
     "--test-cmd", envvar="NPM_TEST_CMD", help="The command to run in isolated install."
 )
-def handle_npm(package, test_cmd):
-    """Handle npm package"""
-    handle_npm_local(package, test_cmd=test_cmd)
+def check_npm(packages, test_cmd):
+    """Check npm package"""
+    check_npm_local(*packages, test_cmd=test_cmd)
 
 
 @main.command()
@@ -759,13 +817,13 @@ def check_manifest():
     envvar="LINKS_EXPIRE",
     help="Duration in seconds for links to be cached (default one week)",
 )
-def check_md_links(ignore, cache_file, links_expire):
+def check_links(ignore, cache_file, links_expire):
     """Check Markdown file links"""
     cache_dir = osp.expanduser(cache_file).replace(os.sep, "/")
     os.makedirs(cache_dir, exist_ok=True)
     cmd = "pytest --check-links --check-links-cache "
     cmd += f"--check-links-cache-expire-after {links_expire} "
-    cmd += f"--check-links-cache-name {cache_dir}/check-md-links "
+    cmd += f"--check-links-cache-name {cache_dir}/check-release-links "
     cmd += " -k .md "
 
     for spec in ignore.split(","):
@@ -780,7 +838,7 @@ def check_md_links(ignore, cache_file, links_expire):
 @main.command()
 @add_options(branch_options)
 def tag_release(branch, remote, repo):
-    """Create release commit and tag the target branch"""
+    """Create release commit and tag"""
     # Get the new version
     version = get_version()
 
@@ -950,6 +1008,7 @@ def extract_release(auth, release_url):
                     valid = True
                 else:
                     print("Mismatched sha!")
+
         if not valid:
             raise ValueError(f"Invalid file {asset.name}")
 
@@ -957,7 +1016,7 @@ def extract_release(auth, release_url):
         if suffix in [".gz", ".whl"]:
             check_python_local(path)
         elif suffix == ".tgz":
-            handle_npm_local(path)
+            check_npm_local(path)
         else:
             print(f"Nothing to check for {asset.name}")
 
