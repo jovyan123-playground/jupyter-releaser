@@ -69,4 +69,4 @@ jobs:
       - name: Delete Release
         run: |
           pip install release-helper
-          release-helper delete-release ${{ draft.create-release.output.url }}
+          release-helper delete-release ${{ steps.draft-release.output.url }}
