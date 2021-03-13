@@ -51,7 +51,7 @@ def run(cmd, **kwargs):
         print(f"+ {cmd}")
 
     parts = shlex.split(cmd)
-    parts[0] = shutil.which(parts[0])
+    parts[0] = normalize_path(shutil.which(parts[0]))
 
     try:
         return check_output(parts, **kwargs).decode("utf-8").strip()

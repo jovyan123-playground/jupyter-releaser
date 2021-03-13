@@ -10,9 +10,6 @@ inputs:
   changelog:
     description: "Changelog file"
     default: "CHANGELOG.md"
-  pull_request_body:
-    description: "The pull request body text"
-    default: "Automated Changelog"
   dry_run:
     description: "If set, do not make a PR"
     default: false
@@ -29,5 +26,5 @@ runs:
         export DRY_RUN=${{ inputs.dry_run }}
         release-helper prep-env
         release-helper prep-changelog
-        release-helper publish-changelog --body "${{ inputs.pull_request_body }}"
+        release-helper publish-changelog
         cat $CHANGELOG
