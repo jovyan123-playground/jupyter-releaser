@@ -1,5 +1,5 @@
-name: "Publish Dist"
-description: "Publish dist file(s) from a GitHub release"
+name: "Publish Release"
+description: "Publish assets and finalize GitHub release"
 inputs:
   release_url:
     description: "The full url to the GitHub release page"
@@ -11,4 +11,4 @@ runs:
       run: |
         set -eux
         pip install release-helper
-        release-helper publish-dist ${{ inputs.release_url }}
+        release-helper publish-release ${{ inputs.release_url }}

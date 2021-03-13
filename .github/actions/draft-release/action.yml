@@ -1,5 +1,5 @@
-name: "Create Changelog"
-description: "Create an automated changelog entry"
+name: "Draft Release"
+description: "Create a draft GitHub Release"
 inputs:
   token:
     description: "GitHub access token"
@@ -7,11 +7,13 @@ inputs:
   version_spec:
     description: "New Version Specifier"
     required: true
+  post_version_spec:
+    description: "Post Version Specifier"
   changelog:
     description: "Changelog file"
     default: "CHANGELOG.md"
   dry_run:
-    description: "If set, do not make a PR"
+    description: "If set, do not push permanent changes"
     default: false
 runs:
   using: "composite"
@@ -23,8 +25,14 @@ runs:
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
         export VERSION_SPEC=${{ inputs.version_spec }}
         export CHANGELOG=${{ inputs.changelog }}
+        export POST_VERSION_SPEC=${{ inputs.post_version_spec }}
         export DRY_RUN=${{ inputs.dry_run }}
         release-helper prep-env
-        release-helper prep-changelog
-        release-helper publish-changelog
-        cat $CHANGELOG
+        release-helper check-changelog
+        release-helper handle-npm
+        release-helper build-python
+        release-helper check-python dist/*
+        release-helper check-manifest
+        release-helper check-md-links
+        release-helper tag-release
+        release-helper draft-release dist/*

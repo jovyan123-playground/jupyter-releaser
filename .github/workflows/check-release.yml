@@ -42,31 +42,31 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install -e .
-      - name: Create Changelog
-        uses: ./.github/actions/create-changelog
+      - name: Draft Changelog
+        uses: ./.github/actions/draft-changelog
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version_spec: 0.0.1a0
           dry_run: true
-      - name: Create GitHub Release
-        id: create-release
-        uses: ./.github/actions/create-release
+      - name: Draft GitHub Release
+        id: draft-release
+        uses: ./.github/actions/draft-release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version_spec: 0.0.1a0
           post_version_spec: 0.1.0.dev0
           dry_run: true
-      - name: Publish Dist
+      - name: Publish Release
         env:
           TWINE_COMMAND: "twine upload --skip-existing"
           TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
           GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: ./.github/actions/publish-dist
+        uses: ./.github/actions/publish-release
         with:
-          release_url: ${{ steps.create-release.output.url }}
+          release_url: ${{ steps.draft-release.output.url }}
       - name: Delete Release
         run: |
           pip install release-helper
-          release-helper delete-release ${{ steps.create-release.output.url }}
+          release-helper delete-release ${{ draft.create-release.output.url }}

@@ -583,8 +583,8 @@ def prep_changelog(branch, remote, repo, auth, changelog_path, resolve_backports
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(dry_run_options)
-def publish_changelog(branch, remote, repo, auth, dry_run):
-    """Publish a changelog entry PR"""
+def draft_changelog(branch, remote, repo, auth, dry_run):
+    """Create a changelog entry PR"""
     repo = repo or get_repo(remote, auth=auth)
     branch = branch or get_branch()
     version = get_version()
@@ -807,7 +807,7 @@ def tag_release(branch, remote, repo):
     help="The post release version (usually dev)",
 )
 @click.argument("assets", nargs=-1)
-def publish_release(
+def draft_release(
     branch,
     remote,
     repo,
@@ -818,7 +818,7 @@ def publish_release(
     post_version_spec,
     assets,
 ):
-    """Publish GitHub release and handle post version bump"""
+    """Publish Draft GitHub release and handle post version bump"""
     branch = branch or get_branch()
     repo = repo or get_repo(remote, auth=auth)
 
@@ -850,6 +850,7 @@ def publish_release(
     )
 
     # Set the GitHub action output
+    print(f"\n\nSetting output url::{release.html_url}")
     print(f"::set-output name=url::{release.html_url}")
 
     if assets:
@@ -874,9 +875,9 @@ def publish_release(
 
 @main.command()
 @add_options(auth_options)
-@click.argument("release_url", nargs=1)
+@click.argument("release-url", nargs=1)
 def delete_release(auth, release_url):
-    """Delete a GitHub release by url to the release page"""
+    """Delete a draft GitHub release by url to the release page"""
     match = re.match(RELEASE_HTML_PATTERN, release_url)
     match = match or re.match(RELEASE_API_PATTERN, release_url)
     if not match:
@@ -893,33 +894,13 @@ def delete_release(auth, release_url):
 
 @main.command()
 @add_options(auth_options)
-@click.option("--npm_token", help="A token for the npm release", envvar="NPM_TOKEN")
-@click.option(
-    "--npm_cmd",
-    help="The command to run for npm release",
-    envvar="NPM_COMMAND",
-    default="npm publish",
-)
-@click.option(
-    "--twine_cmd",
-    help="The twine to run for Python release",
-    envvar="TWINE_COMMAND",
-    default="twine upload",
-)
 @click.argument("release_url", nargs=1)
-def publish_dist(auth, npm_token, npm_cmd, twine_cmd, release_url):
-    """Publish dist file(s) to registry and finalize GitHub Release"""
+def extract_release(auth, release_url):
+    """Download and verify assets from a draft GitHub release"""
     match = re.match(RELEASE_HTML_PATTERN, release_url)
     match = match or re.match(RELEASE_API_PATTERN, release_url)
     if not match:
         raise ValueError(f"Release url is not valid: {release_url}")
-
-    if npm_token:
-        npmrc = Path(".npmrc")
-        text = "//registry.npmjs.org/:_authToken={npm_token}"
-        if npmrc.exists():
-            text = npmrc.read_text(encoding="utf-8") + text
-        npmrc.write_text(text, encoding="utf-8")
 
     repo = f'{match["org"]}/{match["repo"]}'
     g = Github(auth)
@@ -945,19 +926,23 @@ def publish_dist(auth, npm_token, npm_cmd, twine_cmd, release_url):
         commit_message = run(f"git log --format=%B -n 1 {sha}", cwd=checkout)
 
     # Fetch, validate, and publish assets
+    dist = Path("./dist")
+    if dist.exists():
+        shutil.rmtree(dist)
+    os.makedirs(dist)
     for asset in release.get_assets():
         print(f"Fetching {asset.name}...")
         url = asset.url
         headers = dict(Authorization=f"token {auth}", Accept="application/octet-stream")
-
+        path = dist / asset.name
         with requests.get(url, headers=headers, stream=True) as r:
             r.raise_for_status()
-            with open(asset.name, "wb") as f:
+            with open(path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
         # now check the sha against the published sha
         valid = False
-        sha = compute_sha256(asset.name)
+        sha = compute_sha256(path)
 
         for line in commit_message.splitlines():
             if asset.name in line:
@@ -970,15 +955,64 @@ def publish_dist(auth, npm_token, npm_cmd, twine_cmd, release_url):
 
         suffix = Path(asset.name).suffix
         if suffix in [".gz", ".whl"]:
-            check_python_local(asset.name)
-            run(f"{twine_cmd} {asset.name}")
+            check_python_local(path)
         elif suffix == ".tgz":
-            handle_npm_local(asset.name)
-            run(f"{npm_cmd} {asset.name}")
+            handle_npm_local(path)
         else:
-            print(f"Nothing to upload for {asset.name}")
+            print(f"Nothing to check for {asset.name}")
 
-    # Finalize the release
+
+@main.command()
+@add_options(auth_options)
+@click.option("--npm_token", help="A token for the npm release", envvar="NPM_TOKEN")
+@click.option(
+    "--npm_cmd",
+    help="The command to run for npm release",
+    envvar="NPM_COMMAND",
+    default="npm publish",
+)
+@click.option(
+    "--twine_cmd",
+    help="The twine to run for Python release",
+    envvar="TWINE_COMMAND",
+    default="twine upload",
+)
+@click.argument("release_url", nargs=1)
+def publish_release(auth, npm_token, npm_cmd, twine_cmd, release_url):
+    """Publish release asset(s) and finalize GitHub release"""
+    match = re.match(RELEASE_HTML_PATTERN, release_url)
+    match = match or re.match(RELEASE_API_PATTERN, release_url)
+    if not match:
+        raise ValueError(f"Release url is not valid: {release_url}")
+
+    if npm_token:
+        npmrc = Path(".npmrc")
+        text = "//registry.npmjs.org/:_authToken={npm_token}"
+        if npmrc.exists():
+            text = npmrc.read_text(encoding="utf-8") + text
+        npmrc.write_text(text, encoding="utf-8")
+
+    found = False
+    for path in glob("./dist/*.*"):
+        name = Path(path).name
+        suffix = Path(path).suffix
+        if suffix in [".gz", ".whl"]:
+            run(f"{twine_cmd} {name}")
+            found = True
+        elif suffix == ".tgz":
+            run(f"{npm_cmd} {name}")
+            found = True
+        else:
+            print(f"Nothing to upload for {name}")
+
+    if not found:  # pragma: no cover
+        raise ValueError("No assets published, refusing to finalize release")
+
+    # Take the release out of draft
+    repo = f'{match["org"]}/{match["repo"]}'
+    g = Github(auth)
+    r = g.get_repo(repo)
+    release = r.get_release(match["tag"])
     release.update_release(
         name=release.title,
         message=release.body,

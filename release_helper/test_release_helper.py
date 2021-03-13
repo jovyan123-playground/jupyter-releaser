@@ -154,11 +154,19 @@ def git_repo(tmp_path):
     run("git checkout -b foo")
     gitignore = tmp_path / ".gitignore"
     gitignore.write_text("dist/*\nbuild/*\n", encoding="utf-8")
+
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text(CHANGELOG_TEMPLATE, encoding="utf-8")
+
+    readme = tmp_path / "README.md"
+    readme.write_text("Hello from foo project\n", encoding="utf-8")
+
     run("git add .")
     run('git commit -m "foo"')
     run("git tag v0.0.1")
     run(f"git remote add upstream {normalize_path(tmp_path)}")
-
+    run("git checkout -b bar foo")
+    run("git fetch upstream")
     yield tmp_path
     os.chdir(prev_dir)
 
@@ -176,14 +184,8 @@ def create_python_package(git_repo):
     pyproject = git_repo / "pyproject.toml"
     pyproject.write_text(PYPROJECT_TEMPLATE, encoding="utf-8")
 
-    readme = git_repo / "README.md"
-    readme.write_text("Hello from foo project\n", encoding="utf-8")
-
     foopy = git_repo / "foo.py"
     foopy.write_text(PY_MODULE_TEMPLATE, encoding="utf-8")
-
-    changelog = git_repo / "CHANGELOG.md"
-    changelog.write_text(CHANGELOG_TEMPLATE, encoding="utf-8")
 
     manifest = git_repo / "MANIFEST.in"
     manifest.write_text(MANIFEST_TEMPLATE, encoding="utf-8")
@@ -196,6 +198,11 @@ def create_python_package(git_repo):
 
     run("git add .")
     run('git commit -m "initial python package"')
+
+    run("git checkout foo")
+    run("git pull upstream bar")
+    run("git checkout bar")
+
     return git_repo
 
 
@@ -205,21 +212,74 @@ def create_npm_package(git_repo):
     git_repo.joinpath("index.js").write_text('console.log("hello")', encoding="utf-8")
     run("git add .")
     run('git commit -m "initial npm package"')
+
+    run("git checkout foo")
+    run("git pull upstream bar")
+    run("git checkout bar")
     return git_repo
 
 
 @fixture
 def py_package(git_repo):
-    pkg = create_python_package(git_repo)
-    run("git checkout -b bar foo")
-    return pkg
+    return create_python_package(git_repo)
 
 
 @fixture
 def npm_package(git_repo):
-    pkg = create_npm_package(git_repo)
-    run("git checkout -b bar foo")
-    return pkg
+    return create_npm_package(git_repo)
+
+
+@fixture
+def lerna_package(npm_package):
+    pkg_file = npm_package / "package.json"
+    data = json.loads(pkg_file.read_text(encoding="utf-8"))
+    data["workspaces"] = dict(packages=["packages/*"])
+    data["private"] = True
+    pkg_file.write_text(json.dumps(data), encoding="utf-8")
+
+    prev_dir = Path(os.getcwd())
+    for name in ["foo", "bar", "baz"]:
+        new_dir = prev_dir / name
+        os.makedirs(new_dir)
+        os.chdir(new_dir)
+        run("npm init -y")
+    os.chdir(prev_dir)
+    return npm_package
+
+
+def mock_changelog_entry(package_path, runner, mocker):
+    runner(["prep-env", "--version-spec", VERSION_SPEC])
+    changelog = package_path / "CHANGELOG.md"
+    mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
+    mocked_gen.return_value = CHANGELOG_ENTRY
+    runner(["prep-changelog", "--changelog-path", changelog])
+    return changelog
+
+
+@fixture
+def py_dist(py_package, runner, mocker):
+    changelog_entry = mock_changelog_entry(py_package, runner, mocker)
+
+    # Create the dist files
+    run("python -m build .")
+
+    # Finalize the release
+    runner(["tag-release"])
+
+    return py_package
+
+
+@fixture
+def npm_dist(npm_package, runner, mocker):
+    changelog_entry = mock_changelog_entry(npm_package, runner, mocker)
+
+    # Create the dist files
+    runner(["handle-npm"])
+
+    # Finalize the release
+    runner(["tag-release"])
+
+    return npm_package
 
 
 @fixture()
@@ -234,22 +294,9 @@ def runner():
     return run
 
 
-@fixture()
-def pkg_env(py_package, runner):
-    runner(["prep-env", "--version-spec", VERSION_SPEC])
-    return py_package
-
-
-@fixture()
-def changelog_entry(pkg_env, runner, mocker):
-    changelog = pkg_env / "CHANGELOG.md"
-    mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
-    mocked_gen.return_value = CHANGELOG_ENTRY
-    runner(["prep-changelog", "--changelog-path", changelog])
-    return changelog
-
-
 def test_get_branch(git_repo):
+    assert cli.get_branch() == "bar"
+    run("git checkout foo")
     assert cli.get_branch() == "foo"
 
 
@@ -271,18 +318,15 @@ def test_get_version_npm(npm_package):
     assert cli.get_version() == "1.0.1"
 
 
-def test_format_pr_entry(mocker):
-    gh_repo = Repository(None, dict(), dict(), True)
+def test_format_pr_entry(mocker, gh_repo):
     pull = PullRequest(None, dict(), dict(), True)
     user = NamedUser(None, dict(), dict(), True)
     gh_repo.get_pull = mock = MagicMock(return_value=pull)
-    mock_method = mocker.patch.object(cli.Github, "get_repo", return_value=gh_repo)
     mock_user = mocker.patch(
         "github.PullRequest.PullRequest.user", new_callable=PropertyMock
     )
     mock_user.return_value = user
     resp = cli.format_pr_entry("foo", 121, auth="baz")
-    mock_method.assert_called_with("foo")
     mock.assert_called_once()
 
     assert resp.startswith("- ")
@@ -360,7 +404,7 @@ def test_prep_env_pr(py_package, runner):
     assert "branch=foo" in result.output
 
 
-def test_prep_env_full(py_package, tmp_path, mocker, runner):
+def test_prep_env_full(py_package, tmp_path, mocker, runner, gh_repo):
     """Full GitHub Actions simulation (Push)"""
     version_spec = "1.0.1a1"
 
@@ -380,8 +424,6 @@ def test_prep_env_full(py_package, tmp_path, mocker, runner):
     # Fake out the version and source repo responses
     mock_run = mocker.patch("release_helper.cli.run")
     mock_run.return_value = version_spec
-    repo = Repository(None, dict(), dict(), True)
-    mocked_method = mocker.patch.object(cli.Github, "get_repo", return_value=repo)
 
     runner(["prep-env"], env=env)
 
@@ -455,25 +497,39 @@ def test_prep_changelog_existing(py_package, mocker, runner):
     run("pre-commit run -a")
 
 
-def test_publish_changelog_full(py_package, mocker, runner, changelog_entry):
-    repo = Repository(None, dict(), dict(), True)
+@fixture
+def gh_repo(mocker):
+    repo = Repository(None, dict(), dict(url=normalize_path(os.getcwd())), True)
+    mocker.patch.object(cli.Github, "get_repo", return_value=repo)
+    yield repo
+
+
+def test_draf_changelog_full(py_package, mocker, runner, gh_repo):
+    mock_changelog_entry(py_package, runner, mocker)
     pull = PullRequest(None, dict(), dict(), True)
 
-    mocked_method = mocker.patch.object(cli.Github, "get_repo", return_value=repo)
-    repo.create_pull = pull_mock = MagicMock(return_value=pull)
+    gh_repo.create_pull = pull_mock = MagicMock(return_value=pull)
 
-    runner(["publish-changelog"])
+    runner(["draft-changelog"])
     pull_mock.assert_called_once()
 
 
-def test_publish_changelog_dry_run(py_package, mocker, runner, changelog_entry):
-    repo = Repository(None, dict(), dict(), True)
+def test_draft_changelog_dry_run(npm_package, mocker, runner, gh_repo):
+    mock_changelog_entry(npm_package, runner, mocker)
+    pull = PullRequest(None, dict(), dict(), True)
+    gh_repo.create_pull = pull_mock = MagicMock(return_value=pull)
+
+    runner(["draft-changelog", "--dry-run"])
+    pull_mock.assert_not_called()
+
+
+def test_draft_changelog_lerna(lerna_package, mocker, runner, gh_repo):
+    mock_changelog_entry(lerna_package, runner, mocker)
     pull = PullRequest(None, dict(), dict(), True)
 
-    mocked_method = mocker.patch.object(cli.Github, "get_repo", return_value=repo)
-    repo.create_pull = pull_mock = MagicMock(return_value=pull)
+    gh_repo.create_pull = pull_mock = MagicMock(return_value=pull)
 
-    runner(["publish-changelog", "--dry-run"])
+    runner(["draft-changelog", "--dry-run"])
     pull_mock.assert_not_called()
 
 
@@ -491,7 +547,8 @@ def test_check_md_links(py_package, runner):
     runner(["check-md-links", "--ignore", "FOO.md"])
 
 
-def test_check_changelog(py_package, tmp_path, mocker, runner, changelog_entry):
+def test_check_changelog(py_package, tmp_path, mocker, runner):
+    changelog_entry = mock_changelog_entry(py_package, runner, mocker)
     output = tmp_path / "output.md"
 
     # prep the release
@@ -511,6 +568,15 @@ def test_build_python(py_package, runner):
     runner(["build-python"])
 
 
+def test_build_python_setup(py_package, runner):
+    py_package.joinpath("pyproject.toml").unlink()
+    runner(["build-python"])
+
+
+def test_build_python_npm(npm_package, runner):
+    runner(["build-python"])
+
+
 def test_check_python(py_package, runner):
     runner(["build-python"])
     dist_files = glob(str(py_package / "dist" / "*"))
@@ -521,46 +587,51 @@ def test_handle_npm(npm_package, runner):
     runner(["handle-npm"])
 
 
+def test_handle_npm_lerna(lerna_package, runner):
+    runner(["handle-npm"])
+
+
 def test_check_manifest(py_package, runner):
     runner(["check-manifest"])
 
 
-def test_tag_release(pkg_env, runner):
+def test_check_manifest_npm(npm_package, runner):
+    runner(["check-manifest"])
+
+
+def test_tag_release(py_package, runner):
+    # Prep the env
+    runner(["prep-env", "--version-spec", VERSION_SPEC])
     # Create the dist files
     run("python -m build .")
     # Tag the release
     runner(["tag-release"])
 
 
-def make_release_mock(mocker):
-    repo = Repository(None, dict(), dict(), True)
+def make_release_mock(mocker, gh_repo):
     url = "https://github.com/foo/bar/releases/tag/v0.0.1"
     release = GitRelease(None, dict(), dict(html_url=url), True)
     asset = GitReleaseAsset(None, dict(), dict(), True)
-    asset.delete_asset = delete_mock = MagicMock()
+    asset.delete_asset = delete_asset_mock = MagicMock()
     release.get_assets = MagicMock(return_value=[asset])
     release.upload_asset = upload_mock = MagicMock(return_value=asset)
-    repo.create_git_release = create_mock = MagicMock(return_value=release)
-    repo.get_release = create_mock
-
-    mock_method = mocker.patch.object(cli.Github, "get_repo", return_value=repo)
+    gh_repo.create_git_release = create_mock = MagicMock(return_value=release)
+    gh_repo.get_release = get_mock = MagicMock(return_value=release)
     release.upload_mock = upload_mock
-    release.delete_mock = delete_mock
+    release.get_mock = get_mock
+    release.delete_asset_mock = delete_asset_mock
     release.create_mock = create_mock
     return release
 
 
-def test_publish_release_draft(changelog_entry, mocker, runner):
-    # Create the dist files
-    run("python -m build .")
-
-    # Finalize the release
-    runner(["tag-release"])
-
+def test_draft_release_dry_run(py_dist, mocker, runner, gh_repo):
     # Publish the release - dry run
-    release = make_release_mock(mocker)
+    release = make_release_mock(mocker, gh_repo)
 
-    runner(["publish-release", "--dry-run"] + glob("dist/*"))
+    runner(
+        ["draft-release", "--dry-run", "--post-version-spec", "1.1.0.dev0"]
+        + glob("dist/*")
+    )
 
     release.create_mock.assert_called_once()
     release.upload_mock.assert_has_calls(
@@ -569,41 +640,27 @@ def test_publish_release_draft(changelog_entry, mocker, runner):
             call("dist/foo-1.0.1.tar.gz", label=""),
         ]
     )
-    release.delete_mock.assert_not_called()
+    release.delete_asset_mock.assert_not_called()
 
 
-def test_publish_release_final(npm_package, runner, mocker):
-    # Create the dist files
-    cli.bump_version(VERSION_SPEC)
-    runner(["handle-npm"])
-
-    # Finalize the release
-    runner(["tag-release"])
-
+def test_draft_release_final(npm_dist, runner, mocker, gh_repo):
     # Publish the release
-    release = make_release_mock(mocker)
+    release = make_release_mock(mocker, gh_repo)
 
     runner(
-        ["publish-release"] + glob("dist/*"),
+        ["draft-release"] + glob("dist/*"),
     )
     release.create_mock.assert_called_once()
     release.upload_mock.assert_has_calls(
-        [call("dist/test_publish_release_final0-1.0.1.tgz", label="")]
+        [call("dist/test_draft_release_final0-1.0.1.tgz", label="")]
     )
-    release.delete_mock.assert_not_called()
+    release.delete_asset_mock.assert_not_called()
 
 
-def test_delete_release(npm_package, runner, mocker):
-    # Create the dist files
-    cli.bump_version(VERSION_SPEC)
-    runner(["handle-npm"])
-
-    # Finalize the release
-    runner(["tag-release"])
-
+def test_delete_release(npm_dist, runner, mocker, gh_repo):
     # Publish the release
-    release = make_release_mock(mocker)
-    result = runner(["publish-release", "--dry-run"] + glob("dist/*"))
+    release = make_release_mock(mocker, gh_repo)
+    result = runner(["draft-release", "--dry-run"] + glob("dist/*"))
 
     url = ""
     for line in result.output.splitlines():
@@ -615,7 +672,7 @@ def test_delete_release(npm_package, runner, mocker):
     release.delete_release = delete_mock = MagicMock()
 
     runner(["delete-release", url])
-    release.delete_mock.assert_called_with()
+    release.delete_asset_mock.assert_called_with()
     delete_mock.assert_called_once()
 
 
@@ -637,40 +694,30 @@ class MockReponse:
             return [fid.read()]
 
 
-def gh_release(sha, version, mocker):
-    tag_name = f"v{version}"
+def gh_release(sha, mocker, gh_repo):
+    tag_name = f"v{VERSION_SPEC}"
     url = f"https://github.com/foo/bar/releases/tag/{tag_name}"
 
     branch = cli.get_branch()
-    repo = Repository(None, dict(), dict(url=normalize_path(os.getcwd())), True)
     release = GitRelease(
         None, dict(), dict(target_commitish=branch, tag_name=tag_name, url=url), True
     )
-    repo.get_release = MagicMock(return_value=release)
+    gh_repo.get_release = MagicMock(return_value=release)
 
     commit = Commit(None, dict(), dict(sha=sha), True)
     tag = Tag(None, dict(), dict(name=tag_name), True)
     mock_commit = mocker.patch("github.Tag.Tag.commit", new_callable=PropertyMock)
     mock_commit.return_value = commit
-    repo.get_tags = MagicMock(return_value=[tag])
-    mock_method = mocker.patch.object(cli.Github, "get_repo", return_value=repo)
+    gh_repo.get_tags = MagicMock(return_value=[tag])
 
     return release
 
 
-def test_publish_dist_py(py_package, runner, mocker):
-    version = "0.0.2"
-    cli.bump_version(version)
-
-    # Create the dist files
-    run("python -m build .")
-
-    # Create a tag with shas
-    runner(["tag-release"])
+def test_extract_dist_py(py_dist, runner, mocker, gh_repo):
     sha = run("git rev-parse HEAD")
 
     # Make the release mock
-    release = gh_release(sha, version, mocker)
+    release = gh_release(sha, mocker, gh_repo)
 
     sdist_name = osp.basename(glob("dist/*.gz")[0])
     wheel_name = osp.basename(glob("dist/*.whl")[0])
@@ -686,6 +733,33 @@ def test_publish_dist_py(py_package, runner, mocker):
     wheel_resp = MockReponse(Path("dist") / wheel_name)
     get_mock = mocker.patch("requests.get", side_effect=[sdist_resp, wheel_resp])
 
+    runner(["extract-release", release.url])
+
+
+def test_extract_dist_npm(npm_dist, runner, mocker, gh_repo):
+    sha = run("git rev-parse HEAD")
+
+    # Make the release mock
+    release = gh_release(sha, mocker, gh_repo)
+
+    dist_name = osp.basename(glob("dist/*.tgz")[0])
+    dist = GitReleaseAsset(
+        None, dict(), dict(name=dist_name, url="http://foo.com"), True
+    )
+    release.get_assets = MagicMock(return_value=[dist])
+
+    dist_resp = MockReponse(Path("dist") / dist_name)
+    get_mock = mocker.patch("requests.get", side_effect=[dist_resp])
+
+    runner(["extract-release", release.url])
+
+
+def test_publish_release_py(py_dist, runner, mocker, gh_repo):
+    sha = run("git rev-parse HEAD")
+
+    # Make the release mock
+    release = gh_release(sha, mocker, gh_repo)
+
     orig_run = cli.run
     called = 0
 
@@ -697,35 +771,18 @@ def test_publish_dist_py(py_package, runner, mocker):
         return orig_run(cmd, **kwargs)
 
     mock_run = mocker.patch("release_helper.cli.run", wraps=wrapped)
-
     release.update_release = update_mock = MagicMock()
-    runner(["publish-dist", release.url])
+
+    runner(["publish-release", release.url])
     update_mock.assert_called_once()
     assert called == 2, called
 
 
-def test_publish_dist_npm(npm_package, runner, mocker):
-    version = "0.0.2"
-    cli.bump_version(version)
-
-    # Create the dist files
-    runner(["handle-npm"])
-
-    # Create a tag with shas
-    runner(["tag-release"])
+def test_publish_release_npm(npm_dist, runner, mocker, gh_repo):
     sha = run("git rev-parse HEAD")
 
     # Make the release mock
-    release = gh_release(sha, version, mocker)
-
-    dist_name = osp.basename(glob("dist/*.tgz")[0])
-    dist = GitReleaseAsset(
-        None, dict(), dict(name=dist_name, url="http://foo.com"), True
-    )
-    release.get_assets = MagicMock(return_value=[dist])
-
-    dist_resp = MockReponse(Path("dist") / dist_name)
-    get_mock = mocker.patch("requests.get", side_effect=[dist_resp])
+    release = gh_release(sha, mocker, gh_repo)
 
     orig_run = cli.run
     called = 0
@@ -739,6 +796,6 @@ def test_publish_dist_npm(npm_package, runner, mocker):
 
     mock_run = mocker.patch("release_helper.cli.run", wraps=wrapped)
     release.update_release = update_mock = MagicMock()
-    runner(["publish-dist", release.url])
+    runner(["publish-release", release.url, "--npm_token", "abc"])
     update_mock.assert_called_once()
     assert called == 1, called
