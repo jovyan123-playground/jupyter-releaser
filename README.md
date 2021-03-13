@@ -11,20 +11,21 @@ A set of helper scripts and example GitHub Action workflows to aid in automated 
   - Has commit message with hashes of dist file(s)
   - Has annotated git tag in standard format
   - Has GitHub release with changelog entry
+  - Checks url links in markdown files
+  - Verifies integrity of Python manifest
   - Reverts to Dev version after release (optional)
   - Ensures packages are publishable on every commit
 
 - Prerequisites (see [checklist](#Checklist-for-Adoption) below for details):
 
   - Markdown changelog (optional)
-  - Bump version configuration
+  - Bump version configuration (if using Python)
   - Write access to GitHub repo to run GitHub Actions
 
 - Typical workflow:
   - When ready to make a release, go to the source repository and go to the Actions panel
-  - Select the Prepare Changelog workflow
+  - Select the Draft Changelog workflow
   - Run the Workflow with the version spec (usually the new version number), and make sure the target branch is correct
-  - Download the dist file(s) from the release and publish to PyPI/npm
 
 <p align="center">
 <img src="media/create_changelog_workflow.png" alt="Create Changelog Workflow"
@@ -40,17 +41,19 @@ A set of helper scripts and example GitHub Action workflows to aid in automated 
 
 - Merge the PR
 - Return to the Actions panel
-- Select the Create Release workflow
+- Select the Draft Release workflow
 
 <p align="center">
 <img src="media/create_release_workflow.png" alt="Create Release Workflow"
 	title="Create Release Workflow" width="50%" />
 </p>
 
-- Run the Workflow with the same version spec as before, and an optional post version spec if you want to go back to a dev version in the target branch. Select the appropriate branch as well
-- When the workflow completes, go to the releases page in the main repository and verify that the new release is there with the correct changelog and dist files.
+- Run the Workflow with the same version spec as before, and an optional post version spec if you want to go back to a dev version in the target branch.
+- When the workflow completes, go to the releases page in the main repository and verify that the new draft release is there with the correct changelog and dist files.
 
 <!-- TODO: Add Github release image here -->
+
+- Run the Publish Release workflow from a fork or manually download an publish the dist file(s).
 
 ## Installation
 
@@ -65,33 +68,31 @@ To install the latest release locally, make sure you have
 
 ```
     release-helper --help
-    release-helper prep-python --help
+    release-helper build-python --help
 ```
 
 ## Checklist for Adoption
 
 **Note**: The automated changelog handling is optional. If it is not desired, you can use the
-`check_release` and `create_release` workflows only and leave the changelog calls out of them. You will need to generate your own text for the GitHub release.
+`check_release` and `draft_release` workflows only and leave the changelog calls out of them. You will need to generate your own text for the GitHub release.
 
 - [ ] Switch to Markdown Changelog
   - We recommend [MyST](https://myst-parser.readthedocs.io/en/latest/?badge=latest), especially if some of your docs are in reStructuredText
   - Can use `pandoc -s changelog.rst -o changelog.md` and some hand edits as needed
   - Note that [directives](https://myst-parser.readthedocs.io/en/latest/using/syntax.html#syntax-directives) can still be used
 - [ ] Add HTML start and end comment markers to Changelog file - see example in [CHANGELOG.md](./CHANGELOG.md) (view in raw mode)
-- [ ] Add [tbump](https://github.com/tankerhq/tbump) support - see example metadata in [pyproject.toml](./pyproject.toml)
+- [ ] Add [tbump](https://github.com/tankerhq/tbump) support if using Python - see example metadata in [pyproject.toml](./pyproject.toml)
+
   - We recommend using `setup.cfg` and using `version attr: <package_name>.__version__`, see example [`setup.cfg`](./setup.cfg)
   - See documentation on `setup.cfg` [metadata](https://setuptools.readthedocs.io/en/latest/userguide/declarative_config.html)
-- [ ] Add `release-helper` to your `test` section in `extras_require` in your setup config, e.g.
 
-```
-[options.extras_require]
-test = coverage; pytest; pytest-cov; release-helper
-```
-
-- [ ] Add workflows for `check_release`, `create_changelog`, and `create_release` - see the workflows in this [repo](./.github/workflows)
+- [ ] Add workflows for `check_release`, `draft_changelog`, and `draft_release` - see the workflows in this [repo](./.github/workflows)
 - [ ] Change the action calls from the local `./.github/actions/<foo>` to `jupyter-server/release-helper.github/actions/<foo>/@<version_or_branch>`
 - [ ] Optionally add workflow for `cancel` to cancel previous workflow runs when a new one is started - see [cancel.yml](./.github/workflows)
-- [ ] Start with the test PyPI server in `create-release`, then switch to the production server once it is fully working
+- [ ] Optionally make a new branch or repository on your personal account that has a `publish-release` [workflow](./github/workflows/publish-release.yml)
+  - [ ] You will need to add access tokens for [PyPI](https://packaging.python.org/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/#saving-credentials-on-github) and/or [npm](https://docs.npmjs.com/creating-and-viewing-access-tokens)
+  - [ ] Start with the test PyPI server in `publish-release`, then switch to the production server once it is fully working
+  - [ ] ⚠ Warning - It is not recommended that you run this workflow or store PyPI/npm credentials on the source repository. Anyone with write access can run a workflow, and access tokens belong to an individual.
 - [ ] If desired, add workflows, changelog, and `tbump` support to other active release branches
 
 ## Create ChangeLog Workflow Details
