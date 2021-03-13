@@ -410,7 +410,7 @@ def check_npm_local(*packages, test_cmd=None):
 
     run(test_cmd, cwd=tmp_dir)
 
-    shutil.rmtree(tmp_dir)
+    shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 # """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -991,11 +991,13 @@ def extract_release(auth, release_url):
             run(f"git fetch origin {branch} --unshallow", cwd=checkout)
         commit_message = run(f"git log --format=%B -n 1 {sha}", cwd=checkout)
 
-    # Fetch, validate, and publish assets
+    # Clean the dist folder
     dist = Path("./dist")
     if dist.exists():
-        shutil.rmtree(dist)
+        shutil.rmtree(dist, ignore_errors=True)
     os.makedirs(dist)
+
+    # Fetch, validate, and publish assets
     for asset in release.get_assets():
         print(f"Fetching {asset.name}...")
         url = asset.url

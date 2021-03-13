@@ -95,7 +95,7 @@ To install the latest release locally, make sure you have
   - [ ] ⚠ Warning - It is not recommended that you run this workflow or store PyPI/npm credentials on the source repository. Anyone with write access can run a workflow, and access tokens belong to an individual.
 - [ ] If desired, add workflows, changelog, and `tbump` support to other active release branches
 
-## Create ChangeLog Workflow Details
+## Draft ChangeLog Workflow Details
 
 - Manual Github workflow
 - Input is the version spec
@@ -110,56 +110,66 @@ To install the latest release locally, make sure you have
   - Gets the current version and then does a git checkout to clear state
   - Adds a new version entry using a HTML comment markers in the changelog file
   - Optionally resolves [meeseeks](https://github.com/MeeseeksBox/MeeseeksDev) backport PRs to their original PR
-- Creates a PR with the changelog changes.
+- Creates a PR with the changelog changes
 - Notes:
   - This can be run on the repo by anyone with write access, since it only needs the built in `secrets.GITHUB_ACCESS_TOKEN`
   - The automated PR does not start workflows (a limitation of GitHub Actions). If you close and open the PR or make edits from within the
     GitHub UI it will trigger the workflows.
   - Can be re-run using the same version spec. It will add new entries but preserve existing ones (in case they have been hand modified).
 
-## Create-Release Workflow Details
+## Draft Release Workflow Details
 
 - Manual Github workflow
-- Takes a version spec, optional post version spec, and optional branch
-- Targets the branch selected when starting the workflow by default
-- Ensures that the workflow file is the same one as the target branch
+- Takes a version spec and optional post version spec
 - Bumps version using the same method as the changelog action
 - Prepares the environment using the same method as the changelog action
-- Checks the package manifest using [`check-manifest`](https://github.com/mgedmin/check-manifest)
-- Checks the links in Markdown files
 - Checks the changelog entry
   - Looks for the current entry using the HTML comment markers
   - Gets the expected changelog values using `github-activity`
   - Ensures that all PRs are the same between the two
   - Writes the changelog entry out to a file to be used as the GitHub Release text
-- Builds the wheel and source distributions
-- Makes dists can be installed and imported in a virtual environment
+- For Python packages:
+  - Builds the wheel and source distributions if applicable
+  - Makes sure Python dists can be installed and imported in a virtual environment
+- For npm/lerna packages:
+  - Builds tarball(s) using `npm pack`
+  - Make sure tarball(s) can be installed and imported in a new npm package
+- Checks the package manifest using [`check-manifest`](https://github.com/mgedmin/check-manifest)
+- Checks the links in Markdown files
 - Adds a commit that includes the hashes of the dist files
 - Creates an annotated version tag in standard format
 - If given, bumps the version using the post version spec
 - Pushes the commits and tag to the target `branch`
 - Publishes a draft GitHub release for the tag with the changelog entry as the text
+- Notes:
+  - This can be run on the repo by anyone with write access, since it only needs the built in `secrets.GITHUB_ACCESS_TOKEN`
 
-## Check-Release Workflow Details
+## Publish Release Workflow Details
 
-- Runs as a standard workflow
-- Runs both the Changelog steps and the Create Release Steps
+- Manual Github workflow
+- Takes a url for the draft release as an input
+- Downloads the dist assets from the release
+- Verifies shas and integrity of release assets
+- Publishes assets to appropriate registries
+- Publishes the draft GitHub release
+- ⚠ Warning - It is not recommended that you run this workflow or store PyPI/npm credentials on the source repository. Anyone with write access can run a workflow, and access tokens belong to an individual.
+
+## Check Release Workflow Details
+
+- Runs on pull requests to the default branch and on push
+- Runs the Draft Changelog, Draft Release, and Publish Release Steps
+- Publishes to the Test PyPI server
+- Deletes the Release
 - Does not make PRs or push git changes
-- Creates a draft GitHub release and removes it
 
 ## TODO
 
 - Use https://raw.githubusercontent.com for README images
 
-- Add support for config in `pyproject.toml` or `package.json`
+- Add support for `.release-helper.toml` config
 
-  - Allow declaritve `pre-` and `post-` scripts to be run for the different steps so we can support more complex packages
+  - Allow declaritve `pre-`, `post-`, and `skip-` hooks to be run for the different steps so we can support more complex packages
   - Handle the config at the main cli level
-  - Add `release-helpers release-script` command and use in the release
-    It invokes the other [commands](https://click.palletsprojects.com/en/6.x/advanced/#invoking-other-commands)
-  - Also add `changelog-script`
-  - Allow `skip-` to be declared, only works when running the scripts
-  - Make sure all steps can run gracefully if files are missing (like no `package.json` in a python package)
 
 - jupyter/notebook migration:
 
