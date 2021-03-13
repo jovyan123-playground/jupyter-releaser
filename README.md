@@ -180,11 +180,9 @@ test = coverage; pytest; pytest-cov; release-helper
   - After creating the changelog, use the date instead of the version and add the JS packages
 
 - jupyterlab/jupyterlab migration:
-  - Changelog PR text should show the JS package version changes so we can audit them
   - Pass a `--yes` flag to lerna `version` and `publish` when releasing on CI
   - Keep using `bump2version` since we need to use them for the JS packages, but collapse patch release into `jlpm bumpversion patch`
-  - Remove `publish.ts` in favor of the one in `release-helper`.
   - Since we're using verdaccio, we don't need to wait for packages to be available to run [`update-core-mode`](https://github.com/jupyterlab/jupyterlab/blob/9f50c45b39e289072d4c18519ca29c974c226f69/buildutils/src/update-core-mode.ts), so we can just run that directly and remove `prepare-python-release`
-  - Use the verdaccio server to run the [`release_test`](https://github.com/jupyterlab/jupyterlab/blob/9f50c45b39e289072d4c18519ca29c974c226f69/scripts/release_test.sh) after the npm prep command
-  - We then have to update the `jupyterlab/staging/yarn.lock` file to replace the verdaccio registry with the public one.
+  - Start verdaccio, publish all packages, update core mode, do release test, all before actually publishing to npm
+  - We may have to update the `jupyterlab/staging/yarn.lock` file to replace the verdaccio registry with the public one.
   - Add `lab-prod` endpoint in [binder](https://github.com/jupyterlab/jupyterlab/blob/9f50c45b39e289072d4c18519ca29c974c226f69/binder/jupyter_notebook_config.py#L17) so we can actually test with "released" packages for a given commit

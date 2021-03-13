@@ -349,7 +349,7 @@ def build_npm_local(package):
             for path in glob(pattern, recursive=True):
                 path = Path(path)
                 tarball = path / run("npm pack", cwd=path)
-                shutil.move(tarball, dest)
+                shutil.move(str(tarball), str(dest))
 
 
 def check_npm_local(*packages, test_cmd=None):
