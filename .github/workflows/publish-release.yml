@@ -40,12 +40,9 @@ jobs:
           pip install -e .
       - name: Publish Release
         env:
-          TWINE_COMMAND: "twine upload"
-          TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
-          NPM_COMMAND: "npm publish --dry-run"
-          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }} # use final when ready to publish
         uses: ./.github/actions/publish-release
         with:
+          dry_run: true # Set to false ready to publish
+          token: ${{ secrets.GITHUB_TOKEN }}
           release_url: ${{ github.event.inputs.release_url }}

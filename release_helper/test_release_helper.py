@@ -729,9 +729,9 @@ def gh_release(sha, mocker, gh_repo):
     return release
 
 
-# https://bugs.python.org/issue26660
 @pytest.mark.skipif(
-    os.name == "nt" and sys.version_info.major == 3 and sys.version_info.minor < 8
+    os.name == "nt" and sys.version_info.major == 3 and sys.version_info.minor < 8,
+    reason="See https://bugs.python.org/issue26660",
 )
 def test_extract_dist_py(py_dist, runner, mocker, gh_repo, tmp_path):
     sha = run("git rev-parse HEAD")
@@ -759,9 +759,9 @@ def test_extract_dist_py(py_dist, runner, mocker, gh_repo, tmp_path):
     runner(["extract-release", release.url])
 
 
-# https://bugs.python.org/issue26660
 @pytest.mark.skipif(
-    os.name == "nt" and sys.version_info.major == 3 and sys.version_info.minor < 8
+    os.name == "nt" and sys.version_info.major == 3 and sys.version_info.minor < 8,
+    reason="See https://bugs.python.org/issue26660",
 )
 def test_extract_dist_npm(npm_dist, runner, mocker, gh_repo, tmp_path):
     sha = run("git rev-parse HEAD")

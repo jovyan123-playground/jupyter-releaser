@@ -1039,8 +1039,9 @@ def extract_release(auth, release_url):
     envvar="TWINE_COMMAND",
     default="twine upload",
 )
+@add_options(dry_run_options)
 @click.argument("release_url", nargs=1)
-def publish_release(auth, npm_token, npm_cmd, twine_cmd, release_url):
+def publish_release(auth, npm_token, npm_cmd, twine_cmd, dry_run, release_url):
     """Publish release asset(s) and finalize GitHub release"""
     match = re.match(RELEASE_HTML_PATTERN, release_url)
     match = match or re.match(RELEASE_API_PATTERN, release_url)
@@ -1075,12 +1076,18 @@ def publish_release(auth, npm_token, npm_cmd, twine_cmd, release_url):
     g = Github(auth)
     r = g.get_repo(repo)
     release = r.get_release(match["tag"])
-    release.update_release(
-        name=release.title,
-        message=release.body,
-        draft=False,
-        prerelease=release.prerelease,
-    )
+
+    if not dry_run:
+        release = release.update_release(
+            name=release.title,
+            message=release.body,
+            draft=False,
+            prerelease=release.prerelease,
+        )
+
+    # Set the GitHub action output
+    print(f"\n\nSetting output release_url={release.html_url}")
+    print(f"::set-output name=release_url::{release.html_url}")
 
 
 if __name__ == "__main__":  # pragma: no cover
