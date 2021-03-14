@@ -19,7 +19,6 @@ from urllib.request import OpenerDirector
 import pytest
 from click.testing import CliRunner
 from ghapi.all import GhApi
-from ghapi.core import AttrDict
 from pytest import fixture
 
 from release_helper import cli
@@ -461,7 +460,7 @@ def test_prep_env_pr(py_package, runner):
     assert "branch=foo" in result.output
 
 
-def test_prep_env_full(py_package, tmp_path, mocker, runner, mock_open):
+def test_prep_env_full(py_package, tmp_path, mocker, runner):
     """Full GitHub Actions simulation (Push)"""
     version_spec = "1.0.1a1"
 
@@ -483,7 +482,6 @@ def test_prep_env_full(py_package, tmp_path, mocker, runner, mock_open):
     mock_run.return_value = version_spec
 
     runner(["prep-env"], env=env)
-
     mock_run.assert_has_calls(
         [
             call(
@@ -696,8 +694,15 @@ def test_extract_dist_py(py_dist, runner, mocker, open_mock, tmp_path):
     get_mock = mocker.patch("requests.get", side_effect=[sdist_resp, wheel_resp])
 
     tag_name = "bar"
+    url = normalize_path(os.getcwd())
     tag = dict(name=tag_name, commit=dict(sha=sha))
-    data = dict(tag_name=tag_name, target_commitish="main", tags=[tag])
+    data = dict(
+        url=url,
+        tag_name=tag_name,
+        target_commitish="main",
+        tags=[tag],
+        assets=[dict(name=sdist_name, url="foo"), dict(name=wheel_name, url="bar")],
+    )
     open_mock.return_value = MockHTTPResponse(data)
     runner(["extract-release", HTML_URL])
     open_mock.assert_called_once()
@@ -717,8 +722,15 @@ def test_extract_dist_npm(npm_dist, runner, mocker, open_mock, tmp_path):
     get_mock = mocker.patch("requests.get", side_effect=[dist_resp])
 
     tag_name = "bar"
+    url = normalize_path(os.getcwd())
     tag = dict(name=tag_name, commit=dict(sha=sha))
-    data = dict(tag_name=tag_name, target_commitish="main", tags=[tag])
+    data = dict(
+        url=url,
+        tag_name=tag_name,
+        target_commitish="main",
+        tags=[tag],
+        assets=[dict(name=dist_name, url="foo")],
+    )
     open_mock.return_value = MockHTTPResponse(data)
     runner(["extract-release", HTML_URL])
     open_mock.assert_called_once()

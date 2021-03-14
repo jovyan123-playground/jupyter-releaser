@@ -988,7 +988,7 @@ def extract_release(auth, release_url):
     os.makedirs(dist)
 
     # Fetch, validate, and publish assets
-    for asset in release.get_assets():
+    for asset in release.assets:
         print(f"Fetching {asset.name}...")
         url = asset.url
         headers = dict(Authorization=f"token {auth}", Accept="application/octet-stream")
