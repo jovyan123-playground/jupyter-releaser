@@ -15,6 +15,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 from unittest.mock import PropertyMock
 
+import pytest
 from click.testing import CliRunner
 from github.Commit import Commit
 from github.GitRelease import GitRelease
@@ -728,6 +729,10 @@ def gh_release(sha, mocker, gh_repo):
     return release
 
 
+# https://bugs.python.org/issue26660
+@pytest.mark.skipif(
+    os.name == "nt" and sys.version_info.major == 3 and sys.version_info.minor < 8
+)
 def test_extract_dist_py(py_dist, runner, mocker, gh_repo, tmp_path):
     sha = run("git rev-parse HEAD")
 
@@ -754,6 +759,10 @@ def test_extract_dist_py(py_dist, runner, mocker, gh_repo, tmp_path):
     runner(["extract-release", release.url])
 
 
+# https://bugs.python.org/issue26660
+@pytest.mark.skipif(
+    os.name == "nt" and sys.version_info.major == 3 and sys.version_info.minor < 8
+)
 def test_extract_dist_npm(npm_dist, runner, mocker, gh_repo, tmp_path):
     sha = run("git rev-parse HEAD")
 

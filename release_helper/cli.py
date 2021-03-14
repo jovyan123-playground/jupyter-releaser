@@ -1059,10 +1059,10 @@ def publish_release(auth, npm_token, npm_cmd, twine_cmd, release_url):
         name = Path(path).name
         suffix = Path(path).suffix
         if suffix in [".gz", ".whl"]:
-            run(f"{twine_cmd} {name}")
+            run(f"{twine_cmd} {path}")
             found = True
         elif suffix == ".tgz":
-            run(f"{npm_cmd} {name}")
+            run(f"{npm_cmd} {path}")
             found = True
         else:
             print(f"Nothing to upload for {name}")
