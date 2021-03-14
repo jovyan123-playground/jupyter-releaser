@@ -676,7 +676,7 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
         return
 
     run(f"git push {remote} {pr_branch}")
-    g.pulls.create(title, body, base, head, maintainer_can_modify)
+    g.pulls.create(title, body, head, base, maintainer_can_modify, False, None)
 
 
 @main.command()
@@ -889,23 +889,24 @@ def draft_release(
     owner, repo_name = repo.split("/")
     g = GhApi(owner=owner, repo=repo_name, token=auth)
 
-    message = ""
+    body = ""
     if changelog_path and Path(changelog_path).exists():
         changelog = Path(changelog_path).read_text(encoding="utf-8")
 
         start = changelog.find(START_MARKER)
         end = changelog.find(END_MARKER)
         if start != -1 and end != -1:
-            message = changelog[start + len(START_MARKER) : end]
+            body = changelog[start + len(START_MARKER) : end]
 
     # Create a draft release
     prerelease = is_prerelease(version)
     release = g.repos.create_release(
         f"v{version}",
+        branch,
         f"Release v{version}",
-        message,
-        draft=True,
-        prerelease=prerelease,
+        body,
+        True,
+        prerelease,
     )
 
     # Set the GitHub action output
@@ -914,7 +915,7 @@ def draft_release(
 
     if assets:
         for asset in assets:
-            g.repos.upload_release_asset(release.id, asset)
+            g.repos.upload_release_asset(release.id, asset, "")
 
     # Bump to post version if given
     if post_version_spec:
@@ -1074,10 +1075,13 @@ def publish_release(auth, npm_token, npm_cmd, twine_cmd, dry_run, release_url):
     release = g.repos.get_release_by_tag(match["tag"])
 
     release = g.repos.update_release(
-        name=release.title,
-        message=release.body,
-        draft=dry_run,
-        prerelease=release.prerelease,
+        release.id,
+        release.tag_name,
+        release.target_commitish,
+        release.name,
+        release.body,
+        dry_run,
+        release.prerelease,
     )
 
     # Set the GitHub action output
