@@ -900,6 +900,7 @@ def draft_release(
 
     # Create a draft release
     prerelease = is_prerelease(version)
+    print(f"Creating release for {version}")
     release = g.repos.create_release(
         f"v{version}",
         branch,
@@ -915,7 +916,12 @@ def draft_release(
 
     if assets:
         for asset in assets:
-            g.repos.upload_release_asset(release.id, asset, "")
+            prev_dir = os.getcwd()
+            os.chdir(Path(asset).parent)
+            name = Path(asset).name
+            print(f"Uploading {name} to {release.id}")
+            g.repos.upload_release_asset(release.id, name, "")
+            os.chdir(prev_dir)
 
     # Bump to post version if given
     if post_version_spec:
