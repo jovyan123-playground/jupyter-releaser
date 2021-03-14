@@ -54,7 +54,7 @@ A set of helper scripts and example GitHub Action workflows to aid in automated 
 
 <!-- TODO: Add Github release image here -->
 
-- Run the Publish Release workflow from a fork or manually download an publish the dist file(s).
+- Run the Publish Release workflow from a fork or manually download an publish the dist file(s). Note: the fork will need to use their own GitHub token in addition to the PyPI/npm token.
 
 ## Installation
 

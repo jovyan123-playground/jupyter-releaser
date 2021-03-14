@@ -14,19 +14,12 @@ from unittest.mock import call
 from unittest.mock import MagicMock
 from unittest.mock import patch
 from unittest.mock import PropertyMock
+from urllib.request import OpenerDirector
 
 import pytest
 from click.testing import CliRunner
-from github.Commit import Commit
-from github.GitRelease import GitRelease
-from github.GitReleaseAsset import GitReleaseAsset
-from github.NamedUser import NamedUser
-from github.PaginatedList import PaginatedList
-from github.PullRequest import PullRequest
-from github.Repository import Repository
-from github.Requester import Requester
-from github.Tag import Tag
-from github.Workflow import Workflow
+from ghapi.all import GhApi
+from ghapi.core import AttrDict
 from pytest import fixture
 
 from release_helper import cli
@@ -131,6 +124,9 @@ CHANGELOG_TEMPLATE = f"""# Changelog
 
 Initial commit
 """
+
+HTML_URL = "https://github.com/snuffy/test/releases/tag/bar"
+URL = "https://api.gihub.com/repos/snuffy/test/releases/tags/bar"
 
 
 @fixture(autouse=True)
@@ -308,6 +304,58 @@ def runner():
     return run
 
 
+@fixture
+def open_mock(mocker):
+    open_mock = mocker.patch.object(OpenerDirector, "open", autospec=True)
+    open_mock.return_value = MockHTTPResponse()
+    yield open_mock
+
+
+class MockHTTPResponse:
+    header = {}
+    status = 200
+
+    def __init__(self, data=None):
+        self.url = ""
+        data = data or {}
+        data.setdefault("id", "foo")
+        data.setdefault("html_url", HTML_URL)
+        data.setdefault("url", URL)
+        self.data = json.dumps(data).encode("utf-8")
+        self.headers = {}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        pass
+
+    def read(self, amt=None):
+        return self.data
+
+    @property
+    def status(self):
+        return self.code
+
+
+class MockRequestReponse:
+    def __init__(self, filename):
+        self.filename = filename
+
+    def raise_for_status(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def iter_content(self, *args, **kwargs):
+        with open(self.filename, "rb") as fid:
+            return [fid.read()]
+
+
 def test_get_branch(git_repo):
     assert cli.get_branch() == "bar"
     run("git checkout foo")
@@ -332,16 +380,11 @@ def test_get_version_npm(npm_package):
     assert cli.get_version() == "1.0.1"
 
 
-def test_format_pr_entry(mocker, gh_repo):
-    pull = PullRequest(None, dict(), dict(), True)
-    user = NamedUser(None, dict(), dict(), True)
-    gh_repo.get_pull = mock = MagicMock(return_value=pull)
-    mock_user = mocker.patch(
-        "github.PullRequest.PullRequest.user", new_callable=PropertyMock
-    )
-    mock_user.return_value = user
-    resp = cli.format_pr_entry("foo", 121, auth="baz")
-    mock.assert_called_once()
+def test_format_pr_entry(mocker, open_mock):
+    data = dict(title="foo", user=dict(login="bar", html_url=HTML_URL))
+    open_mock.return_value = MockHTTPResponse(data)
+    resp = cli.format_pr_entry("snuffy/foo", 121, auth="baz")
+    open_mock.assert_called_once()
 
     assert resp.startswith("- ")
 
@@ -418,7 +461,7 @@ def test_prep_env_pr(py_package, runner):
     assert "branch=foo" in result.output
 
 
-def test_prep_env_full(py_package, tmp_path, mocker, runner, gh_repo):
+def test_prep_env_full(py_package, tmp_path, mocker, runner, mock_open):
     """Full GitHub Actions simulation (Push)"""
     version_spec = "1.0.1a1"
 
@@ -511,40 +554,22 @@ def test_build_changelog_existing(py_package, mocker, runner):
     run("pre-commit run -a")
 
 
-@fixture
-def gh_repo(mocker):
-    repo = Repository(None, dict(), dict(url=normalize_path(os.getcwd())), True)
-    mocker.patch.object(cli.Github, "get_repo", return_value=repo)
-    yield repo
-
-
-def test_draf_changelog_full(py_package, mocker, runner, gh_repo):
+def test_draft_changelog_full(py_package, mocker, runner, open_mock):
     mock_changelog_entry(py_package, runner, mocker)
-    pull = PullRequest(None, dict(), dict(), True)
-
-    gh_repo.create_pull = pull_mock = MagicMock(return_value=pull)
-
     runner(["draft-changelog"])
-    pull_mock.assert_called_once()
+    open_mock.assert_called_once()
 
 
-def test_draft_changelog_dry_run(npm_package, mocker, runner, gh_repo):
+def test_draft_changelog_dry_run(npm_package, mocker, runner, open_mock):
     mock_changelog_entry(npm_package, runner, mocker)
-    pull = PullRequest(None, dict(), dict(), True)
-    gh_repo.create_pull = pull_mock = MagicMock(return_value=pull)
-
     runner(["draft-changelog", "--dry-run"])
-    pull_mock.assert_not_called()
+    open_mock.assert_not_called()
 
 
-def test_draft_changelog_lerna(lerna_package, mocker, runner, gh_repo):
+def test_draft_changelog_lerna(lerna_package, mocker, runner, open_mock):
     mock_changelog_entry(lerna_package, runner, mocker)
-    pull = PullRequest(None, dict(), dict(), True)
-
-    gh_repo.create_pull = pull_mock = MagicMock(return_value=pull)
-
-    runner(["draft-changelog", "--dry-run"])
-    pull_mock.assert_not_called()
+    runner(["draft-changelog"])
+    open_mock.assert_called_once()
 
 
 def test_check_links(py_package, runner):
@@ -624,59 +649,22 @@ def test_tag_release(py_package, runner):
     runner(["tag-release"])
 
 
-def make_release_mock(mocker, gh_repo):
-    url = "https://github.com/foo/bar/releases/tag/v0.0.1"
-    release = GitRelease(None, dict(), dict(html_url=url), True)
-    asset = GitReleaseAsset(None, dict(), dict(), True)
-    asset.delete_asset = delete_asset_mock = MagicMock()
-    release.get_assets = MagicMock(return_value=[asset])
-    release.upload_asset = upload_mock = MagicMock(return_value=asset)
-    gh_repo.create_git_release = create_mock = MagicMock(return_value=release)
-    gh_repo.get_release = get_mock = MagicMock(return_value=release)
-    release.upload_mock = upload_mock
-    release.get_mock = get_mock
-    release.delete_asset_mock = delete_asset_mock
-    release.create_mock = create_mock
-    return release
-
-
-def test_draft_release_dry_run(py_dist, mocker, runner, gh_repo):
+def test_draft_release_dry_run(py_dist, mocker, runner, open_mock):
     # Publish the release - dry run
-    release = make_release_mock(mocker, gh_repo)
-
     runner(["draft-release", "--dry-run", "--post-version-spec", "1.1.0.dev0"])
-
-    release.create_mock.assert_called_once()
-    release.upload_mock.assert_has_calls(
-        [
-            call("dist/foo-1.0.1-py3-none-any.whl".replace("/", os.sep), label=""),
-            call("dist/foo-1.0.1.tar.gz".replace("/", os.sep), label=""),
-        ]
-    )
-    release.delete_asset_mock.assert_not_called()
+    assert len(open_mock.call_args) == 2
 
 
-def test_draft_release_final(npm_dist, runner, mocker, gh_repo):
+def test_draft_release_final(npm_dist, runner, mocker, open_mock):
     # Publish the release
-    release = make_release_mock(mocker, gh_repo)
-
     runner(["draft-release"])
-    release.create_mock.assert_called_once()
-    release.upload_mock.assert_has_calls(
-        [
-            call(
-                "dist/test_draft_release_final0-1.0.1.tgz".replace("/", os.sep),
-                label="",
-            )
-        ]
-    )
-    release.delete_asset_mock.assert_not_called()
+    assert len(open_mock.call_args) == 2
 
 
-def test_delete_release(npm_dist, runner, mocker, gh_repo):
+def test_delete_release(npm_dist, runner, mocker, open_mock):
     # Publish the release
-    release = make_release_mock(mocker, gh_repo)
     result = runner(["draft-release", "--dry-run"])
+    assert len(open_mock.call_args) == 2
 
     url = ""
     for line in result.output.splitlines():
@@ -685,109 +673,62 @@ def test_delete_release(npm_dist, runner, mocker, gh_repo):
             url = match.groups()[0]
 
     # Delete the release
-    release.delete_release = delete_mock = MagicMock()
-
+    data = dict(assets=[dict(id="bar")])
+    open_mock.return_value = MockHTTPResponse(data)
     runner(["delete-release", url])
-    release.delete_asset_mock.assert_called_with()
-    delete_mock.assert_called_once()
-
-
-class MockReponse:
-    def __init__(self, filename):
-        self.filename = filename
-
-    def raise_for_status(self):
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        pass
-
-    def iter_content(self, *args, **kwargs):
-        with open(self.filename, "rb") as fid:
-            return [fid.read()]
-
-
-def gh_release(sha, mocker, gh_repo):
-    tag_name = f"v{VERSION_SPEC}"
-    url = f"https://github.com/foo/bar/releases/tag/{tag_name}"
-
-    branch = cli.get_branch()
-    release = GitRelease(
-        None, dict(), dict(target_commitish=branch, tag_name=tag_name, url=url), True
-    )
-    gh_repo.get_release = MagicMock(return_value=release)
-
-    commit = Commit(None, dict(), dict(sha=sha), True)
-    tag = Tag(None, dict(), dict(name=tag_name), True)
-    mock_commit = mocker.patch("github.Tag.Tag.commit", new_callable=PropertyMock)
-    mock_commit.return_value = commit
-    gh_repo.get_tags = MagicMock(return_value=[tag])
-
-    return release
+    assert len(open_mock.call_args) == 2
 
 
 @pytest.mark.skipif(
     os.name == "nt" and sys.version_info.major == 3 and sys.version_info.minor < 8,
     reason="See https://bugs.python.org/issue26660",
 )
-def test_extract_dist_py(py_dist, runner, mocker, gh_repo, tmp_path):
+def test_extract_dist_py(py_dist, runner, mocker, open_mock, tmp_path):
     sha = run("git rev-parse HEAD")
-
-    # Make the release mock
-    release = gh_release(sha, mocker, gh_repo)
 
     sdist_name = osp.basename(glob("dist/*.gz")[0])
     shutil.move(osp.join("dist", sdist_name), tmp_path)
     wheel_name = osp.basename(glob("dist/*.whl")[0])
     shutil.move(osp.join("dist", wheel_name), tmp_path)
 
-    sdist = GitReleaseAsset(
-        None, dict(), dict(name=sdist_name, url="http://foo.com"), True
-    )
-    wheel = GitReleaseAsset(
-        None, dict(), dict(name=wheel_name, url="http://bar.com"), True
-    )
-    release.get_assets = MagicMock(return_value=[sdist, wheel])
-
-    sdist_resp = MockReponse(tmp_path / sdist_name)
-    wheel_resp = MockReponse(tmp_path / wheel_name)
+    sdist_resp = MockRequestReponse(tmp_path / sdist_name)
+    wheel_resp = MockRequestReponse(tmp_path / wheel_name)
     get_mock = mocker.patch("requests.get", side_effect=[sdist_resp, wheel_resp])
 
-    runner(["extract-release", release.url])
+    tag_name = "bar"
+    tag = dict(name=tag_name, commit=dict(sha=sha))
+    data = dict(tag_name=tag_name, target_commitish="main", tags=[tag])
+    open_mock.return_value = MockHTTPResponse(data)
+    runner(["extract-release", HTML_URL])
+    open_mock.assert_called_once()
 
 
 @pytest.mark.skipif(
     os.name == "nt" and sys.version_info.major == 3 and sys.version_info.minor < 8,
     reason="See https://bugs.python.org/issue26660",
 )
-def test_extract_dist_npm(npm_dist, runner, mocker, gh_repo, tmp_path):
+def test_extract_dist_npm(npm_dist, runner, mocker, open_mock, tmp_path):
     sha = run("git rev-parse HEAD")
-
-    # Make the release mock
-    release = gh_release(sha, mocker, gh_repo)
 
     dist_name = osp.basename(glob("dist/*.tgz")[0])
     shutil.move(osp.join("dist", dist_name), tmp_path)
 
-    dist = GitReleaseAsset(
-        None, dict(), dict(name=dist_name, url="http://foo.com"), True
-    )
-    release.get_assets = MagicMock(return_value=[dist])
-
-    dist_resp = MockReponse(tmp_path / dist_name)
+    dist_resp = MockRequestReponse(tmp_path / dist_name)
     get_mock = mocker.patch("requests.get", side_effect=[dist_resp])
 
-    runner(["extract-release", release.url])
+    tag_name = "bar"
+    tag = dict(name=tag_name, commit=dict(sha=sha))
+    data = dict(tag_name=tag_name, target_commitish="main", tags=[tag])
+    open_mock.return_value = MockHTTPResponse(data)
+    runner(["extract-release", HTML_URL])
+    open_mock.assert_called_once()
 
 
-def test_publish_release_py(py_dist, runner, mocker, gh_repo):
+def test_publish_release_py(py_dist, runner, mocker, open_mock):
     sha = run("git rev-parse HEAD")
 
-    # Make the release mock
-    release = gh_release(sha, mocker, gh_repo)
+    data = dict(title="foo", body="bar", prerelease=False)
+    open_mock.side_effect = [MockHTTPResponse(data), MockHTTPResponse()]
 
     orig_run = cli.run
     called = 0
@@ -800,18 +741,17 @@ def test_publish_release_py(py_dist, runner, mocker, gh_repo):
         return orig_run(cmd, **kwargs)
 
     mock_run = mocker.patch("release_helper.cli.run", wraps=wrapped)
-    release.update_release = update_mock = MagicMock()
 
-    runner(["publish-release", release.url])
-    update_mock.assert_called_once()
+    runner(["publish-release", HTML_URL])
+    assert len(open_mock.call_args) == 2
     assert called == 2, called
 
 
-def test_publish_release_npm(npm_dist, runner, mocker, gh_repo):
+def test_publish_release_npm(npm_dist, runner, mocker, open_mock):
     sha = run("git rev-parse HEAD")
 
-    # Make the release mock
-    release = gh_release(sha, mocker, gh_repo)
+    data = dict(title="foo", body="bar", prerelease=False)
+    open_mock.side_effect = [MockHTTPResponse(data), MockHTTPResponse()]
 
     orig_run = cli.run
     called = 0
@@ -824,7 +764,6 @@ def test_publish_release_npm(npm_dist, runner, mocker, gh_repo):
         return orig_run(cmd, **kwargs)
 
     mock_run = mocker.patch("release_helper.cli.run", wraps=wrapped)
-    release.update_release = update_mock = MagicMock()
-    runner(["publish-release", release.url, "--npm_token", "abc"])
-    update_mock.assert_called_once()
+    runner(["publish-release", HTML_URL, "--npm_token", "abc"])
+    assert len(open_mock.call_args) == 2
     assert called == 1, called

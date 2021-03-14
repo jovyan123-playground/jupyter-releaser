@@ -18,7 +18,7 @@ from tempfile import TemporaryDirectory
 
 import click
 import requests
-from github import Github
+from ghapi.all import GhApi
 from github_activity import generate_activity_md
 from pep440 import is_canonical
 
@@ -33,12 +33,12 @@ TBUMP_CMD = "tbump --non-interactive --only-patch"
 # Of the form:
 # https://github.com/{owner}/{repo}/releases/tag/{tag}
 RELEASE_HTML_PATTERN = (
-    "https://github.com/(?P<org>[^/]+)/(?P<repo>[^/]+)/releases/tag/(?P<tag>.*)"
+    "https://github.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/releases/tag/(?P<tag>.*)"
 )
 
 # Of the form:
 # https://api.github.com/repos/{owner}/{repo}/releases/tags/{tag}
-RELEASE_API_PATTERN = "https://api.github.com/repos/(?P<org>[^/]+)/(?P<repo>[^/]+)/releases/tags/(?P<tag>.*)"
+RELEASE_API_PATTERN = "https://api.github.com/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/releases/tags/(?P<tag>.*)"
 
 # """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 # Helper Functions
@@ -76,7 +76,7 @@ def get_branch():
 
 
 def get_repo(remote, auth=None):
-    """Get the remote repo org and name"""
+    """Get the remote repo owner and name"""
     url = run(f"git remote get-url {remote}")
     url = normalize_path(url)
     parts = url.split("/")[-2:]
@@ -106,7 +106,7 @@ def format_pr_entry(target, number, auth=None):
     Parameters
     ----------
     target : str
-        The GitHub organization/repo
+        The GitHub owner/repo
     number : int
         The PR number to resolve
     auth : str, optional
@@ -117,9 +117,9 @@ def format_pr_entry(target, number, auth=None):
     str
         A formatted PR entry
     """
-    g = Github(auth)
-    repo = g.get_repo(target)
-    pull = repo.get_pull(number)
+    owner, repo = target.split("/")
+    g = GhApi(owner=owner, repo=repo, token=auth)
+    pull = g.pulls.get(number)
     title = pull.title
     url = pull.url
     user_name = pull.user.login
@@ -135,7 +135,7 @@ def get_changelog_entry(branch, repo, version, *, auth=None, resolve_backports=F
     branch : str
         The target branch
     respo : str
-        The GitHub organization/repo
+        The GitHub owner/repo
     version : str
         The new version
     auth : str, optional
@@ -647,8 +647,8 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
     run(f'git commit -a -m "Generate changelog for {version}"')
 
     # Create the pull
-    g = Github(auth)
-    r = g.get_repo(repo)
+    owner, repo_name = repo.split("/")
+    g = GhApi(owner=owner, repo=repo_name, token=auth)
     title = f"Automated Changelog for {version} on {branch}"
     body = title
 
@@ -676,7 +676,7 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
         return
 
     run(f"git push {remote} {pr_branch}")
-    r.create_pull(title, body, base, head, maintainer_can_modify)
+    g.pulls.create(title, body, base, head, maintainer_can_modify)
 
 
 @main.command()
@@ -886,8 +886,8 @@ def draft_release(
 
     version = get_version()
 
-    g = Github(auth)
-    r = g.get_repo(repo)
+    owner, repo_name = repo.split("/")
+    g = GhApi(owner=owner, repo=repo_name, token=auth)
 
     message = ""
     if changelog_path and Path(changelog_path).exists():
@@ -900,7 +900,7 @@ def draft_release(
 
     # Create a draft release
     prerelease = is_prerelease(version)
-    release = r.create_git_release(
+    release = g.repos.create_release(
         f"v{version}",
         f"Release v{version}",
         message,
@@ -914,7 +914,7 @@ def draft_release(
 
     if assets:
         for asset in assets:
-            upload = release.upload_asset(asset, label="")
+            g.repos.upload_release_asset(release.id, asset)
 
     # Bump to post version if given
     if post_version_spec:
@@ -941,14 +941,13 @@ def delete_release(auth, release_url):
     match = match or re.match(RELEASE_API_PATTERN, release_url)
     if not match:
         raise ValueError(f"Release url is not valid: {release_url}")
-    repo = f'{match["org"]}/{match["repo"]}'
-    g = Github(auth)
 
-    r = g.get_repo(repo)
-    release = r.get_release(match["tag"])
-    for asset in release.get_assets():
-        asset.delete_asset()
-    release.delete_release()
+    g = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
+    release = g.repos.get_release_by_tag(match["tag"])
+    for asset in release.assets:
+        g.repos.delete_release_asset(asset.id)
+
+    g.repos.delete_release(release.id)
 
 
 @main.command()
@@ -961,13 +960,11 @@ def extract_release(auth, release_url):
     if not match:
         raise ValueError(f"Release url is not valid: {release_url}")
 
-    repo = f'{match["org"]}/{match["repo"]}'
-    g = Github(auth)
-    r = g.get_repo(repo)
-    release = r.get_release(match["tag"])
+    g = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
+    release = g.repos.get_release_by_tag(match["tag"])
     branch = release.target_commitish
     sha = None
-    for tag in r.get_tags():
+    for tag in release.tags:
         if tag.name == release.tag_name:
             sha = tag.commit.sha
     if not sha:
@@ -978,9 +975,9 @@ def extract_release(auth, release_url):
     # Get the commmit message for the branch
     commit_message = ""
     with TemporaryDirectory() as td:
-        run(f"git clone {r.url} local --depth 1", cwd=td)
+        run(f"git clone {release.url} local --depth 1", cwd=td)
         checkout = osp.join(td, "local")
-        if not osp.exists(r.url):
+        if not osp.exists(release.url):
             run(f"git fetch origin {branch} --unshallow", cwd=checkout)
         commit_message = run(f"git log --format=%B -n 1 {sha}", cwd=checkout)
 
@@ -1072,12 +1069,11 @@ def publish_release(auth, npm_token, npm_cmd, twine_cmd, dry_run, release_url):
         raise ValueError("No assets published, refusing to finalize release")
 
     # Take the release out of draft
-    repo = f'{match["org"]}/{match["repo"]}'
-    g = Github(auth)
-    r = g.get_repo(repo)
-    release = r.get_release(match["tag"])
+    repo = f'{match["owner"]}/{match["repo"]}'
+    g = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
+    release = g.repos.get_release_by_tag(match["tag"])
 
-    release = release.update_release(
+    release = g.repos.update_release(
         name=release.title,
         message=release.body,
         draft=dry_run,
