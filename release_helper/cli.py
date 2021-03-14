@@ -354,8 +354,9 @@ def build_npm_local(package):
 
     data = extract_npm_tarball(tarball)
 
-    # Move the tarball into the dist folder
-    shutil.move(tarball, dest)
+    # Move the tarball into the dist folder if public
+    if not data["private"]:
+        shutil.move(tarball, dest)
 
     if "workspaces" in data:
         packages = data["workspaces"].get("packages", [])
@@ -363,6 +364,7 @@ def build_npm_local(package):
             for path in glob(pattern, recursive=True):
                 path = Path(path)
                 tarball = path / run("npm pack", cwd=path)
+                raise ValueError("make sure the package is public")
                 shutil.move(str(tarball), str(dest))
 
 

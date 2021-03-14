@@ -132,7 +132,7 @@ To install the latest release locally, make sure you have
 - For Python packages:
   - Builds the wheel and source distributions if applicable
   - Makes sure Python dists can be installed and imported in a virtual environment
-- For npm/lerna packages:
+- For npm package(s) (including workspace support):
   - Builds tarball(s) using `npm pack`
   - Make sure tarball(s) can be installed and imported in a new npm package
 - Checks the package manifest using [`check-manifest`](https://github.com/mgedmin/check-manifest)
@@ -178,12 +178,11 @@ To install the latest release locally, make sure you have
   - Add `tbump` config to replace [`jsversion`](https://github.com/jupyter/notebook/blob/4b2e849e83fcf9ffbe0755d38d635e34e56a4fea/setupbase.py#L583) step
   - Add `babel` and `npm` dependencies in the install step of the new workflows
 
-- lerna support
+- workspace support
 
   - Add to [@jupyterlab/buildutils](https://github.com/jupyterlab/jupyterlab/tree/833cd34de5f7b246208744662c2d4bd62cc3bb35/buildutils/src)
   - Add ability to start/stop a [verdaccio server](https://github.com/facebook/create-react-app/blob/7e4949a20fc828577fb7626a3262832422f3ae3b/tasks/verdaccio.yaml)
   - Use the [publish script](https://github.com/jupyterlab/jupyterlab/blob/532eb4161c01bc7e93e86c4ecb8cd1728e498458/buildutils/src/publish.ts) so we pick up `dist-tag` handling. Add option to pass `--yes` for CLI
-  - Create a temporary npm package and install/require the new packages
 
 - jupyterlab/lumino migration:
 

@@ -230,7 +230,7 @@ def npm_package(git_repo):
 
 
 @fixture
-def lerna_package(npm_package):
+def workspace_package(npm_package):
     pkg_file = npm_package / "package.json"
     data = json.loads(pkg_file.read_text(encoding="utf-8"))
     data["workspaces"] = dict(packages=["packages/*"])
@@ -282,8 +282,8 @@ def py_dist(py_package, runner, mocker):
 
 
 @fixture
-def npm_dist(npm_package, runner, mocker):
-    changelog_entry = mock_changelog_entry(npm_package, runner, mocker)
+def npm_dist(workspace_package, runner, mocker):
+    changelog_entry = mock_changelog_entry(workspace_package, runner, mocker)
 
     # Create the dist files
     runner(["build-npm"])
@@ -291,7 +291,7 @@ def npm_dist(npm_package, runner, mocker):
     # Finalize the release
     runner(["tag-release"])
 
-    return npm_package
+    return workspace_package
 
 
 @fixture()
@@ -573,8 +573,8 @@ def test_draft_changelog_dry_run(npm_package, mocker, runner, open_mock):
     open_mock.assert_not_called()
 
 
-def test_draft_changelog_lerna(lerna_package, mocker, runner, open_mock):
-    mock_changelog_entry(lerna_package, runner, mocker)
+def test_draft_changelog_lerna(workspace_package, mocker, runner, open_mock):
+    mock_changelog_entry(workspace_package, runner, mocker)
     runner(["draft-changelog"])
     open_mock.assert_called_once()
 
@@ -634,7 +634,7 @@ def test_handle_npm(npm_package, runner):
     runner(["check-npm"])
 
 
-def test_handle_npm_lerna(lerna_package, runner):
+def test_handle_npm_lerna(workspace_package, runner):
     runner(["build-npm"])
     runner(["check-npm"])
 
@@ -722,26 +722,31 @@ def test_extract_dist_py(py_dist, runner, mocker, open_mock, tmp_path):
 )
 def test_extract_dist_npm(npm_dist, runner, mocker, open_mock, tmp_path):
 
-    dist_name = osp.basename(glob("dist/*.tgz")[0])
-    shutil.move(osp.join("dist", dist_name), tmp_path)
+    dist_names = [osp.basename(f) for f in glob("dist/*.tgz")]
+    for dist_name in dist_names:
+        shutil.move(osp.join("dist", dist_name), tmp_path)
 
-    dist_resp = MockRequestReponse(tmp_path / dist_name)
-    get_mock = mocker.patch("requests.get", side_effect=[dist_resp])
+    dist_resp = [MockRequestReponse(tmp_path / dist_name) for dist_name in dist_names]
+    get_mock = mocker.patch("requests.get", side_effect=dist_resp)
 
     tag_name = "bar"
     url = normalize_path(os.getcwd())
     sha = run("git rev-parse HEAD")
     tag = dict(name=tag_name, commit=dict(sha=sha))
-    data = dict(
-        url=url,
-        tag_name=tag_name,
-        target_commitish="main",
-        tags=[tag],
-        assets=[dict(name=dist_name, url="foo")],
-    )
-    open_mock.return_value = MockHTTPResponse([data])
+    data = [
+        dict(
+            url=url,
+            tag_name=tag_name,
+            target_commitish="main",
+            tags=[tag],
+            assets=[dict(name=dist_name, url="foo")],
+        )
+        for dist_name in dist_names
+    ]
+    open_mock.return_value = MockHTTPResponse(data)
     runner(["extract-release", HTML_URL])
     open_mock.assert_called_once()
+    get_mock.assert_called_once()
 
 
 def test_publish_release_py(py_dist, runner, mocker, open_mock):
@@ -766,18 +771,14 @@ def test_publish_release_py(py_dist, runner, mocker, open_mock):
 
 def test_publish_release_npm(npm_dist, runner, mocker, open_mock):
     open_mock.side_effect = [MockHTTPResponse([REPO_DATA]), MockHTTPResponse()]
-
-    orig_run = cli.run
-    called = 0
-
-    def wrapped(cmd, **kwargs):
-        nonlocal called
-        if cmd.startswith("npm publish"):
-            called += 1
-            return ""
-        return orig_run(cmd, **kwargs)
-
-    mock_run = mocker.patch("release_helper.cli.run", wraps=wrapped)
-    runner(["publish-release", HTML_URL, "--npm_token", "abc"])
+    runner(
+        [
+            "publish-release",
+            HTML_URL,
+            "--npm_token",
+            "abc",
+            "--npm_cmd",
+            "npm publish --dry-run",
+        ]
+    )
     assert len(open_mock.call_args) == 2
-    assert called == 1, called
