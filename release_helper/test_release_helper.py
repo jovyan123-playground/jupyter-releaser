@@ -377,7 +377,7 @@ def test_create_release_commit(py_package):
     shas = cli.create_release_commit(version)
     assert normalize_path("dist/foo-0.0.2a0.tar.gz") in shas
     assert normalize_path("dist/foo-0.0.2a0-py3-none-any.whl") in shas
-    shutil.rmtree(py_package / "dist")
+    shutil.rmtree(py_package / "dist", ignore_errors=True)
 
     # Add an npm package and test with that
     create_npm_package(py_package)
