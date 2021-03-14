@@ -908,20 +908,21 @@ def draft_release(
         body,
         True,
         prerelease,
+        files=assets,
     )
 
     # Set the GitHub action output
     print(f"\n\nSetting output release_url={release.html_url}")
     print(f"::set-output name=release_url::{release.html_url}")
 
-    if assets:
-        for asset in assets:
-            prev_dir = os.getcwd()
-            os.chdir(Path(asset).parent)
-            name = Path(asset).name
-            print(f"Uploading {name} to {release.id}")
-            g.repos.upload_release_asset(release.id, name, "")
-            os.chdir(prev_dir)
+    # if assets:
+    #     for asset in assets:
+    #         prev_dir = os.getcwd()
+    #         os.chdir(Path(asset).parent)
+    #         name = Path(asset).name
+    #         print(f"Uploading {name} to {release.id}")
+    #         g.repos.upload_release_asset(release.id, name, "")
+    #         os.chdir(prev_dir)
 
     # Bump to post version if given
     if post_version_spec:
