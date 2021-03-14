@@ -44,6 +44,7 @@ jobs:
           TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
+          NPM_COMMAND: "npm publish --dry-run"
           GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         uses: ./.github/actions/publish-release
         with:

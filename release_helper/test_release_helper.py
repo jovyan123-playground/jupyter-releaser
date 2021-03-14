@@ -679,7 +679,7 @@ def test_delete_release(npm_dist, runner, mocker, gh_repo):
 
     url = ""
     for line in result.output.splitlines():
-        match = re.match(r"::set-output name=url::(.*)", line)
+        match = re.match(r"::set-output name=release_url::(.*)", line)
         if match:
             url = match.groups()[0]
 
