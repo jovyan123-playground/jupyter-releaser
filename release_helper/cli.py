@@ -1077,13 +1077,12 @@ def publish_release(auth, npm_token, npm_cmd, twine_cmd, dry_run, release_url):
     r = g.get_repo(repo)
     release = r.get_release(match["tag"])
 
-    if not dry_run:
-        release = release.update_release(
-            name=release.title,
-            message=release.body,
-            draft=False,
-            prerelease=release.prerelease,
-        )
+    release = release.update_release(
+        name=release.title,
+        message=release.body,
+        draft=not dry_run,
+        prerelease=release.prerelease,
+    )
 
     # Set the GitHub action output
     print(f"\n\nSetting output release_url={release.html_url}")
