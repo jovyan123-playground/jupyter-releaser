@@ -909,8 +909,8 @@ def draft_release(
     )
 
     # Set the GitHub action output
-    print(f"\n\nSetting output url::{release.html_url}")
-    print(f"::set-output name=url::{release.html_url}")
+    print(f"\n\nSetting output release_url={release.html_url}")
+    print(f"::set-output name=release_url::{release.html_url}")
 
     if assets:
         for asset in assets:

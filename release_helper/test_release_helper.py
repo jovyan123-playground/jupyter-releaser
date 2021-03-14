@@ -648,8 +648,8 @@ def test_draft_release_dry_run(py_dist, mocker, runner, gh_repo):
     release.create_mock.assert_called_once()
     release.upload_mock.assert_has_calls(
         [
-            call("dist/foo-1.0.1-py3-none-any.whl", label=""),
-            call("dist/foo-1.0.1.tar.gz", label=""),
+            call("dist/foo-1.0.1-py3-none-any.whl".replace("/", os.sep), label=""),
+            call("dist/foo-1.0.1.tar.gz".replace("/", os.sep), label=""),
         ]
     )
     release.delete_asset_mock.assert_not_called()
@@ -662,7 +662,12 @@ def test_draft_release_final(npm_dist, runner, mocker, gh_repo):
     runner(["draft-release"])
     release.create_mock.assert_called_once()
     release.upload_mock.assert_has_calls(
-        [call("dist/test_draft_release_final0-1.0.1.tgz", label="")]
+        [
+            call(
+                "dist/test_draft_release_final0-1.0.1.tgz".replace("/", os.sep),
+                label="",
+            )
+        ]
     )
     release.delete_asset_mock.assert_not_called()
 
