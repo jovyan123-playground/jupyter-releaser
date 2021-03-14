@@ -118,13 +118,24 @@ def format_pr_entry(target, number, auth=None):
         A formatted PR entry
     """
     owner, repo = target.split("/")
-    g = GhApi(owner=owner, repo=repo, token=auth)
-    pull = g.pulls.get(number)
+    gh = GhApi(owner=owner, repo=repo, token=auth)
+    pull = gh.pulls.get(number)
     title = pull.title
     url = pull.url
     user_name = pull.user.login
     user_url = pull.user.html_url
     return f"- {title} [{number}]({url}) [@{user_name}]({user_url})"
+
+
+def release_for_url(gh, url):
+    """Get release response data given a release url"""
+    release = None
+    for release in gh.repos.list_releases():
+        if release.html_url == url or release.url == url:
+            release = release
+    if not release:
+        raise ValueError(f"No release found for url {url}")
+    return release
 
 
 def get_changelog_entry(branch, repo, version, *, auth=None, resolve_backports=False):
@@ -648,7 +659,7 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
 
     # Create the pull
     owner, repo_name = repo.split("/")
-    g = GhApi(owner=owner, repo=repo_name, token=auth)
+    gh = GhApi(owner=owner, repo=repo_name, token=auth)
     title = f"Automated Changelog for {version} on {branch}"
     body = title
 
@@ -676,7 +687,7 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
         return
 
     run(f"git push {remote} {pr_branch}")
-    g.pulls.create(title, body, head, base, maintainer_can_modify, False, None)
+    gh.pulls.create(title, body, head, base, maintainer_can_modify, False, None)
 
 
 @main.command()
@@ -887,7 +898,7 @@ def draft_release(
     version = get_version()
 
     owner, repo_name = repo.split("/")
-    g = GhApi(owner=owner, repo=repo_name, token=auth)
+    gh = GhApi(owner=owner, repo=repo_name, token=auth)
 
     body = ""
     if changelog_path and Path(changelog_path).exists():
@@ -901,7 +912,7 @@ def draft_release(
     # Create a draft release
     prerelease = is_prerelease(version)
     print(f"Creating release for {version}")
-    release = g.repos.create_release(
+    release = gh.repos.create_release(
         f"v{version}",
         branch,
         f"Release v{version}",
@@ -914,15 +925,6 @@ def draft_release(
     # Set the GitHub action output
     print(f"\n\nSetting output release_url={release.html_url}")
     print(f"::set-output name=release_url::{release.html_url}")
-
-    # if assets:
-    #     for asset in assets:
-    #         prev_dir = os.getcwd()
-    #         os.chdir(Path(asset).parent)
-    #         name = Path(asset).name
-    #         print(f"Uploading {name} to {release.id}")
-    #         g.repos.upload_release_asset(release.id, name, "")
-    #         os.chdir(prev_dir)
 
     # Bump to post version if given
     if post_version_spec:
@@ -950,12 +952,12 @@ def delete_release(auth, release_url):
     if not match:
         raise ValueError(f"Release url is not valid: {release_url}")
 
-    g = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
-    release = g.repos.get_release_by_tag(match["tag"])
+    gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
+    release = gh.repos.get_release_by_tag(match["tag"])
     for asset in release.assets:
-        g.repos.delete_release_asset(asset.id)
+        gh.repos.delete_release_asset(asset.id)
 
-    g.repos.delete_release(release.id)
+    gh.repos.delete_release(release.id)
 
 
 @main.command()
@@ -965,18 +967,19 @@ def extract_release(auth, release_url):
     """Download and verify assets from a draft GitHub release"""
     match = re.match(RELEASE_HTML_PATTERN, release_url)
     match = match or re.match(RELEASE_API_PATTERN, release_url)
-    if not match:
+    if not match:  # pragma: no cover
         raise ValueError(f"Release url is not valid: {release_url}")
 
-    g = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
-    release = g.repos.get_release_by_tag(match["tag"])
+    gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
+    release = release_for_url(gh, release_url)
+
     branch = release.target_commitish
+    tag = release.tag_name
+
     sha = None
     for tag in release.tags:
         if tag.name == release.tag_name:
             sha = tag.commit.sha
-    if not sha:
-        raise ValueError(f'Tag {match["tag"]} not found')
 
     # Run a git checkout
     # Fetch the branch
@@ -1077,11 +1080,10 @@ def publish_release(auth, npm_token, npm_cmd, twine_cmd, dry_run, release_url):
         raise ValueError("No assets published, refusing to finalize release")
 
     # Take the release out of draft
-    repo = f'{match["owner"]}/{match["repo"]}'
-    g = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
-    release = g.repos.get_release_by_tag(match["tag"])
+    gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
+    release = release_for_url(gh, release_url)
 
-    release = g.repos.update_release(
+    release = gh.repos.update_release(
         release.id,
         release.tag_name,
         release.target_commitish,

@@ -126,6 +126,9 @@ Initial commit
 
 HTML_URL = "https://github.com/snuffy/test/releases/tag/bar"
 URL = "https://api.gihub.com/repos/snuffy/test/releases/tags/bar"
+REPO_DATA = dict(
+    body="bar", tag_name="foo", target_commitish="bar", name="foo", prerelease=False
+)
 
 
 @fixture(autouse=True)
@@ -317,9 +320,15 @@ class MockHTTPResponse:
     def __init__(self, data=None):
         self.url = ""
         data = data or {}
-        data.setdefault("id", "foo")
-        data.setdefault("html_url", HTML_URL)
-        data.setdefault("url", URL)
+        if isinstance(data, list):
+            for datum in data:
+                datum.setdefault("id", "foo")
+                datum.setdefault("html_url", HTML_URL)
+                datum.setdefault("url", URL)
+        else:
+            data.setdefault("id", "foo")
+            data.setdefault("html_url", HTML_URL)
+            data.setdefault("url", URL)
         self.data = json.dumps(data).encode("utf-8")
         self.headers = {}
 
@@ -682,8 +691,6 @@ def test_delete_release(npm_dist, runner, mocker, open_mock):
     reason="See https://bugs.python.org/issue26660",
 )
 def test_extract_dist_py(py_dist, runner, mocker, open_mock, tmp_path):
-    sha = run("git rev-parse HEAD")
-
     sdist_name = osp.basename(glob("dist/*.gz")[0])
     shutil.move(osp.join("dist", sdist_name), tmp_path)
     wheel_name = osp.basename(glob("dist/*.whl")[0])
@@ -695,6 +702,7 @@ def test_extract_dist_py(py_dist, runner, mocker, open_mock, tmp_path):
 
     tag_name = "bar"
     url = normalize_path(os.getcwd())
+    sha = run("git rev-parse HEAD")
     tag = dict(name=tag_name, commit=dict(sha=sha))
     data = dict(
         url=url,
@@ -703,7 +711,7 @@ def test_extract_dist_py(py_dist, runner, mocker, open_mock, tmp_path):
         tags=[tag],
         assets=[dict(name=sdist_name, url="foo"), dict(name=wheel_name, url="bar")],
     )
-    open_mock.return_value = MockHTTPResponse(data)
+    open_mock.return_value = MockHTTPResponse([data])
     runner(["extract-release", HTML_URL])
     open_mock.assert_called_once()
 
@@ -713,7 +721,6 @@ def test_extract_dist_py(py_dist, runner, mocker, open_mock, tmp_path):
     reason="See https://bugs.python.org/issue26660",
 )
 def test_extract_dist_npm(npm_dist, runner, mocker, open_mock, tmp_path):
-    sha = run("git rev-parse HEAD")
 
     dist_name = osp.basename(glob("dist/*.tgz")[0])
     shutil.move(osp.join("dist", dist_name), tmp_path)
@@ -723,6 +730,7 @@ def test_extract_dist_npm(npm_dist, runner, mocker, open_mock, tmp_path):
 
     tag_name = "bar"
     url = normalize_path(os.getcwd())
+    sha = run("git rev-parse HEAD")
     tag = dict(name=tag_name, commit=dict(sha=sha))
     data = dict(
         url=url,
@@ -731,16 +739,13 @@ def test_extract_dist_npm(npm_dist, runner, mocker, open_mock, tmp_path):
         tags=[tag],
         assets=[dict(name=dist_name, url="foo")],
     )
-    open_mock.return_value = MockHTTPResponse(data)
+    open_mock.return_value = MockHTTPResponse([data])
     runner(["extract-release", HTML_URL])
     open_mock.assert_called_once()
 
 
 def test_publish_release_py(py_dist, runner, mocker, open_mock):
-    sha = run("git rev-parse HEAD")
-
-    data = dict(title="foo", body="bar", prerelease=False)
-    open_mock.side_effect = [MockHTTPResponse(data), MockHTTPResponse()]
+    open_mock.side_effect = [MockHTTPResponse([REPO_DATA]), MockHTTPResponse()]
 
     orig_run = cli.run
     called = 0
@@ -760,10 +765,7 @@ def test_publish_release_py(py_dist, runner, mocker, open_mock):
 
 
 def test_publish_release_npm(npm_dist, runner, mocker, open_mock):
-    sha = run("git rev-parse HEAD")
-
-    data = dict(title="foo", body="bar", prerelease=False)
-    open_mock.side_effect = [MockHTTPResponse(data), MockHTTPResponse()]
+    open_mock.side_effect = [MockHTTPResponse([REPO_DATA]), MockHTTPResponse()]
 
     orig_run = cli.run
     called = 0
