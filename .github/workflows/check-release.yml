@@ -65,8 +65,8 @@ jobs:
           GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         uses: ./.github/actions/publish-release
         with:
-          release_url: ${{ steps.draft-release.output.release_url }}
+          release_url: ${{ steps.draft-release.outputs.release_url }}
       - name: Delete Release
         run: |
           pip install release-helper
-          release-helper delete-release ${{ steps.draft-release.output.release_url }}
+          release-helper delete-release ${{ steps.draft-release.outputs.release_url }}
