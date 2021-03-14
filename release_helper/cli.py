@@ -1080,7 +1080,7 @@ def publish_release(auth, npm_token, npm_cmd, twine_cmd, dry_run, release_url):
     release = release.update_release(
         name=release.title,
         message=release.body,
-        draft=not dry_run,
+        draft=dry_run,
         prerelease=release.prerelease,
     )
 
