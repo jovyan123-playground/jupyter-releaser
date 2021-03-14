@@ -333,7 +333,7 @@ def build_npm_local(package):
     # Clean the dist folder of existing npm tarballs
     os.makedirs("dist", exist_ok=True)
     dest = Path("dist")
-    for pkg in glob("dist/.tgz"):
+    for pkg in glob("dist/*.tgz"):
         os.remove(pkg)
 
     if osp.isdir(package):
@@ -513,14 +513,6 @@ def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, ou
     print(f"repository={repo}")
 
     is_action = bool(os.environ.get("GITHUB_ACTIONS"))
-
-    if is_action:
-        g = Github(auth)
-        r = g.get_repo(repo)
-        # Do not allow running from a fork, it is too hard to keep
-        # In sync things like workflow files and config.
-        if r.source:
-            raise ValueError("Can only run the workflow on the main repo")
 
     # Set up git config if on GitHub Actions
     if is_action:
@@ -806,10 +798,11 @@ def check_manifest():
 
 @main.command()
 @click.option(
-    "--ignore",
+    "--ignore-glob",
     envvar="IGNORE_MD",
-    default="CHANGELOG.md",
-    help="Comma separated list of glob patterns to ignore",
+    default=["CHANGELOG.md"],
+    multiple=True,
+    help="Ignore test file paths based on glob pattern",
 )
 @click.option(
     "--cache-file",
@@ -823,7 +816,7 @@ def check_manifest():
     envvar="LINKS_EXPIRE",
     help="Duration in seconds for links to be cached (default one week)",
 )
-def check_links(ignore, cache_file, links_expire):
+def check_links(ignore_glob, cache_file, links_expire):
     """Check Markdown file links"""
     cache_dir = osp.expanduser(cache_file).replace(os.sep, "/")
     os.makedirs(cache_dir, exist_ok=True)
@@ -832,7 +825,7 @@ def check_links(ignore, cache_file, links_expire):
     cmd += f"--check-links-cache-name {cache_dir}/check-release-links "
     cmd += " -k .md "
 
-    for spec in ignore.split(","):
+    for spec in ignore_glob:
         cmd += f"--ignore-glob {spec}"
 
     try:

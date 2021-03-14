@@ -557,7 +557,7 @@ def test_check_links(py_package, runner):
     foo = py_package / "FOO.md"
     foo.write_text("http://127.0.0.1:5555")
 
-    runner(["check-links", "--ignore", "FOO.md"])
+    runner(["check-links", "--ignore-glob", "FOO.md"])
 
 
 def test_check_changelog(py_package, tmp_path, mocker, runner):
