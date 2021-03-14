@@ -18,10 +18,12 @@ inputs:
 outputs:
   release_url:
     description: "The html URL of the draft GitHub release"
+    value: ${{ steps.draft-release.outputs.release_url }}
 runs:
   using: "composite"
   steps:
     - shell: bash
+      id: draft-release
       run: |
         set -eux
         pip install release-helper
