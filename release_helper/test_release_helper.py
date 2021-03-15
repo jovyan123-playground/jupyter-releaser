@@ -562,11 +562,10 @@ def test_build_changelog_existing(py_package, mocker, runner):
     run("pre-commit run -a")
 
 
-def test_draft_changelog_full(py_package, mocker, runner):
+def test_draft_changelog_full(py_package, mocker, runner, open_mock):
     mock_changelog_entry(py_package, runner, mocker)
-    post_mock = mocker.patch("requests.post", return_value=MockRequestResponse(""))
     runner(["draft-changelog"])
-    post_mock.assert_called_once()
+    open_mock.assert_called_once()
 
 
 def test_draft_changelog_dry_run(npm_package, mocker, runner):
@@ -574,11 +573,10 @@ def test_draft_changelog_dry_run(npm_package, mocker, runner):
     runner(["draft-changelog", "--dry-run"])
 
 
-def test_draft_changelog_lerna(workspace_package, mocker, runner):
+def test_draft_changelog_lerna(workspace_package, mocker, runner, open_mock):
     mock_changelog_entry(workspace_package, runner, mocker)
-    post_mock = mocker.patch("requests.post", return_value=MockRequestResponse(""))
     runner(["draft-changelog"])
-    post_mock.assert_called_once()
+    open_mock.assert_called_once()
 
 
 def test_check_links(py_package, runner):
