@@ -1030,7 +1030,7 @@ def extract_release(auth, dry_run, release_url):
     for tag in gh.list_tags():
         if tag.ref == f"refs/tags/{tag_name}":
             sha = tag.object.sha
-    if sha is None and not dry_run:
+    if sha is None:
         raise ValueError("Could not find tag")
 
     # Run a git checkout
@@ -1048,6 +1048,7 @@ def extract_release(auth, dry_run, release_url):
     for asset in assets:
         # Check the sha against the published sha
         valid = False
+        path = dist / asset.name
         sha = compute_sha256(path)
 
         for line in commit_message.splitlines():
