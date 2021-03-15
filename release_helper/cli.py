@@ -18,8 +18,7 @@ from tempfile import TemporaryDirectory
 
 import click
 import requests
-from ghapi.all import actions_output
-from ghapi.all import GhApi
+from ghapi.core import GhApi
 from github_activity import generate_activity_md
 from pep440 import is_canonical
 
@@ -30,6 +29,7 @@ START_MARKER = "<!-- <START NEW CHANGELOG ENTRY> -->"
 END_MARKER = "<!-- <END NEW CHANGELOG ENTRY> -->"
 BUF_SIZE = 65536
 TBUMP_CMD = "tbump --non-interactive --only-patch"
+
 
 # Of the form:
 # https://github.com/{owner}/{repo}/releases/tag/{tag}
@@ -137,6 +137,11 @@ def release_for_url(gh, url):
     if not release:
         raise ValueError(f"No release found for url {url}")
     return release
+
+
+def actions_output(name, value):
+    "Print the special GitHub Actions `::set-output` line for `name::value`"
+    print(f"::set-output name={name}::{value}")
 
 
 def get_changelog_entry(branch, repo, version, *, auth=None, resolve_backports=False):
