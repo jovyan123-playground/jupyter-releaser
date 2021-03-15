@@ -347,8 +347,9 @@ class MockHTTPResponse:
 
 
 class MockRequestResponse:
-    def __init__(self, filename):
+    def __init__(self, filename, status_code=200):
         self.filename = filename
+        self.status_code = status_code
 
     def raise_for_status(self):
         pass
@@ -680,7 +681,9 @@ def test_delete_release(npm_dist, runner, mocker, open_mock):
         if match:
             url = match.groups()[0]
 
-    delete_mock = mocker.patch("requests.delete", return_value=MockRequestResponse(""))
+    delete_mock = mocker.patch(
+        "requests.delete", return_value=MockRequestResponse("", status_code=204)
+    )
 
     # Delete the release
     data = dict(assets=[dict(id="bar")])

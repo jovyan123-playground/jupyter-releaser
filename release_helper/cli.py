@@ -966,7 +966,8 @@ def delete_release(auth, release_url):
 
     # ghapi does not support deleting untagged draft releases
     headers = dict(Authorization=f"token {auth}")
-    requests.delete(release.url, headers=headers)
+    resp = requests.delete(release.url, headers=headers)
+    assert resp.status_code == 204, resp.text
 
 
 @main.command()
