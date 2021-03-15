@@ -920,7 +920,7 @@ def draft_release(
     prerelease = is_prerelease(version)
 
     print(f"Creating release for {version}")
-
+    print(f"With assets: {assets}")
     release = gh.repos.create_release(
         f"v{version}",
         branch,
@@ -928,12 +928,8 @@ def draft_release(
         body,
         True,
         prerelease,
+        files=assets,
     )
-
-    for asset in assets:
-        asset = Path(asset)
-        print(f"Uploading asset {asset.name}")
-        gh.upload_file(release, asset)
 
     # Set the GitHub action output
     print(f"\n\nSetting output release_url={release.html_url}")
