@@ -683,7 +683,7 @@ def test_delete_release(npm_dist, runner, mocker, open_mock):
 
     # Delete the release
     data = dict(assets=[dict(id="bar")])
-    open_mock.return_value = MockHTTPResponse(data)
+    open_mock.return_value = MockHTTPResponse([data])
     runner(["delete-release", url])
     assert len(open_mock.call_args) == 2
     delete_mock.assert_called_once()

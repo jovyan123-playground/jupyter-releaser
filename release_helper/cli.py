@@ -950,7 +950,7 @@ def delete_release(auth, release_url):
         raise ValueError(f"Release url is not valid: {release_url}")
 
     gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
-    release = gh.repos.get_release_by_tag(match["tag"])
+    release = release_for_url(gh, release_url)
     for asset in release.assets:
         gh.repos.delete_release_asset(asset.id)
 
