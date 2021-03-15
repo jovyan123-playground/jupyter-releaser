@@ -645,7 +645,7 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
     run("git checkout -- .")
 
     # Make a new branch with a uuid suffix
-    pr_branch = f"changelog-{uuid.uuid1().hex})"
+    pr_branch = f"changelog-{uuid.uuid1().hex}"
 
     if not dry_run:
         run("git stash")
