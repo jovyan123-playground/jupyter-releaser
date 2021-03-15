@@ -694,7 +694,7 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
     run(f"git push {remote} {pr_branch}")
 
     #  title, head, base, body, maintainer_can_modify, draft, issue
-    gh.pulls.create(title, head, base, body, maintainer_can_modify, True, None)
+    gh.pulls.create(title, head, base, body, maintainer_can_modify, False, None)
 
 
 @main.command()
