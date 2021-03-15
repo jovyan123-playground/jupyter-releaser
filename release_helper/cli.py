@@ -980,8 +980,9 @@ def delete_release(auth, release_url):
 
 @main.command()
 @add_options(auth_options)
+@add_options(dry_run_options)
 @click.argument("release_url", nargs=1)
-def extract_release(auth, release_url):
+def extract_release(auth, dry_run, release_url):
     """Download and verify assets from a draft GitHub release"""
     match = re.match(RELEASE_HTML_PATTERN, release_url)
     match = match or re.match(RELEASE_API_PATTERN, release_url)
@@ -991,6 +992,36 @@ def extract_release(auth, release_url):
     owner, repo = match["owner"], match["repo"]
     gh = GhApi(owner=owner, repo=repo, token=auth)
     release = release_for_url(gh, release_url)
+    assets = release.assets
+
+    # Clean the dist folder
+    dist = Path("./dist")
+    if dist.exists():
+        shutil.rmtree(dist, ignore_errors=True)
+    os.makedirs(dist)
+
+    # Fetch, validate, and publish assets
+    for asset in assets:
+        print(f"Fetching {asset.name}...")
+        url = asset.url
+        headers = dict(Authorization=f"token {auth}", Accept="application/octet-stream")
+        path = dist / asset.name
+        with requests.get(url, headers=headers, stream=True) as r:
+            r.raise_for_status()
+            with open(path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            suffix = Path(asset.name).suffix
+            if suffix in [".gz", ".whl"]:
+                check_python_local(path)
+            elif suffix == ".tgz":
+                check_npm_local(path)
+            else:
+                print(f"Nothing to check for {asset.name}")
+
+    # Skip sha validation for dry runs since the remote tag will not exist
+    if dry_run:
+        return
 
     branch = release.target_commitish
     tag_name = release.tag_name
@@ -999,6 +1030,8 @@ def extract_release(auth, release_url):
     for tag in gh.list_tags():
         if tag.ref == f"refs/tags/{tag_name}":
             sha = tag.object.sha
+    if sha is None and not dry_run:
+        raise ValueError("Could not find tag")
 
     # Run a git checkout
     # Fetch the branch
@@ -1012,24 +1045,8 @@ def extract_release(auth, release_url):
             run(f"git fetch origin {branch}", cwd=checkout)
         commit_message = run(f"git log --format=%B -n 1 {sha}", cwd=checkout)
 
-    # Clean the dist folder
-    dist = Path("./dist")
-    if dist.exists():
-        shutil.rmtree(dist, ignore_errors=True)
-    os.makedirs(dist)
-
-    # Fetch, validate, and publish assets
-    for asset in release.assets:
-        print(f"Fetching {asset.name}...")
-        url = asset.url
-        headers = dict(Authorization=f"token {auth}", Accept="application/octet-stream")
-        path = dist / asset.name
-        with requests.get(url, headers=headers, stream=True) as r:
-            r.raise_for_status()
-            with open(path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-        # now check the sha against the published sha
+    for asset in assets:
+        # Check the sha against the published sha
         valid = False
         sha = compute_sha256(path)
 
@@ -1042,14 +1059,6 @@ def extract_release(auth, release_url):
 
         if not valid:  # pragma: no cover
             raise ValueError(f"Invalid file {asset.name}")
-
-        suffix = Path(asset.name).suffix
-        if suffix in [".gz", ".whl"]:
-            check_python_local(path)
-        elif suffix == ".tgz":
-            check_npm_local(path)
-        else:
-            print(f"Nothing to check for {asset.name}")
 
 
 @main.command()
