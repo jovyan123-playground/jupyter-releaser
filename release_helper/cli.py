@@ -919,14 +919,9 @@ def draft_release(
     # Create a draft release
     prerelease = is_prerelease(version)
 
-    prev_dir = os.getcwd()
-    os.chdir(osp.dirname(assets[0]))
-    assets = [osp.basename(a) for a in assets]
-
     print(f"Creating release for {version}")
-    print(f"Including assets: {assets}")
-
-    release = gh.repos.create_release(
+    print(f"With assets: {assets}")
+    release = gh.create_release(
         f"v{version}",
         branch,
         f"Release v{version}",
@@ -935,7 +930,6 @@ def draft_release(
         prerelease,
         files=assets,
     )
-    os.chdir(prev_dir)
 
     # Set the GitHub action output
     print(f"\n\nSetting output release_url={release.html_url}")
@@ -972,10 +966,7 @@ def delete_release(auth, release_url):
     for asset in release.assets:
         gh.repos.delete_release_asset(asset.id)
 
-    # ghapi does not support deleting untagged draft releases
-    headers = dict(Authorization=f"token {auth}")
-    resp = requests.delete(release.url, headers=headers)
-    assert resp.status_code == 204, resp.text
+    gh.repos.delete_release(release.id)
 
 
 @main.command()

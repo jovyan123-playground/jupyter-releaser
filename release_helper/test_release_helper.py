@@ -320,15 +320,14 @@ class MockHTTPResponse:
     def __init__(self, data=None):
         self.url = ""
         data = data or {}
+        defaults = dict(id="foo", html_url=HTML_URL, url=URL, upload_url=URL)
         if isinstance(data, list):
             for datum in data:
-                datum.setdefault("id", "foo")
-                datum.setdefault("html_url", HTML_URL)
-                datum.setdefault("url", URL)
+                for key in defaults:
+                    datum.setdefault(key, defaults[key])
         else:
-            data.setdefault("id", "foo")
-            data.setdefault("html_url", HTML_URL)
-            data.setdefault("url", URL)
+            for key in defaults:
+                data.setdefault(key, defaults[key])
         self.data = json.dumps(data).encode("utf-8")
         self.headers = {}
 
@@ -679,16 +678,11 @@ def test_delete_release(npm_dist, runner, mocker, open_mock):
         if match:
             url = match.groups()[0]
 
-    delete_mock = mocker.patch(
-        "requests.delete", return_value=MockRequestResponse("", status_code=204)
-    )
-
     # Delete the release
     data = dict(assets=[dict(id="bar")])
     open_mock.return_value = MockHTTPResponse([data])
     runner(["delete-release", url])
     assert len(open_mock.call_args) == 2
-    delete_mock.assert_called_once()
 
 
 @pytest.mark.skipif(
