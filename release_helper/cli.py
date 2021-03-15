@@ -652,6 +652,7 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
 
     if not dry_run:
         run("git stash")
+        run(f"git fetch {remote} {branch}")
         run(f"git checkout -b {pr_branch} {remote}/{branch}")
         run("git stash apply")
 
