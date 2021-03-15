@@ -6,7 +6,7 @@ on:
         description: "The URL of the draft GitHub release"
         required: true
 jobs:
-  check_release:
+  publish_release:
     runs-on: ubuntu-latest
     steps:
       - name: Cancel Previous Runs
