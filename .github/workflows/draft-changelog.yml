@@ -1,4 +1,4 @@
-name: Create Changelog
+name: Draft Changelog
 on:
   workflow_dispatch:
     inputs:
@@ -27,8 +27,8 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install -e .
-      - name: Create Changelog
-        uses: ./.github/actions/create-changelog
+      - name: Draft Changelog
+        uses: ./.github/actions/draft-changelog
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version_spec: ${{ github.event.inputs.version_spec }}

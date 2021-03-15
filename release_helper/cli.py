@@ -17,7 +17,9 @@ from subprocess import check_output
 from tempfile import TemporaryDirectory
 
 import click
-from github import Github
+import requests
+from ghapi.all import actions_output
+from ghapi.all import GhApi
 from github_activity import generate_activity_md
 from pep440 import is_canonical
 
@@ -29,6 +31,15 @@ END_MARKER = "<!-- <END NEW CHANGELOG ENTRY> -->"
 BUF_SIZE = 65536
 TBUMP_CMD = "tbump --non-interactive --only-patch"
 
+# Of the form:
+# https://github.com/{owner}/{repo}/releases/tag/{tag}
+RELEASE_HTML_PATTERN = (
+    "https://github.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/releases/tag/(?P<tag>.*)"
+)
+
+# Of the form:
+# https://api.github.com/repos/{owner}/{repo}/releases/tags/{tag}
+RELEASE_API_PATTERN = "https://api.github.com/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/releases/tags/(?P<tag>.*)"
 
 # """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 # Helper Functions
@@ -40,8 +51,12 @@ def run(cmd, **kwargs):
     if not kwargs.pop("quiet", False):
         print(f"+ {cmd}")
 
+    parts = shlex.split(cmd)
+    if "/" not in parts[0]:
+        parts[0] = normalize_path(shutil.which(parts[0]))
+
     try:
-        return check_output(shlex.split(cmd), **kwargs).decode("utf-8").strip()
+        return check_output(parts, **kwargs).decode("utf-8").strip()
     except CalledProcessError as e:
         print(e.output.decode("utf-8").strip())
         raise e
@@ -62,18 +77,7 @@ def get_branch():
 
 
 def get_repo(remote, auth=None):
-    """Get the remote repo org and name"""
-    gh_repo = os.environ.get("GITHUB_REPOSITORY")
-    if gh_repo:
-        g = Github(auth)
-        repo = g.get_repo(gh_repo)
-        # Do not allow running from a fork, it is too hard to keep
-        # In synch things like workflow files and config.
-        if repo.source:
-            raise ValueError("Can only run the workflow on the main repo")
-        else:
-            return gh_repo
-
+    """Get the remote repo owner and name"""
     url = run(f"git remote get-url {remote}")
     url = normalize_path(url)
     parts = url.split("/")[-2:]
@@ -103,7 +107,7 @@ def format_pr_entry(target, number, auth=None):
     Parameters
     ----------
     target : str
-        The GitHub organization/repo
+        The GitHub owner/repo
     number : int
         The PR number to resolve
     auth : str, optional
@@ -114,14 +118,25 @@ def format_pr_entry(target, number, auth=None):
     str
         A formatted PR entry
     """
-    g = Github(auth)
-    repo = g.get_repo(target)
-    pull = repo.get_pull(number)
+    owner, repo = target.split("/")
+    gh = GhApi(owner=owner, repo=repo, token=auth)
+    pull = gh.pulls.get(number)
     title = pull.title
     url = pull.url
     user_name = pull.user.login
     user_url = pull.user.html_url
     return f"- {title} [{number}]({url}) [@{user_name}]({user_url})"
+
+
+def release_for_url(gh, url):
+    """Get release response data given a release url"""
+    release = None
+    for release in gh.repos.list_releases():
+        if release.html_url == url or release.url == url:
+            release = release
+    if not release:
+        raise ValueError(f"No release found for url {url}")
+    return release
 
 
 def get_changelog_entry(branch, repo, version, *, auth=None, resolve_backports=False):
@@ -132,7 +147,7 @@ def get_changelog_entry(branch, repo, version, *, auth=None, resolve_backports=F
     branch : str
         The target branch
     respo : str
-        The GitHub organization/repo
+        The GitHub owner/repo
     version : str
         The new version
     auth : str, optional
@@ -218,26 +233,15 @@ def create_release_commit(version):
 
     shas = dict()
 
-    if osp.exists("setup.py"):
-        files = glob("dist/*")
-        if not len(files) == 2:  # pragma: no cover
-            raise ValueError("Missing distribution files")
+    files = glob("dist/*")
+    if not files:  # pragma: no cover
+        raise ValueError("Missing distribution files")
 
-        for path in files:
-            path = normalize_path(path)
-            sha256 = compute_sha256(path)
-            shas[path] = sha256
-            cmd += f' -m "{path}: {sha256}"'
-
-    if osp.exists("package.json"):
-        data = json.loads(Path("package.json").read_text(encoding="utf-8"))
-        if not data.get("private", False):
-            npm = normalize_path(shutil.which("npm"))
-            filename = normalize_path(run(f"{npm} pack"))
-            sha256 = compute_sha256(filename)
-            shas[filename] = sha256
-            os.remove(filename)
-            cmd += f' -m "{filename}: {sha256}"'
+    for path in sorted(files):
+        path = normalize_path(path)
+        sha256 = compute_sha256(path)
+        shas[path] = sha256
+        cmd += f' -m "{path}: {sha256}"'
 
     run(cmd)
 
@@ -263,6 +267,9 @@ def bump_version(version_spec, version_cmd=""):
             if "bumpversion" in Path("setup.cfg").read_text(encoding="utf-8"):
                 version_cmd = version_cmd or "bump2version"
 
+    if not version_cmd and osp.exists("package.json"):
+        version_cmd = "npm version --git-tag-version false"
+
     if not version_cmd:  # pragma: no cover
         raise ValueError("Please specify a version bump command to run")
 
@@ -274,6 +281,145 @@ def is_prerelease(version):
     """Test whether a version is a prerelease version"""
     final_version = re.match("([0-9]+.[0-9]+.[0-9]+)", version).groups()[0]
     return final_version != version
+
+
+def check_python_local(*dist_files, test_cmd=""):
+    """Check a Python package locally (not as a cli)"""
+    if not dist_files:
+        dist_files = glob("./dist/*")
+    for dist_file in dist_files:
+        if Path(dist_file).suffix not in [".gz", ".whl"]:
+            print(f"Skipping non-python dist file {dist_file}")
+            continue
+        dist_file = normalize_path(dist_file)
+        run(f"twine check {dist_file}")
+
+        if not test_cmd:
+            # Get the package name from the dist file name
+            name = re.match(r"(\S+)-\d", osp.basename(dist_file)).groups()[0]
+            name = name.replace("-", "_")
+            test_cmd = f'python -c "import {name}"'
+
+        # Create venvs to install dist file
+        # run the test command in the venv
+        with TemporaryDirectory() as td:
+            env_path = normalize_path(osp.abspath(td))
+            if os.name == "nt":  # pragma: no cover
+                bin_path = f"{env_path}/Scripts/"
+            else:
+                bin_path = f"{env_path}/bin"
+
+            # Create the virtual env, upgrade pip,
+            # install, and run test command
+            run(f"python -m venv {env_path}")
+            run(f"{bin_path}/python -m pip install -U pip")
+            run(f"{bin_path}/pip install -q {dist_file}")
+            run(f"{bin_path}/{test_cmd}")
+
+
+def extract_npm_tarball(path):
+    """Get the package json info from the tarball"""
+    fid = tarfile.open(path)
+    data = fid.extractfile("package/package.json").read()
+    data = json.loads(data.decode("utf-8"))
+    fid.close()
+    return data
+
+
+def build_npm_local(package):
+    """Handle a local npm package (not as a cli)"""
+    if not osp.exists("./package.json"):
+        print("Skipping build-npm since there is no package.json file")
+        return
+
+    # Clean the dist folder of existing npm tarballs
+    os.makedirs("dist", exist_ok=True)
+    dest = Path("dist")
+    for pkg in glob("dist/*.tgz"):
+        os.remove(pkg)
+
+    if osp.isdir(package):
+        tarball = osp.join(os.getcwd(), run("npm pack"))
+    else:
+        tarball = package
+
+    data = extract_npm_tarball(tarball)
+
+    # Move the tarball into the dist folder if public
+    if not data.get("private", False) == True:
+        shutil.move(tarball, dest)
+    elif osp.isdir(package):
+        os.remove(tarball)
+
+    if "workspaces" in data:
+        packages = data["workspaces"].get("packages", [])
+        for pattern in packages:
+            for path in glob(pattern, recursive=True):
+                path = Path(path)
+                tarball = path / run("npm pack", cwd=path)
+                data = extract_npm_tarball(tarball)
+                if not data.get("private", False) == True:
+                    shutil.move(str(tarball), str(dest))
+                else:
+                    os.remove(tarball)
+
+
+def check_npm_local(*packages, test_cmd=None):
+    if not osp.exists("./package.json"):
+        print("Skipping check-npm since there is no package.json file")
+        return
+
+    if not packages:
+        packages = glob("./dist/*.tgz")
+
+    if not test_cmd:
+        test_cmd = "node index.js"
+
+    tmp_dir = Path(TemporaryDirectory().name)
+    os.makedirs(tmp_dir)
+
+    run("npm init -y", cwd=tmp_dir)
+    names = []
+    staging = tmp_dir / "staging"
+
+    deps = []
+
+    for package in packages:
+        path = Path(package)
+        if path.suffix != ".tgz":
+            print(f"Skipping non-npm package {path.name}")
+            continue
+
+        data = extract_npm_tarball(path)
+        name = data["name"]
+
+        # Skip if it is a private package
+        if data.get("private", False):  # pragma: no cover
+            print(f"Skipping private package {name}")
+            continue
+
+        names.append(name)
+
+        pkg_dir = staging / name
+        if not pkg_dir.parent.exists():
+            os.makedirs(pkg_dir.parent)
+
+        tar = tarfile.open(path)
+        tar.extractall(staging)
+        tar.close()
+
+        shutil.move(staging / "package", pkg_dir)
+
+    install_str = " ".join(f"./staging/{name}" for name in names)
+
+    run(f"npm install {install_str}", cwd=tmp_dir)
+
+    text = "\n".join([f'require("{name}")' for name in names])
+    tmp_dir.joinpath("index.js").write_text(text, encoding="utf-8")
+
+    run(test_cmd, cwd=tmp_dir)
+
+    shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 # """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -304,7 +450,7 @@ branch_options = [
     click.option(
         "--remote", envvar="REMOTE", default="upstream", help="The git remote name"
     ),
-    click.option("--repo", envvar="REPOSITORY", help="The git repo"),
+    click.option("--repo", envvar="GITHUB_REPOSITORY", help="The git repo"),
 ]
 
 auth_options = [
@@ -364,6 +510,8 @@ def add_options(options):
 @click.option("--output", envvar="GITHUB_ENV", help="Output file for env variables")
 def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, output):
     """Prep git and env variables and bump version"""
+    # Clear the dist directory
+    shutil.rmtree("./dist", ignore_errors=True)
 
     # Get the branch
     branch = branch or get_branch()
@@ -373,8 +521,9 @@ def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, ou
     repo = repo or get_repo(remote, auth=auth)
     print(f"repository={repo}")
 
+    is_action = bool(os.environ.get("GITHUB_ACTIONS"))
+
     # Set up git config if on GitHub Actions
-    is_action = "GITHUB_ACTIONS" in os.environ and os.environ["GITHUB_ACTIONS"]
     if is_action:
         # Use email address for the GitHub Actions bot
         # https://github.community/t/github-actions-bot-email-address/17204/6
@@ -426,8 +575,8 @@ IS_PRERELEASE={is_prerelease_str}
 
 @main.command()
 @add_options(changelog_options)
-def prep_changelog(branch, remote, repo, auth, changelog_path, resolve_backports):
-    """Prep changelog entry"""
+def build_changelog(branch, remote, repo, auth, changelog_path, resolve_backports):
+    """Build changelog entry"""
     branch = branch or get_branch()
 
     # Get the new version
@@ -486,9 +635,8 @@ def prep_changelog(branch, remote, repo, auth, changelog_path, resolve_backports
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(dry_run_options)
-@click.option("--body", help="The Pull Request body text")
-def publish_changelog(branch, remote, repo, auth, dry_run, body):
-    """Publish a changelog entry PR"""
+def draft_changelog(branch, remote, repo, auth, dry_run):
+    """Create a changelog entry PR"""
     repo = repo or get_repo(remote, auth=auth)
     branch = branch or get_branch()
     version = get_version()
@@ -508,10 +656,26 @@ def publish_changelog(branch, remote, repo, auth, dry_run, body):
     run(f'git commit -a -m "Generate changelog for {version}"')
 
     # Create the pull
-    g = Github(auth)
-    r = g.get_repo(repo)
+    owner, repo_name = repo.split("/")
+    gh = GhApi(owner=owner, repo=repo_name, token=auth)
     title = f"Automated Changelog for {version} on {branch}"
-    body = body or title
+    body = title
+
+    # Check for multiple versions
+    if Path("package.json").exists():
+        data = json.loads(Path("package.json").read_text(encoding="utf-8"))
+        if data["version"] != version:
+            body += f"\nPython version: {version}"
+            body += f'\nnpm version: {data["name"]}: {data["version"]}'
+        if "workspaces" in data:
+            body += "\nnpm workspace versions:"
+            packages = data["workspaces"].get("packages", [])
+            for pattern in packages:
+                for path in glob(pattern, recursive=True):
+                    text = Path(path / "package.json").read_text()
+                    data = json.loads(text)
+                    body += f'\n{data["name"]}: {data["version"]}'
+
     base = branch
     head = pr_branch
     maintainer_can_modify = True
@@ -521,7 +685,7 @@ def publish_changelog(branch, remote, repo, auth, dry_run, body):
         return
 
     run(f"git push {remote} {pr_branch}")
-    r.create_pull(title, body, base, head, maintainer_can_modify)
+    gh.pulls.create(title, body, head, base, maintainer_can_modify, False, None)
 
 
 @main.command()
@@ -590,13 +754,19 @@ def check_changelog(
 @main.command()
 def build_python():
     """Build Python dist files"""
-    shutil.rmtree("./dist", ignore_errors=True)
+    # Clean the dist folder of existing npm tarballs
+    os.makedirs("dist", exist_ok=True)
+    dest = Path("dist")
+    for pkg in glob("dist/*.gz") + glob("dist/*.whl"):
+        os.remove(pkg)
 
     if osp.exists("./pyproject.toml"):
         run("python -m build .")
-    else:
+    elif osp.exists("./setup.py"):
         run("python setup.py sdist")
         run("python setup.py bdist_wheel")
+    else:
+        print("Skipping build-python since there are no python package files")
 
 
 @main.command()
@@ -606,112 +776,65 @@ def build_python():
 )
 def check_python(dist_files, test_cmd):
     """Check Python dist files"""
-    for dist_file in dist_files:
-        dist_file = normalize_path(dist_file)
-        run(f"twine check {dist_file}")
-
-        if not test_cmd:
-            # Get the package name from the dist file name
-            name = re.match(r"(\S+)-\d", osp.basename(dist_file)).groups()[0]
-            name = name.replace("-", "_")
-            test_cmd = f'python -c "import {name}"'
-
-        # Create venvs to install dist file
-        # run the test command in the venv
-        with TemporaryDirectory() as td:
-            env_path = normalize_path(osp.abspath(td))
-            if os.name == "nt":  # pragma: no cover
-                bin_path = f"{env_path}/Scripts/"
-            else:
-                bin_path = f"{env_path}/bin"
-
-            # Create the virtual env, upgrade pip,
-            # install, and run test command
-            run(f"python -m venv {env_path}")
-            run(f"{bin_path}/python -m pip install -U pip")
-            run(f"{bin_path}/pip install -q {dist_file}")
-            run(f"{bin_path}/{test_cmd}")
+    check_python_local(*dist_files, test_cmd=test_cmd)
 
 
 @main.command()
 @click.argument("package", default=".")
+def build_npm(package):
+    """Build npm package"""
+    build_npm_local(package)
+
+
+@main.command()
+@click.argument("packages", nargs=-1)
 @click.option(
     "--test-cmd", envvar="NPM_TEST_CMD", help="The command to run in isolated install."
 )
-def check_npm(package, test_cmd):
+def check_npm(packages, test_cmd):
     """Check npm package"""
-    npm = normalize_path(shutil.which("npm"))
-    node = normalize_path(shutil.which("node"))
-
-    if osp.isdir(package):
-        should_remove = True
-        tarball = osp.join(os.getcwd(), run(f"{npm} pack"))
-    else:
-        should_remove = True
-        tarball = package
-
-    tarball = normalize_path(tarball)
-
-    # Get the package json info from the tarball
-    fid = tarfile.open(tarball)
-    data = fid.extractfile("package/package.json").read()
-    data = json.loads(data.decode("utf-8"))
-    fid.close()
-
-    # Bail if it is a private package or monorepo
-    if data.get("private", False):  # pragma: no cover
-        raise ValueError("No need to prep a private package")
-
-    # Bail if it is a monorepo
-    if "workspaces" in data:  # pragma: no cover
-        print("Do not handle monorepos here")
-        return
-
-    if not test_cmd:
-        name = data["name"]
-        test_cmd = f"{node} -e \"require('{name}')\""
-
-    # Install in a temporary directory and verify import
-    with TemporaryDirectory() as tempdir:
-        run(f"{npm} init -y", cwd=tempdir)
-        run(f"{npm} install {tarball}", cwd=tempdir)
-        run(test_cmd, cwd=tempdir)
-
-    # Remove the tarball
-    if should_remove:
-        os.remove(tarball)
+    check_npm_local(*packages, test_cmd=test_cmd)
 
 
 @main.command()
 def check_manifest():
     """Check the project manifest"""
-    run("check-manifest -v")
+    if Path("setup.py").exists() or Path("pyproject.toml").exists():
+        run("check-manifest -v")
+    else:
+        print("Skipping build-python since there are no python package files")
 
 
 @main.command()
 @click.option(
-    "--ignore",
-    default="CHANGELOG.md",
-    help="Comma separated list of glob patterns to ignore",
+    "--ignore-glob",
+    envvar="IGNORE_MD",
+    default=["CHANGELOG.md"],
+    multiple=True,
+    help="Ignore test file paths based on glob pattern",
 )
 @click.option(
-    "--cache-file", default="~/.cache/pytest-link-check", help="The cache file to use"
+    "--cache-file",
+    envvar="CACHE_FILE",
+    default="~/.cache/pytest-link-check",
+    help="The cache file to use",
 )
 @click.option(
     "--links-expire",
     default=604800,
+    envvar="LINKS_EXPIRE",
     help="Duration in seconds for links to be cached (default one week)",
 )
-def check_md_links(ignore, cache_file, links_expire):
+def check_links(ignore_glob, cache_file, links_expire):
     """Check Markdown file links"""
     cache_dir = osp.expanduser(cache_file).replace(os.sep, "/")
     os.makedirs(cache_dir, exist_ok=True)
     cmd = "pytest --check-links --check-links-cache "
     cmd += f"--check-links-cache-expire-after {links_expire} "
-    cmd += f"--check-links-cache-name {cache_dir}/check-md-links "
+    cmd += f"--check-links-cache-name {cache_dir}/check-release-links "
     cmd += " -k .md "
 
-    for spec in ignore.split(","):
+    for spec in ignore_glob:
         cmd += f"--ignore-glob {spec}"
 
     try:
@@ -723,7 +846,7 @@ def check_md_links(ignore, cache_file, links_expire):
 @main.command()
 @add_options(branch_options)
 def tag_release(branch, remote, repo):
-    """Create release commit and tag the target branch"""
+    """Create release commit and tag"""
     # Get the new version
     version = get_version()
 
@@ -750,7 +873,7 @@ def tag_release(branch, remote, repo):
     help="The post release version (usually dev)",
 )
 @click.argument("assets", nargs=-1)
-def publish_release(
+def draft_release(
     branch,
     remote,
     repo,
@@ -761,42 +884,45 @@ def publish_release(
     post_version_spec,
     assets,
 ):
-    """Publish GitHub release and handle post version bump"""
+    """Publish Draft GitHub release and handle post version bump"""
     branch = branch or get_branch()
     repo = repo or get_repo(remote, auth=auth)
+
+    assets = assets or glob("dist/*")
 
     if not dry_run:
         run(f"git push {remote} HEAD:{branch} --follow-tags --tags")
 
     version = get_version()
 
-    g = Github(auth)
-    r = g.get_repo(repo)
+    owner, repo_name = repo.split("/")
+    gh = GhApi(owner=owner, repo=repo_name, token=auth)
 
-    changelog = Path(changelog_path).read_text(encoding="utf-8")
+    body = ""
+    if changelog_path and Path(changelog_path).exists():
+        changelog = Path(changelog_path).read_text(encoding="utf-8")
 
-    start = changelog.find(START_MARKER)
-    end = changelog.find(END_MARKER)
-    message = changelog[start + len(START_MARKER) : end]
+        start = changelog.find(START_MARKER)
+        end = changelog.find(END_MARKER)
+        if start != -1 and end != -1:
+            body = changelog[start + len(START_MARKER) : end]
 
     # Create a draft release
     prerelease = is_prerelease(version)
-    release = r.create_git_release(
+    print(f"Creating release for {version}")
+    release = gh.repos.create_release(
         f"v{version}",
+        branch,
         f"Release v{version}",
-        message,
-        draft=True,
-        prerelease=prerelease,
+        body,
+        True,
+        prerelease,
+        files=assets,
     )
 
-    if assets:
-        for asset in assets:
-            upload = release.upload_asset(asset)
-            if dry_run:
-                upload.delete_asset()
-
-    if dry_run:
-        release.delete_release()
+    # Set the GitHub action output
+    print(f"\n\nSetting output release_url={release.html_url}")
+    actions_output("release_url", release.html_url)
 
     # Bump to post version if given
     if post_version_spec:
@@ -812,6 +938,165 @@ def publish_release(
 
         if not dry_run:
             run(f"git push {remote} {branch}")
+
+
+@main.command()
+@add_options(auth_options)
+@click.argument("release-url", nargs=1)
+def delete_release(auth, release_url):
+    """Delete a draft GitHub release by url to the release page"""
+    match = re.match(RELEASE_HTML_PATTERN, release_url)
+    match = match or re.match(RELEASE_API_PATTERN, release_url)
+    if not match:
+        raise ValueError(f"Release url is not valid: {release_url}")
+
+    gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
+    release = release_for_url(gh, release_url)
+    for asset in release.assets:
+        gh.repos.delete_release_asset(asset.id)
+
+    # ghapi does not support deleting untagged draft releases
+    headers = dict(Authorization=f"token {auth}")
+    requests.delete(release.url, headers=headers)
+
+
+@main.command()
+@add_options(auth_options)
+@click.argument("release_url", nargs=1)
+def extract_release(auth, release_url):
+    """Download and verify assets from a draft GitHub release"""
+    match = re.match(RELEASE_HTML_PATTERN, release_url)
+    match = match or re.match(RELEASE_API_PATTERN, release_url)
+    if not match:  # pragma: no cover
+        raise ValueError(f"Release url is not valid: {release_url}")
+
+    gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
+    release = release_for_url(gh, release_url)
+
+    branch = release.target_commitish
+    tag = release.tag_name
+
+    sha = None
+    for tag in release.tags:
+        if tag.name == release.tag_name:
+            sha = tag.commit.sha
+
+    # Run a git checkout
+    # Fetch the branch
+    # Get the commmit message for the branch
+    commit_message = ""
+    with TemporaryDirectory() as td:
+        run(f"git clone {release.url} local --depth 1", cwd=td)
+        checkout = osp.join(td, "local")
+        if not osp.exists(release.url):
+            run(f"git fetch origin {branch} --unshallow", cwd=checkout)
+        commit_message = run(f"git log --format=%B -n 1 {sha}", cwd=checkout)
+
+    # Clean the dist folder
+    dist = Path("./dist")
+    if dist.exists():
+        shutil.rmtree(dist, ignore_errors=True)
+    os.makedirs(dist)
+
+    # Fetch, validate, and publish assets
+    for asset in release.assets:
+        print(f"Fetching {asset.name}...")
+        url = asset.url
+        headers = dict(Authorization=f"token {auth}", Accept="application/octet-stream")
+        path = dist / asset.name
+        with requests.get(url, headers=headers, stream=True) as r:
+            r.raise_for_status()
+            with open(path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        # now check the sha against the published sha
+        valid = False
+        sha = compute_sha256(path)
+
+        for line in commit_message.splitlines():
+            if asset.name in line:
+                if sha in line:
+                    valid = True
+                else:
+                    print("Mismatched sha!")
+
+        if not valid:  # pragma: no cover
+            raise ValueError(f"Invalid file {asset.name}")
+
+        suffix = Path(asset.name).suffix
+        if suffix in [".gz", ".whl"]:
+            check_python_local(path)
+        elif suffix == ".tgz":
+            check_npm_local(path)
+        else:
+            print(f"Nothing to check for {asset.name}")
+
+
+@main.command()
+@add_options(auth_options)
+@click.option("--npm_token", help="A token for the npm release", envvar="NPM_TOKEN")
+@click.option(
+    "--npm_cmd",
+    help="The command to run for npm release",
+    envvar="NPM_COMMAND",
+    default="npm publish",
+)
+@click.option(
+    "--twine_cmd",
+    help="The twine to run for Python release",
+    envvar="TWINE_COMMAND",
+    default="twine upload",
+)
+@add_options(dry_run_options)
+@click.argument("release_url", nargs=1)
+def publish_release(auth, npm_token, npm_cmd, twine_cmd, dry_run, release_url):
+    """Publish release asset(s) and finalize GitHub release"""
+    match = re.match(RELEASE_HTML_PATTERN, release_url)
+    match = match or re.match(RELEASE_API_PATTERN, release_url)
+    if not match:
+        raise ValueError(f"Release url is not valid: {release_url}")
+
+    if npm_token:
+        npmrc = Path(".npmrc")
+        text = "//registry.npmjs.org/:_authToken={npm_token}"
+        if npmrc.exists():
+            text = npmrc.read_text(encoding="utf-8") + text
+        npmrc.write_text(text, encoding="utf-8")
+
+    found = False
+    for path in glob("./dist/*.*"):
+        name = Path(path).name
+        suffix = Path(path).suffix
+        path = normalize_path(path)
+        if suffix in [".gz", ".whl"]:
+            run(f"{twine_cmd} {path}")
+            found = True
+        elif suffix == ".tgz":
+            run(f"{npm_cmd} {path}")
+            found = True
+        else:
+            print(f"Nothing to upload for {name}")
+
+    if not found:  # pragma: no cover
+        raise ValueError("No assets published, refusing to finalize release")
+
+    # Take the release out of draft
+    gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
+    release = release_for_url(gh, release_url)
+
+    release = gh.repos.update_release(
+        release.id,
+        release.tag_name,
+        release.target_commitish,
+        release.name,
+        release.body,
+        dry_run,
+        release.prerelease,
+    )
+
+    # Set the GitHub action output
+    print(f"\n\nSetting output release_url={release.html_url}")
+    actions_output("release_url", release.html_url)
 
 
 if __name__ == "__main__":  # pragma: no cover

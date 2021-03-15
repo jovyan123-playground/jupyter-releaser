@@ -1,4 +1,4 @@
-name: Create Release
+name: Draft Release
 on:
   workflow_dispatch:
     inputs:
@@ -44,8 +44,8 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install -e .
-      - name: Create GitHub Release
-        uses: ./.github/actions/create-release
+      - name: Create Draft GitHub Release
+        uses: ./.github/actions/draft-release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version_spec: ${{ github.event.inputs.version_spec }}

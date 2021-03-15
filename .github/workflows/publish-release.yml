@@ -1,7 +1,10 @@
-name: Check Release
+name: Publish Release
 on:
-  push:
-    branches: "*"
+  workflow_dispatch:
+    inputs:
+      release_url:
+        description: "The URL of the draft GitHub release"
+        required: true
 jobs:
   check_release:
     runs-on: ubuntu-latest
@@ -29,43 +32,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
             ${{ runner.os }}-pip-
-      - name: Cache checked links
-        uses: actions/cache@v2
-        with:
-          path: ~/.cache/pytest-link-check
-          key: ${{ runner.os }}-linkcheck-${{ hashFiles('**/.md') }}-md-links
-          restore-keys: |
-            ${{ runner.os }}-linkcheck-
       - name: Upgrade packaging dependencies
         run: |
           pip install --upgrade pip setuptools wheel --user
       - name: Install Dependencies
         run: |
           pip install -e .
-      - name: Draft Changelog
-        uses: ./.github/actions/draft-changelog
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          version_spec: 0.0.1a0
-          dry_run: true
-      - name: Draft GitHub Release
-        id: draft-release
-        uses: ./.github/actions/draft-release
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          version_spec: 0.0.1a0
-          post_version_spec: 0.1.0.dev0
-          dry_run: true
       - name: Publish Release
-        id: publish-release
         env:
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }} # use final when ready to publish
         uses: ./.github/actions/publish-release
         with:
+          dry_run: true # Set to false ready to publish
           token: ${{ secrets.GITHUB_TOKEN }}
-          release_url: ${{ steps.draft-release.outputs.release_url }}
-          dry_run: true
-      - name: Delete Release
-        run: |
-          pip install release-helper
-          release-helper delete-release ${{ steps.publish-release.outputs.release_url }}
+          release_url: ${{ github.event.inputs.release_url }}
