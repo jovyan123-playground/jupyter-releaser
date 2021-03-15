@@ -18,6 +18,7 @@ from tempfile import TemporaryDirectory
 
 import click
 import requests
+from ghapi.all import actions_output
 from ghapi.all import GhApi
 from github_activity import generate_activity_md
 from pep440 import is_canonical
@@ -921,7 +922,7 @@ def draft_release(
 
     # Set the GitHub action output
     print(f"\n\nSetting output release_url={release.html_url}")
-    print(f"::set-output name=release_url::{release.html_url}")
+    actions_output("release_url", release_for_url.html_url)
 
     # Bump to post version if given
     if post_version_spec:
@@ -1095,7 +1096,7 @@ def publish_release(auth, npm_token, npm_cmd, twine_cmd, dry_run, release_url):
 
     # Set the GitHub action output
     print(f"\n\nSetting output release_url={release.html_url}")
-    print(f"::set-output name=release_url::{release.html_url}")
+    actions_output("release_url", release.html_url)
 
 
 if __name__ == "__main__":  # pragma: no cover
