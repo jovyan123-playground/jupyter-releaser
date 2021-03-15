@@ -919,12 +919,7 @@ def draft_release(
     # Create a draft release
     prerelease = is_prerelease(version)
 
-    prev_dir = os.getcwd()
-    os.chdir(osp.dirname(assets[0]))
-    assets = [osp.basename(a) for a in assets]
-
     print(f"Creating release for {version}")
-    print(f"Including assets: {assets}")
 
     release = gh.repos.create_release(
         f"v{version}",
@@ -933,9 +928,12 @@ def draft_release(
         body,
         True,
         prerelease,
-        files=assets,
     )
-    os.chdir(prev_dir)
+
+    for asset in assets:
+        asset = Path(asset)
+        print(f"Uploading asset {asset.name}")
+        gh.upload_file(release, asset)
 
     # Set the GitHub action output
     print(f"\n\nSetting output release_url={release.html_url}")
