@@ -966,10 +966,7 @@ def delete_release(auth, release_url):
     for asset in release.assets:
         gh.repos.delete_release_asset(asset.id)
 
-    # ghapi does not support deleting untagged draft releases
-    headers = dict(Authorization=f"token {auth}")
-    resp = requests.delete(release.url, headers=headers)
-    assert resp.status_code == 204, resp.text
+    gh.repos.delete_release(release.id)
 
 
 @main.command()
