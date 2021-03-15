@@ -1066,6 +1066,7 @@ def publish_release(auth, npm_token, npm_cmd, twine_cmd, dry_run, release_url):
     for path in glob("./dist/*.*"):
         name = Path(path).name
         suffix = Path(path).suffix
+        path = normalize_path(path)
         if suffix in [".gz", ".whl"]:
             run(f"{twine_cmd} {path}")
             found = True
