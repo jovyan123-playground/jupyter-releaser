@@ -132,9 +132,9 @@ def format_pr_entry(target, number, auth=None):
 def release_for_url(gh, url):
     """Get release response data given a release url"""
     release = None
-    for release in gh.repos.list_releases():
-        if release.html_url == url or release.url == url:
-            release = release
+    for rel in gh.repos.list_releases():
+        if rel.html_url == url or rel.url == url:
+            release = rel
     if not release:
         raise ValueError(f"No release found for url {url}")
     return release
@@ -988,26 +988,28 @@ def extract_release(auth, release_url):
     if not match:  # pragma: no cover
         raise ValueError(f"Release url is not valid: {release_url}")
 
-    gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
+    owner, repo = match["owner"], match["repo"]
+    gh = GhApi(owner=owner, repo=repo, token=auth)
     release = release_for_url(gh, release_url)
 
     branch = release.target_commitish
-    tag = release.tag_name
+    tag_name = release.tag_name
 
     sha = None
-    for tag in release.tags:
-        if tag.name == release.tag_name:
-            sha = tag.commit.sha
+    for tag in gh.list_tags():
+        if tag.ref == f"refs/tags/{tag_name}":
+            sha = tag.object.sha
 
     # Run a git checkout
     # Fetch the branch
     # Get the commmit message for the branch
     commit_message = ""
     with TemporaryDirectory() as td:
-        run(f"git clone {release.url} local --depth 1", cwd=td)
+        url = gh.repos.get().html_url
+        run(f"git clone {url} local", cwd=td)
         checkout = osp.join(td, "local")
-        if not osp.exists(release.url):
-            run(f"git fetch origin {branch} --unshallow", cwd=checkout)
+        if not osp.exists(url):
+            run(f"git fetch origin {branch}", cwd=checkout)
         commit_message = run(f"git log --format=%B -n 1 {sha}", cwd=checkout)
 
     # Clean the dist folder

@@ -706,20 +706,26 @@ def test_extract_dist_py(py_dist, runner, mocker, open_mock, tmp_path):
     get_mock = mocker.patch("requests.get", side_effect=helper)
 
     tag_name = "bar"
-    url = normalize_path(os.getcwd())
-    sha = run("git rev-parse HEAD")
-    tag = dict(name=tag_name, commit=dict(sha=sha))
+
     dist_names = [osp.basename(f) for f in glob("staging/dist/*.*")]
-    data = dict(
-        url=url,
-        tag_name=tag_name,
-        target_commitish="main",
-        tags=[tag],
-        assets=[dict(name=dist_name, url=dist_name) for dist_name in dist_names],
-    )
-    open_mock.return_value = MockHTTPResponse([data])
+    releases = [
+        dict(
+            tag_name=tag_name,
+            target_commitish="main",
+            assets=[dict(name=dist_name, url=dist_name) for dist_name in dist_names],
+        )
+    ]
+    sha = run("git rev-parse HEAD")
+    tags = [dict(ref=f"refs/tags/{tag_name}", object=dict(sha=sha))]
+    url = normalize_path(os.getcwd())
+    open_mock.side_effect = [
+        MockHTTPResponse(releases),
+        MockHTTPResponse(tags),
+        MockHTTPResponse(dict(html_url=url)),
+    ]
+
     runner(["extract-release", HTML_URL])
-    open_mock.assert_called_once()
+    assert len(open_mock.mock_calls) == 3
     assert len(get_mock.mock_calls) == len(dist_names) == 2
 
 
@@ -738,20 +744,25 @@ def test_extract_dist_npm(npm_dist, runner, mocker, open_mock, tmp_path):
     get_mock = mocker.patch("requests.get", side_effect=helper)
 
     dist_names = [osp.basename(f) for f in glob("staging/dist/*.tgz")]
-    tag_name = "bar"
     url = normalize_path(os.getcwd())
+    tag_name = "bar"
+    releases = [
+        dict(
+            tag_name=tag_name,
+            target_commitish="main",
+            assets=[dict(name=dist_name, url=dist_name) for dist_name in dist_names],
+        )
+    ]
     sha = run("git rev-parse HEAD")
-    tag = dict(name=tag_name, commit=dict(sha=sha))
-    data = dict(
-        url=url,
-        tag_name=tag_name,
-        target_commitish="main",
-        tags=[tag],
-        assets=[dict(name=dist_name, url=dist_name) for dist_name in dist_names],
-    )
-    open_mock.return_value = MockHTTPResponse([data])
+    tags = [dict(ref=f"refs/tags/{tag_name}", object=dict(sha=sha))]
+    open_mock.side_effect = [
+        MockHTTPResponse(releases),
+        MockHTTPResponse(tags),
+        MockHTTPResponse(dict(html_url=url)),
+    ]
+
     runner(["extract-release", HTML_URL])
-    open_mock.assert_called_once()
+    assert len(open_mock.mock_calls) == 3
     assert len(get_mock.mock_calls) == len(dist_names) == 3
 
 
