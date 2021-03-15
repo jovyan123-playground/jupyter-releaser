@@ -685,7 +685,8 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
         return
 
     run(f"git push {remote} {pr_branch}")
-    #  title, head, base, body, maintainer_can_modify, draft, issue
+
+    # ghapi cannot handle creating pull requests
     data = dict(
         title=title,
         head=pr_branch,
@@ -695,11 +696,12 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
         draft=True,
     )
     headers = dict(Authorization=f"token {auth}")
-    requests.post(
+    resp = requests.post(
         f"https://api.github.com/repos/{owner}/{repo_name}/pulls",
         data=data,
         headers=headers,
     )
+    assert resp.status_code == 200, resp.text
 
 
 @main.command()
