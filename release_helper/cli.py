@@ -642,7 +642,7 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
     version = get_version()
 
     # Check out any unstaged files from version bump
-    run("git checkout -- .")
+    # run("git checkout -- .")
 
     # Make a new branch with a uuid suffix
     pr_branch = f"changelog-{uuid.uuid1().hex}"
