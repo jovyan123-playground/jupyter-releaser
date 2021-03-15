@@ -921,7 +921,7 @@ def draft_release(
 
     print(f"Creating release for {version}")
     print(f"With assets: {assets}")
-    release = gh.repos.create_release(
+    release = gh.create_release(
         f"v{version}",
         branch,
         f"Release v{version}",
