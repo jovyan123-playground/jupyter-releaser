@@ -919,6 +919,7 @@ def draft_release(
     # Create a draft release
     prerelease = is_prerelease(version)
     print(f"Creating release for {version}")
+    print(f"Including assets: {assets}")
     release = gh.repos.create_release(
         f"v{version}",
         branch,
