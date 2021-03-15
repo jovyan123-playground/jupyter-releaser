@@ -922,7 +922,7 @@ def draft_release(
 
     # Set the GitHub action output
     print(f"\n\nSetting output release_url={release.html_url}")
-    actions_output("release_url", release_for_url.html_url)
+    actions_output("release_url", release.html_url)
 
     # Bump to post version if given
     if post_version_spec:
