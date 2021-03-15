@@ -32,5 +32,5 @@ runs:
           export NPM_COMMAND=${NPM_COMMAND:-"npm publish --dry-run"}
         fi
 
-        release-helper extract-release
+        release-helper extract-release ${{ inputs.release_url }}
         release-helper publish-release ${{ inputs.release_url }}
