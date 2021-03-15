@@ -642,7 +642,7 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
     version = get_version()
 
     # Check out any unstaged files from version bump
-    # run("git checkout -- .")
+    run("git checkout -- .")
 
     # Make a new branch with a uuid suffix
     pr_branch = f"changelog-{uuid.uuid1().hex}"
@@ -687,15 +687,15 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
 
     run(f"git push {remote} {pr_branch}")
 
-    # data = dict(
-    #     title=title,
-    #     head=pr_branch,
-    #     base=branch,
-    #     body=body,
-    #     maintainer_can_modify=True,
-    #     draft=True,
-    # )
-    # gh.pulls.create(data)
+    data = dict(
+        title=title,
+        head=pr_branch,
+        base=branch,
+        body=body,
+        maintainer_can_modify=True,
+        draft=True,
+    )
+    gh.pulls.create(data)
 
 
 @main.command()
