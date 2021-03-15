@@ -232,25 +232,15 @@ def create_release_commit(version):
 
     shas = dict()
 
-    if osp.exists("setup.py"):
-        files = glob("dist/*")
-        if not len(files) == 2:  # pragma: no cover
-            raise ValueError("Missing distribution files")
+    files = glob("dist/*")
+    if not files:  # pragma: no cover
+        raise ValueError("Missing distribution files")
 
-        for path in files:
-            path = normalize_path(path)
-            sha256 = compute_sha256(path)
-            shas[path] = sha256
-            cmd += f' -m "{path}: {sha256}"'
-
-    if osp.exists("package.json"):
-        data = json.loads(Path("package.json").read_text(encoding="utf-8"))
-        if not data.get("private", False):
-            filename = normalize_path(run("npm pack"))
-            sha256 = compute_sha256(filename)
-            shas[filename] = sha256
-            os.remove(filename)
-            cmd += f' -m "{filename}: {sha256}"'
+    for path in sorted(files):
+        path = normalize_path(path)
+        sha256 = compute_sha256(path)
+        shas[path] = sha256
+        cmd += f' -m "{path}: {sha256}"'
 
     run(cmd)
 
@@ -355,8 +345,10 @@ def build_npm_local(package):
     data = extract_npm_tarball(tarball)
 
     # Move the tarball into the dist folder if public
-    if not data["private"]:
+    if not data.get("private", False) == True:
         shutil.move(tarball, dest)
+    elif osp.isdir(package):
+        os.remove(tarball)
 
     if "workspaces" in data:
         packages = data["workspaces"].get("packages", [])
@@ -364,8 +356,11 @@ def build_npm_local(package):
             for path in glob(pattern, recursive=True):
                 path = Path(path)
                 tarball = path / run("npm pack", cwd=path)
-                raise ValueError("make sure the package is public")
-                shutil.move(str(tarball), str(dest))
+                data = extract_npm_tarball(tarball)
+                if not data.get("private", False) == True:
+                    shutil.move(str(tarball), str(dest))
+                else:
+                    os.remove(tarball)
 
 
 def check_npm_local(*packages, test_cmd=None):
@@ -1022,7 +1017,7 @@ def extract_release(auth, release_url):
                 else:
                     print("Mismatched sha!")
 
-        if not valid:
+        if not valid:  # pragma: no cover
             raise ValueError(f"Invalid file {asset.name}")
 
         suffix = Path(asset.name).suffix

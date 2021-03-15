@@ -346,7 +346,7 @@ class MockHTTPResponse:
         return self.code
 
 
-class MockRequestReponse:
+class MockRequestResponse:
     def __init__(self, filename):
         self.filename = filename
 
@@ -444,7 +444,7 @@ def test_create_release_commit(py_package):
     version = cli.get_version()
     run("python -m build .")
     shas = cli.create_release_commit(version)
-    assert len(shas) == 3
+    assert len(shas) == 2
     assert normalize_path("dist/foo-0.0.2a1.tar.gz") in shas
 
 
@@ -691,15 +691,48 @@ def test_delete_release(npm_dist, runner, mocker, open_mock):
     reason="See https://bugs.python.org/issue26660",
 )
 def test_extract_dist_py(py_dist, runner, mocker, open_mock, tmp_path):
-    sdist_name = osp.basename(glob("dist/*.gz")[0])
-    shutil.move(osp.join("dist", sdist_name), tmp_path)
-    wheel_name = osp.basename(glob("dist/*.whl")[0])
-    shutil.move(osp.join("dist", wheel_name), tmp_path)
 
-    sdist_resp = MockRequestReponse(tmp_path / sdist_name)
-    wheel_resp = MockRequestReponse(tmp_path / wheel_name)
-    get_mock = mocker.patch("requests.get", side_effect=[sdist_resp, wheel_resp])
+    os.makedirs("staging")
+    shutil.move("dist", "staging")
 
+    def helper(path, **kwargs):
+        return MockRequestResponse(f"staging/dist/{path}")
+
+    get_mock = mocker.patch("requests.get", side_effect=helper)
+
+    tag_name = "bar"
+    url = normalize_path(os.getcwd())
+    sha = run("git rev-parse HEAD")
+    tag = dict(name=tag_name, commit=dict(sha=sha))
+    dist_names = [osp.basename(f) for f in glob("staging/dist/*.*")]
+    data = dict(
+        url=url,
+        tag_name=tag_name,
+        target_commitish="main",
+        tags=[tag],
+        assets=[dict(name=dist_name, url=dist_name) for dist_name in dist_names],
+    )
+    open_mock.return_value = MockHTTPResponse([data])
+    runner(["extract-release", HTML_URL])
+    open_mock.assert_called_once()
+    assert len(get_mock.mock_calls) == len(dist_names) == 2
+
+
+@pytest.mark.skipif(
+    os.name == "nt" and sys.version_info.major == 3 and sys.version_info.minor < 8,
+    reason="See https://bugs.python.org/issue26660",
+)
+def test_extract_dist_npm(npm_dist, runner, mocker, open_mock, tmp_path):
+
+    os.makedirs("staging")
+    shutil.move("dist", "staging")
+
+    def helper(path, **kwargs):
+        return MockRequestResponse(f"staging/dist/{path}")
+
+    get_mock = mocker.patch("requests.get", side_effect=helper)
+
+    dist_names = [osp.basename(f) for f in glob("staging/dist/*.tgz")]
     tag_name = "bar"
     url = normalize_path(os.getcwd())
     sha = run("git rev-parse HEAD")
@@ -709,44 +742,12 @@ def test_extract_dist_py(py_dist, runner, mocker, open_mock, tmp_path):
         tag_name=tag_name,
         target_commitish="main",
         tags=[tag],
-        assets=[dict(name=sdist_name, url="foo"), dict(name=wheel_name, url="bar")],
+        assets=[dict(name=dist_name, url=dist_name) for dist_name in dist_names],
     )
     open_mock.return_value = MockHTTPResponse([data])
     runner(["extract-release", HTML_URL])
     open_mock.assert_called_once()
-
-
-@pytest.mark.skipif(
-    os.name == "nt" and sys.version_info.major == 3 and sys.version_info.minor < 8,
-    reason="See https://bugs.python.org/issue26660",
-)
-def test_extract_dist_npm(npm_dist, runner, mocker, open_mock, tmp_path):
-
-    dist_names = [osp.basename(f) for f in glob("dist/*.tgz")]
-    for dist_name in dist_names:
-        shutil.move(osp.join("dist", dist_name), tmp_path)
-
-    dist_resp = [MockRequestReponse(tmp_path / dist_name) for dist_name in dist_names]
-    get_mock = mocker.patch("requests.get", side_effect=dist_resp)
-
-    tag_name = "bar"
-    url = normalize_path(os.getcwd())
-    sha = run("git rev-parse HEAD")
-    tag = dict(name=tag_name, commit=dict(sha=sha))
-    data = [
-        dict(
-            url=url,
-            tag_name=tag_name,
-            target_commitish="main",
-            tags=[tag],
-            assets=[dict(name=dist_name, url="foo")],
-        )
-        for dist_name in dist_names
-    ]
-    open_mock.return_value = MockHTTPResponse(data)
-    runner(["extract-release", HTML_URL])
-    open_mock.assert_called_once()
-    get_mock.assert_called_once()
+    assert len(get_mock.mock_calls) == len(dist_names) == 3
 
 
 def test_publish_release_py(py_dist, runner, mocker, open_mock):
