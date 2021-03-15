@@ -2,6 +2,20 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.0.10
+
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.0.9...b424af1235e07ac1e35cc2b8c99c6d876bf94c1d))
+
+- fix upload handling [#56](https://github.com/jovyan123-playground/release-helper-playground/pull/56) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-15&to=2021-03-15&type=c))
+
+[@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-15..2021-03-15&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.0.9
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.0.8...7eda7afbf8f10cbff0ee5bd9a2c05e6513a31480))
@@ -13,8 +27,6 @@
 ([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-12&to=2021-03-15&type=c))
 
 [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-12..2021-03-15&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.0.8
 
