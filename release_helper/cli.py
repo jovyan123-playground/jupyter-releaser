@@ -83,6 +83,7 @@ def get_repo(remote, auth=None):
     parts = url.split("/")[-2:]
     if ":" in parts[0]:
         parts[0] = parts[0].split(":")[-1]
+    parts[1] = parts[1].replace(".git", "")
     return "/".join(parts)
 
 
