@@ -693,15 +693,8 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
 
     run(f"git push {remote} {pr_branch}")
 
-    data = dict(
-        title=title,
-        head=pr_branch,
-        base=branch,
-        body=body,
-        maintainer_can_modify=True,
-        draft=True,
-    )
-    gh.pulls.create(data)
+    #  title, head, base, body, maintainer_can_modify, draft, issue
+    gh.pulls.create(title, head, base, body, maintainer_can_modify, True, None)
 
 
 @main.command()
