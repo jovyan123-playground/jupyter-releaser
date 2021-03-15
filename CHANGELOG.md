@@ -2,6 +2,20 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.0.9
+
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.0.8...7eda7afbf8f10cbff0ee5bd9a2c05e6513a31480))
+
+- Publish all assets and add dist publish script [#45](https://github.com/jovyan123-playground/release-helper-playground/pull/45) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-12&to=2021-03-15&type=c))
+
+[@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-12..2021-03-15&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.0.8
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.0.7...042d644363f60cac6278f3fdfd234aa082700ca7))
@@ -19,8 +33,6 @@
 ([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-10&to=2021-03-12&type=c))
 
 [@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-10..2021-03-12&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Agithub-actions+updated%3A2021-03-10..2021-03-12&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-10..2021-03-12&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.0.7
 
