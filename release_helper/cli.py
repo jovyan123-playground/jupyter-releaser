@@ -639,6 +639,9 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
     """Create a changelog entry PR"""
     repo = repo or get_repo(remote, auth=auth)
     branch = branch or get_branch()
+    import pdb
+
+    pdb.set_trace()
     version = get_version()
 
     # Check out any unstaged files from version bump
