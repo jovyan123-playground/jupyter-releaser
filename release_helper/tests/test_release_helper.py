@@ -4,7 +4,6 @@ import json
 import os
 import os.path as osp
 import re
-import shlex
 import shutil
 import sys
 import traceback
@@ -18,7 +17,6 @@ from urllib.request import OpenerDirector
 
 import pytest
 from click.testing import CliRunner
-from ghapi.all import GhApi
 from pytest import fixture
 
 from release_helper import cli

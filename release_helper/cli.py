@@ -1,28 +1,11 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
-import hashlib
-import json
-import os
 import os.path as osp
-import re
-import shlex
-import shutil
-import sys
-import tarfile
-import uuid
 from glob import glob
 from pathlib import Path
-from subprocess import CalledProcessError
-from subprocess import check_output
-from tempfile import TemporaryDirectory
 
 import click
-import requests
-from ghapi.core import GhApi
-from github_activity import generate_activity_md
-from pep440 import is_canonical
 
-from release_helper import __version__
 from release_helper import changelog
 from release_helper import npm
 from release_helper import other
