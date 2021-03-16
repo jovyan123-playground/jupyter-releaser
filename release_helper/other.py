@@ -10,7 +10,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import requests
-from ghapi import GhApi
+from ghapi.core import GhApi
 from pep440 import is_canonical
 
 from release_helper import changelog

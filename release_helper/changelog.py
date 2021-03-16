@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 
-from ghapi import GhApi
+from ghapi.core import GhApi
 from github_activity import generate_activity_md
 
 from release_helper import util
@@ -131,7 +131,7 @@ def build_entry(branch, remote, repo, auth, changelog_path, resolve_backports):
 
     # Get changelog entry
 
-    entry = util.get_version_entry(
+    entry = get_version_entry(
         f"{remote}/{branch}",
         repo,
         version,

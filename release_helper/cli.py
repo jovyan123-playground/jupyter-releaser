@@ -105,7 +105,7 @@ def add_options(options):
 @click.option("--output", envvar="GITHUB_ENV", help="Output file for env variables")
 def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, output):
     """Prep git and env variables and bump version"""
-    util.prep_env(
+    other.prep_env(
         version_spec, version_cmd, branch, remote, repo, auth, username, output
     )
 
@@ -147,7 +147,7 @@ def build_python(dist_dir):
     if not osp.exists("pyproject.toml") and not osp.exists("setup.py"):
         print("Skipping build-python since there are no python package files")
         return
-    python.build(dist_dir)
+    python.build_dist(dist_dir)
 
 
 @main.command()
@@ -221,7 +221,7 @@ def check_manifest():
 )
 def check_links(ignore_glob, cache_file, links_expire):
     """Check Markdown file links"""
-    util.check_links(ignore_glob, cache_file, links_expire)
+    other.check_links(ignore_glob, cache_file, links_expire)
 
 
 @main.command()
@@ -229,7 +229,7 @@ def check_links(ignore_glob, cache_file, links_expire):
 @add_options(dist_dir_options)
 @click.option(
     "--no-git-tag-workspace",
-    flag=True,
+    is_flag=True,
     help="Whether to skip tagging npm workspace packages",
 )
 def tag_release(branch, remote, repo, dist_dir, no_git_tag_workspace):
