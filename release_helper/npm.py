@@ -12,15 +12,6 @@ from tempfile import TemporaryDirectory
 from release_helper import util
 
 
-def extract_tarball(path):
-    """Get the package json info from the tarball"""
-    fid = tarfile.open(path)
-    data = fid.extractfile("package/package.json").read()
-    data = json.loads(data.decode("utf-8"))
-    fid.close()
-    return data
-
-
 def build_dist(package, dist_dir):
     """Build npm dist file(s) from a package"""
     # Clean the dist folder of existing npm tarballs
@@ -34,7 +25,7 @@ def build_dist(package, dist_dir):
     else:
         tarball = package
 
-    data = extract_tarball(tarball)
+    data = extract_package(tarball)
 
     # Move the tarball into the dist folder if public
     if not data.get("private", False) == True:
@@ -48,7 +39,7 @@ def build_dist(package, dist_dir):
             for path in glob(pattern, recursive=True):
                 path = Path(path)
                 tarball = path / util.run("npm pack", cwd=path)
-                data = extract_tarball(tarball)
+                data = extract_package(tarball)
                 if not data.get("private", False) == True:
                     shutil.move(str(tarball), str(dest))
                 else:
@@ -77,7 +68,7 @@ def check_dist(dist_dir, test_cmd=None):
             print(f"Skipping non-npm package {path.name}")
             continue
 
-        data = extract_tarball(path)
+        data = extract_package(path)
         name = data["name"]
 
         # Skip if it is a private package
@@ -109,7 +100,17 @@ def check_dist(dist_dir, test_cmd=None):
     shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+def extract_package(path):
+    """Get the package json info from the tarball"""
+    fid = tarfile.open(path)
+    data = fid.extractfile("package/package.json").read()
+    data = json.loads(data.decode("utf-8"))
+    fid.close()
+    return data
+
+
 def handle_auth_token(npm_token):
+    """Handle token auth for npm registry"""
     npmrc = Path(".npmrc")
     text = "//registry.npmjs.org/:_authToken={npm_token}"
     if npmrc.exists():

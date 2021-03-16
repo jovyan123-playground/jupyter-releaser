@@ -19,10 +19,12 @@ from release_helper import python
 from release_helper import util
 
 
-def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, output):
-
+def prep_env(
+    version_spec, version_cmd, branch, remote, repo, auth, dist_dir, username, output
+):
+    """Prep git and env variables and bump version"""
     # Clear the dist directory
-    shutil.rmtree("./dist", ignore_errors=True)
+    shutil.rmtree(dist_dir, ignore_errors=True)
 
     # Get the branch
     branch = branch or util.get_branch()

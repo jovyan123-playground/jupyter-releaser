@@ -7,8 +7,8 @@ from pathlib import Path
 import click
 
 from release_helper import changelog
+from release_helper import lib
 from release_helper import npm
-from release_helper import other
 from release_helper import python
 from release_helper import util
 
@@ -101,12 +101,23 @@ def add_options(options):
 )
 @add_options(branch_options)
 @add_options(auth_options)
+@add_options(dist_dir_options)
 @click.option("--username", envvar="GITHUB_ACTOR", help="The git username")
 @click.option("--output", envvar="GITHUB_ENV", help="Output file for env variables")
-def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, output):
+def prep_env(
+    version_spec, version_cmd, branch, remote, repo, auth, dist_dir, username, output
+):
     """Prep git and env variables and bump version"""
-    other.prep_env(
-        version_spec, version_cmd, branch, remote, repo, auth, username, output
+    lib.prep_env(
+        version_spec,
+        version_cmd,
+        branch,
+        remote,
+        repo,
+        auth,
+        dist_dir,
+        username,
+        output,
     )
 
 
@@ -123,7 +134,7 @@ def build_changelog(branch, remote, repo, auth, changelog_path, resolve_backport
 @add_options(dry_run_options)
 def draft_changelog(branch, remote, repo, auth, dry_run):
     """Create a changelog entry PR"""
-    other.draft_changelog(branch, remote, repo, auth, dry_run)
+    lib.draft_changelog(branch, remote, repo, auth, dry_run)
 
 
 @main.command()
@@ -221,7 +232,7 @@ def check_manifest():
 )
 def check_links(ignore_glob, cache_file, links_expire):
     """Check Markdown file links"""
-    other.check_links(ignore_glob, cache_file, links_expire)
+    lib.check_links(ignore_glob, cache_file, links_expire)
 
 
 @main.command()
@@ -234,7 +245,7 @@ def check_links(ignore_glob, cache_file, links_expire):
 )
 def tag_release(branch, remote, repo, dist_dir, no_git_tag_workspace):
     """Create release commit and tag"""
-    other.tag_release(branch, remote, repo, dist_dir, no_git_tag_workspace)
+    lib.tag_release(branch, remote, repo, dist_dir, no_git_tag_workspace)
 
 
 @main.command()
@@ -263,7 +274,7 @@ def draft_release(
     assets,
 ):
     """Publish Draft GitHub release and handle post version bump"""
-    other.draft_release(
+    lib.draft_release(
         branch,
         remote,
         repo,
@@ -282,7 +293,7 @@ def draft_release(
 @click.argument("release-url", nargs=1)
 def delete_release(auth, release_url):
     """Delete a draft GitHub release by url to the release page"""
-    other.delete_release(auth, release_url)
+    lib.delete_release(auth, release_url)
 
 
 @main.command()
@@ -292,7 +303,7 @@ def delete_release(auth, release_url):
 @click.argument("release_url", nargs=1)
 def extract_release(auth, dist_dir, dry_run, release_url):
     """Download and verify assets from a draft GitHub release"""
-    other.extract_release(auth, dist_dir, dry_run, release_url)
+    lib.extract_release(auth, dist_dir, dry_run, release_url)
 
 
 @main.command()
@@ -317,7 +328,7 @@ def publish_release(
     auth, dist_dir, npm_token, npm_cmd, twine_cmd, dry_run, release_url
 ):
     """Publish release asset(s) and finalize GitHub release"""
-    other.publish_release(
+    lib.publish_release(
         auth, dist_dir, npm_token, npm_cmd, twine_cmd, dry_run, release_url
     )
 

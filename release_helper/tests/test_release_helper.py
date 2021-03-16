@@ -22,7 +22,6 @@ from pytest import fixture
 from release_helper import changelog
 from release_helper import cli
 from release_helper import npm
-from release_helper import other
 from release_helper import python
 from release_helper import util
 from release_helper.util import bump_version
