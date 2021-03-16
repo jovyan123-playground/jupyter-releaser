@@ -899,13 +899,7 @@ def draft_release(
 
     assets = assets or glob("dist/*")
 
-    if not dry_run:
-        run(f"git push {remote} HEAD:{branch} --follow-tags --tags")
-
     version = get_version()
-
-    owner, repo_name = repo.split("/")
-    gh = GhApi(owner=owner, repo=repo_name, token=auth)
 
     body = ""
     if changelog_path and Path(changelog_path).exists():
@@ -919,8 +913,25 @@ def draft_release(
     # Create a draft release
     prerelease = is_prerelease(version)
 
+    # Bump to post version if given
+    if post_version_spec:
+        bump_version(post_version_spec, version_cmd)
+        post_version = get_version()
+        if "setup.py" in os.listdir(".") and not is_canonical(
+            version
+        ):  # pragma: no cover
+            raise ValueError(f"\n\nInvalid post version {version}")
+
+        print(f"Bumped version to {post_version}")
+        run(f'git commit -a -m "Bump to {post_version}"')
+
+    if not dry_run:
+        run(f"git push {remote} HEAD:{branch} --follow-tags --tags")
+
     print(f"Creating release for {version}")
     print(f"With assets: {assets}")
+    owner, repo_name = repo.split("/")
+    gh = GhApi(owner=owner, repo=repo_name, token=auth)
     release = gh.create_release(
         f"v{version}",
         branch,
@@ -934,21 +945,6 @@ def draft_release(
     # Set the GitHub action output
     print(f"\n\nSetting output release_url={release.html_url}")
     actions_output("release_url", release.html_url)
-
-    # Bump to post version if given
-    if post_version_spec:
-        bump_version(post_version_spec, version_cmd)
-        post_version = get_version()
-        if "setup.py" in os.listdir(".") and not is_canonical(
-            version
-        ):  # pragma: no cover
-            raise ValueError(f"\n\nInvalid post version {version}")
-
-        print(f"Bumped version to {post_version}")
-        run(f'git commit -a -m "Bump to {post_version}"')
-
-        if not dry_run:
-            run(f"git push {remote} {branch}")
 
 
 @main.command()
