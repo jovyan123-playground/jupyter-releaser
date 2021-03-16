@@ -177,7 +177,7 @@ def get_changelog_entry(branch, repo, version, *, auth=None, resolve_backports=F
 
     if not md:
         print("No PRs found")
-        return f"## {version}\nNo merged PRs"
+        return f"## {version}\n\nNo merged PRs"
 
     md = md.splitlines()
 
