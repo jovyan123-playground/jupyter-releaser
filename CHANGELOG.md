@@ -2,6 +2,22 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.1.0
+
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.0.9...708ff78815ca935f8be0a8c650084e5ec3b11f46))
+
+- improvements [#58](https://github.com/jovyan123-playground/release-helper-playground/pull/58) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Automated Changelog for 0.0.10 on main [#57](https://github.com/jovyan123-playground/release-helper-playground/pull/57) ([@github-actions](https://github.com/github-actions))
+- fix upload handling [#56](https://github.com/jovyan123-playground/release-helper-playground/pull/56) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-15&to=2021-03-16&type=c))
+
+[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-15..2021-03-16&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Agithub-actions+updated%3A2021-03-15..2021-03-16&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-15..2021-03-16&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.0.10
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.0.9...b424af1235e07ac1e35cc2b8c99c6d876bf94c1d))
@@ -13,8 +29,6 @@
 ([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-15&to=2021-03-15&type=c))
 
 [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-15..2021-03-15&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.0.9
 
