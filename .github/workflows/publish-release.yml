@@ -43,6 +43,5 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }} # use final when ready to publish
         uses: ./.github/actions/publish-release
         with:
-          dry_run: true # Set to false ready to publish
           token: ${{ secrets.GITHUB_TOKEN }}
           release_url: ${{ github.event.inputs.release_url }}

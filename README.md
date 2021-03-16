@@ -91,9 +91,23 @@ To install the latest release locally, make sure you have
 - [ ] Change the action calls from the local `./.github/actions/<foo>` to `jupyter-server/release-helper.github/actions/<foo>/@<version_or_branch>`
 - [ ] Optionally add workflow for `cancel` to cancel previous workflow runs when a new one is started - see [cancel.yml](./.github/workflows/cancel.yml)
 - [ ] Optionally make a new branch or repository on your personal account that has a `publish-release` [workflow](./.github/workflows/publish-release.yml)
+
   - [ ] You will need to add access tokens for [PyPI](https://packaging.python.org/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/#saving-credentials-on-github) and/or [npm](https://docs.npmjs.com/creating-and-viewing-access-tokens)
-  - [ ] Start with the test PyPI server in `publish-release`, then switch to the production server once it is fully working
+  - [ ] Start with the test PyPI server in `publish-release`, then switch to the production server once it is fully working.
+
+  ```yaml
+  - name: Publish Release
+    env:
+      TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }} # use final when ready to publish PyPI releases
+    uses: ./.github/actions/publish-release
+    with:
+      dry_run: true # Set to false when ready to publish GitHub releases
+      token: ${{ secrets.GITHUB_TOKEN }}
+      release_url: ${{ github.event.inputs.release_url }}
+  ```
+
   - [ ] ⚠ Warning - It is not recommended that you run this workflow or store PyPI/npm credentials on the source repository. Anyone with write access can run a workflow, and access tokens belong to an individual.
+
 - [ ] If desired, add workflows, changelog, and `tbump` support to other active release branches
 
 ## Draft ChangeLog Workflow Details
