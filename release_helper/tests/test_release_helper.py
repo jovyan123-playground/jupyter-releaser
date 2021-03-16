@@ -4,7 +4,6 @@ import json
 import os
 import os.path as osp
 import re
-import shlex
 import shutil
 import sys
 import traceback
@@ -18,13 +17,16 @@ from urllib.request import OpenerDirector
 
 import pytest
 from click.testing import CliRunner
-from ghapi.all import GhApi
 from pytest import fixture
 
+from release_helper import changelog
 from release_helper import cli
-from release_helper.cli import bump_version
-from release_helper.cli import normalize_path
-from release_helper.cli import run
+from release_helper import npm
+from release_helper import python
+from release_helper import util
+from release_helper.util import bump_version
+from release_helper.util import normalize_path
+from release_helper.util import run
 
 
 VERSION_SPEC = "1.0.1"
@@ -115,9 +117,9 @@ include *.yaml
 
 CHANGELOG_TEMPLATE = f"""# Changelog
 
-{cli.START_MARKER}
+{changelog.START_MARKER}
 
-{cli.END_MARKER}
+{changelog.END_MARKER}
 
 ## 0.0.1
 
@@ -191,7 +193,9 @@ def create_python_package(git_repo):
     manifest.write_text(MANIFEST_TEMPLATE, encoding="utf-8")
 
     here = Path(__file__).parent
-    text = here.parent.joinpath(".pre-commit-config.yaml").read_text(encoding="utf-8")
+    text = here.parent.parent.joinpath(".pre-commit-config.yaml").read_text(
+        encoding="utf-8"
+    )
 
     pre_commit = git_repo / ".pre-commit-config.yaml"
     pre_commit.write_text(text, encoding="utf-8")
@@ -262,7 +266,7 @@ def workspace_package(npm_package):
 def mock_changelog_entry(package_path, runner, mocker):
     runner(["prep-env", "--version-spec", VERSION_SPEC])
     changelog = package_path / "CHANGELOG.md"
-    mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
+    mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
     mocked_gen.return_value = CHANGELOG_ENTRY
     runner(["build-changelog", "--changelog-path", changelog])
     return changelog
@@ -365,51 +369,51 @@ class MockRequestResponse:
 
 
 def test_get_branch(git_repo):
-    assert cli.get_branch() == "bar"
+    assert util.get_branch() == "bar"
     run("git checkout foo")
-    assert cli.get_branch() == "foo"
+    assert util.get_branch() == "foo"
 
 
 def test_get_repo(git_repo, mocker):
     repo = f"{git_repo.parent.name}/{git_repo.name}"
-    assert cli.get_repo("upstream") == repo
+    assert util.get_repo("upstream") == repo
 
 
 def test_get_version_python(py_package):
-    assert cli.get_version() == "0.0.1"
+    assert util.get_version() == "0.0.1"
     bump_version("0.0.2a0")
-    assert cli.get_version() == "0.0.2a0"
+    assert util.get_version() == "0.0.2a0"
 
 
 def test_get_version_npm(npm_package):
-    assert cli.get_version() == "1.0.0"
+    assert util.get_version() == "1.0.0"
     npm = normalize_path(shutil.which("npm"))
     run(f"{npm} version patch")
-    assert cli.get_version() == "1.0.1"
+    assert util.get_version() == "1.0.1"
 
 
 def test_format_pr_entry(mocker, open_mock):
     data = dict(title="foo", user=dict(login="bar", html_url=HTML_URL))
     open_mock.return_value = MockHTTPResponse(data)
-    resp = cli.format_pr_entry("snuffy/foo", 121, auth="baz")
+    resp = changelog.format_pr_entry("snuffy/foo", 121, auth="baz")
     open_mock.assert_called_once()
 
     assert resp.startswith("- ")
 
 
-def test_get_changelog_entry(py_package, mocker):
-    version = cli.get_version()
+def test_get_changelog_version_entry(py_package, mocker):
+    version = util.get_version()
 
-    mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
+    mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
     mocked_gen.return_value = CHANGELOG_ENTRY
-    resp = cli.get_changelog_entry("foo", "bar/baz", version)
+    resp = changelog.get_version_entry("foo", "bar/baz", version)
     mocked_gen.assert_called_with("bar/baz", since="v0.0.1", kind="pr", auth=None)
 
     assert f"## {version}" in resp
     assert PR_ENTRY in resp
 
     mocked_gen.return_value = CHANGELOG_ENTRY
-    resp = cli.get_changelog_entry(
+    resp = changelog.get_version_entry(
         "foo", "bar/baz", version, resolve_backports=True, auth="bizz"
     )
     mocked_gen.assert_called_with("bar/baz", since="v0.0.1", kind="pr", auth="bizz")
@@ -419,14 +423,14 @@ def test_get_changelog_entry(py_package, mocker):
 
 
 def test_compute_sha256(py_package):
-    assert len(cli.compute_sha256(py_package / "CHANGELOG.md")) == 64
+    assert len(util.compute_sha256(py_package / "CHANGELOG.md")) == 64
 
 
 def test_create_release_commit(py_package):
     bump_version("0.0.2a0")
-    version = cli.get_version()
+    version = util.get_version()
     run("python -m build .")
-    shas = cli.create_release_commit(version)
+    shas = util.create_release_commit(version)
     assert normalize_path("dist/foo-0.0.2a0.tar.gz") in shas
     assert normalize_path("dist/foo-0.0.2a0-py3-none-any.whl") in shas
     shutil.rmtree(py_package / "dist", ignore_errors=True)
@@ -441,17 +445,17 @@ def test_create_release_commit(py_package):
     txt += TBUMP_NPM_TEMPLATE
     (py_package / "tbump.toml").write_text(txt, encoding="utf-8")
     bump_version("0.0.2a1")
-    version = cli.get_version()
+    version = util.get_version()
     run("python -m build .")
-    shas = cli.create_release_commit(version)
+    shas = util.create_release_commit(version)
     assert len(shas) == 2
     assert normalize_path("dist/foo-0.0.2a1.tar.gz") in shas
 
 
 def test_bump_version(py_package):
     for spec in ["1.0.1", "1.0.1.dev1", "1.0.3a4"]:
-        bump_version(spec)
-        assert cli.get_version() == spec
+        util.bump_version(spec)
+        assert util.get_version() == spec
 
 
 def test_prep_env_simple(py_package, runner):
@@ -487,7 +491,7 @@ def test_prep_env_full(py_package, tmp_path, mocker, runner):
     )
 
     # Fake out the version and source repo responses
-    mock_run = mocker.patch("release_helper.cli.run")
+    mock_run = mocker.patch("release_helper.util.run")
     mock_run.return_value = version_spec
 
     runner(["prep-env"], env=env)
@@ -517,47 +521,47 @@ def test_prep_env_full(py_package, tmp_path, mocker, runner):
 def test_build_changelog(py_package, mocker, runner):
     run("pre-commit run -a")
 
-    changelog = py_package / "CHANGELOG.md"
+    changelog_path = py_package / "CHANGELOG.md"
 
     runner(["prep-env", "--version-spec", VERSION_SPEC])
 
-    mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
+    mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
     mocked_gen.return_value = CHANGELOG_ENTRY
-    runner(["build-changelog", "--changelog-path", changelog])
-    text = changelog.read_text(encoding="utf-8")
-    assert cli.START_MARKER in text
-    assert cli.END_MARKER in text
+    runner(["build-changelog", "--changelog-path", changelog_path])
+    text = changelog_path.read_text(encoding="utf-8")
+    assert changelog.START_MARKER in text
+    assert changelog.END_MARKER in text
     assert PR_ENTRY in text
 
-    assert len(re.findall(cli.START_MARKER, text)) == 1
-    assert len(re.findall(cli.END_MARKER, text)) == 1
+    assert len(re.findall(changelog.START_MARKER, text)) == 1
+    assert len(re.findall(changelog.END_MARKER, text)) == 1
 
     run("pre-commit run -a")
 
 
 def test_build_changelog_existing(py_package, mocker, runner):
-    changelog = py_package / "CHANGELOG.md"
+    changelog_path = py_package / "CHANGELOG.md"
 
     runner(["prep-env", "--version-spec", VERSION_SPEC])
 
-    mocked_gen = mocker.patch("release_helper.cli.generate_activity_md")
+    mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
     mocked_gen.return_value = CHANGELOG_ENTRY
-    runner(["build-changelog", "--changelog-path", changelog])
-    text = changelog.read_text(encoding="utf-8")
+    runner(["build-changelog", "--changelog-path", changelog_path])
+    text = changelog_path.read_text(encoding="utf-8")
     text = text.replace("defining contributions", "Definining contributions")
-    changelog.write_text(text, encoding="utf-8")
+    changelog_path.write_text(text, encoding="utf-8")
 
     # Commit the change
     run('git commit -a -m "commit changelog"')
 
     mocked_gen.return_value = CHANGELOG_ENTRY
-    runner(["build-changelog", "--changelog-path", changelog])
-    text = changelog.read_text(encoding="utf-8")
+    runner(["build-changelog", "--changelog-path", changelog_path])
+    text = changelog_path.read_text(encoding="utf-8")
     assert "Definining contributions" in text, text
     assert not "defining contributions" in text, text
 
-    assert len(re.findall(cli.START_MARKER, text)) == 1
-    assert len(re.findall(cli.END_MARKER, text)) == 1
+    assert len(re.findall(changelog.START_MARKER, text)) == 1
+    assert len(re.findall(changelog.END_MARKER, text)) == 1
 
     run("pre-commit run -a")
 
@@ -606,8 +610,8 @@ def test_check_changelog(py_package, tmp_path, mocker, runner):
 
     assert PR_ENTRY in output.read_text(encoding="utf-8")
     text = changelog_entry.read_text(encoding="utf-8")
-    assert f"{cli.START_MARKER}\n\n## {VERSION_SPEC}" in text
-    assert cli.END_MARKER in text
+    assert f"{changelog.START_MARKER}\n\n## {VERSION_SPEC}" in text
+    assert changelog.END_MARKER in text
 
 
 def test_build_python(py_package, runner):
@@ -763,7 +767,7 @@ def test_extract_dist_npm(npm_dist, runner, mocker, open_mock, tmp_path):
 def test_publish_release_py(py_dist, runner, mocker, open_mock):
     open_mock.side_effect = [MockHTTPResponse([REPO_DATA]), MockHTTPResponse()]
 
-    orig_run = cli.run
+    orig_run = util.run
     called = 0
 
     def wrapped(cmd, **kwargs):
@@ -773,7 +777,7 @@ def test_publish_release_py(py_dist, runner, mocker, open_mock):
             return ""
         return orig_run(cmd, **kwargs)
 
-    mock_run = mocker.patch("release_helper.cli.run", wraps=wrapped)
+    mock_run = mocker.patch("release_helper.util.run", wraps=wrapped)
 
     runner(["publish-release", HTML_URL])
     assert len(open_mock.call_args) == 2
