@@ -1,0 +1,99 @@
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
+import json
+import shutil
+
+from release_helper import changelog
+from release_helper import util
+from release_helper.tests import util as testutil
+from release_helper.util import run
+
+
+def test_get_branch(git_repo):
+    assert util.get_branch() == "bar"
+    run("git checkout foo")
+    assert util.get_branch() == "foo"
+
+
+def test_get_repo(git_repo, mocker):
+    repo = f"{git_repo.parent.name}/{git_repo.name}"
+    assert util.get_repo("upstream") == repo
+
+
+def test_get_version_python(py_package):
+    assert util.get_version() == "0.0.1"
+    util.bump_version("0.0.2a0")
+    assert util.get_version() == "0.0.2a0"
+
+
+def test_get_version_npm(npm_package):
+    assert util.get_version() == "1.0.0"
+    npm = util.normalize_path(shutil.which("npm"))
+    run(f"{npm} version patch")
+    assert util.get_version() == "1.0.1"
+
+
+def test_format_pr_entry(mocker, open_mock):
+    data = dict(title="foo", user=dict(login="bar", html_url=testutil.HTML_URL))
+    open_mock.return_value = testutil.MockHTTPResponse(data)
+    resp = changelog.format_pr_entry("snuffy/foo", 121, auth="baz")
+    open_mock.assert_called_once()
+
+    assert resp.startswith("- ")
+
+
+def test_get_changelog_version_entry(py_package, mocker):
+    version = util.get_version()
+
+    mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
+    mocked_gen.return_value = testutil.CHANGELOG_ENTRY
+    resp = changelog.get_version_entry("foo", "bar/baz", version)
+    mocked_gen.assert_called_with("bar/baz", since="v0.0.1", kind="pr", auth=None)
+
+    assert f"## {version}" in resp
+    assert testutil.PR_ENTRY in resp
+
+    mocked_gen.return_value = testutil.CHANGELOG_ENTRY
+    resp = changelog.get_version_entry(
+        "foo", "bar/baz", version, resolve_backports=True, auth="bizz"
+    )
+    mocked_gen.assert_called_with("bar/baz", since="v0.0.1", kind="pr", auth="bizz")
+
+    assert f"## {version}" in resp
+    assert testutil.PR_ENTRY in resp
+
+
+def test_compute_sha256(py_package):
+    assert len(util.compute_sha256(py_package / "CHANGELOG.md")) == 64
+
+
+def test_create_release_commit(py_package):
+    util.bump_version("0.0.2a0")
+    version = util.get_version()
+    run("python -m build .")
+    shas = util.create_release_commit(version)
+    assert util.normalize_path("dist/foo-0.0.2a0.tar.gz") in shas
+    assert util.normalize_path("dist/foo-0.0.2a0-py3-none-any.whl") in shas
+    shutil.rmtree(py_package / "dist", ignore_errors=True)
+
+    # Add an npm package and test with that
+    testutil.create_npm_package(py_package)
+    pkg_json = py_package / "package.json"
+    data = json.loads(pkg_json.read_text(encoding="utf-8"))
+    data["version"] = version
+    pkg_json.write_text(json.dumps(data, indent=4), encoding="utf-8")
+    txt = (py_package / "tbump.toml").read_text(encoding="utf-8")
+    txt += testutil.TBUMP_NPM_TEMPLATE
+    (py_package / "tbump.toml").write_text(txt, encoding="utf-8")
+    util.bump_version("0.0.2a1")
+    version = util.get_version()
+    run("python -m build .")
+    shas = util.create_release_commit(version)
+    assert len(shas) == 2
+    assert util.normalize_path("dist/foo-0.0.2a1.tar.gz") in shas
+
+
+def test_bump_version(py_package):
+    for spec in ["1.0.1", "1.0.1.dev1", "1.0.3a4"]:
+        util.bump_version(spec)
+        assert util.get_version() == spec
