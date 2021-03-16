@@ -500,6 +500,7 @@ def test_prep_env_full(py_package, tmp_path, mocker, runner):
             call("git remote"),
             call("git remote add upstream http://snuffy:abc123@github.com/baz/bar.git"),
             call("git fetch upstream foo --tags"),
+            call("git fetch upstream --tags"),
             call("git branch"),
             call("git checkout -B foo upstream/foo"),
             call("tbump --non-interactive --only-patch 1.0.1a1"),
@@ -624,8 +625,7 @@ def test_build_python_npm(npm_package, runner):
 
 def test_check_python(py_package, runner):
     runner(["build-python"])
-    dist_files = glob(str(py_package / "dist" / "*"))
-    runner(["check-python"] + dist_files)
+    runner(["check-python"])
 
 
 def test_handle_npm(npm_package, runner):
