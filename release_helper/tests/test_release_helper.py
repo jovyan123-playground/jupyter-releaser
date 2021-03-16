@@ -20,9 +20,12 @@ from click.testing import CliRunner
 from pytest import fixture
 
 from release_helper import cli
-from release_helper.cli import bump_version
-from release_helper.cli import normalize_path
-from release_helper.cli import run
+from release_helper import npm
+from release_helper import other
+from release_helper import python
+from release_helper.util import bump_version
+from release_helper.util import normalize_path
+from release_helper.util import run
 
 
 VERSION_SPEC = "1.0.1"
