@@ -29,8 +29,8 @@ A set of helper scripts and example GitHub Action workflows to aid in automated 
   - Run the Workflow with the version spec (usually the new version number), and make sure the target branch is correct
 
 <p align="center">
-<img src="media/create_changelog_workflow.png" alt="Create Changelog Workflow"
-	title="Create Changelog Workflow" width="50%"/>
+<img src="media/draft_changelog_workflow.png" alt="Draft Changelog Workflow"
+	title="Draft Changelog Workflow" width="50%"/>
 </p>
 
 - When the run completes, review the changelog PR that was opened, making any desired edits
@@ -45,16 +45,21 @@ A set of helper scripts and example GitHub Action workflows to aid in automated 
 - Select the Draft Release workflow
 
 <p align="center">
-<img src="media/create_release_workflow.png" alt="Create Release Workflow"
-	title="Create Release Workflow" width="50%" />
+<img src="media/draft_release_workflow.png" alt="Draft Release Workflow"
+	title="Draft Release Workflow" width="50%" />
 </p>
 
 - Run the Workflow with the same version spec as before, and an optional post version spec if you want to go back to a dev version in the target branch.
 - When the workflow completes, go to the releases page in the main repository and verify that the new draft release is there with the correct changelog and dist files.
 
-<!-- TODO: Add Github release image here -->
+<p align="center">
+<img src="media/publish_release_workflow.png" alt="Publish Release Workflow"
+	title="Publish Release Workflow" width="50%" />
+</p>
 
 - Run the Publish Release workflow from a fork or manually download an publish the dist file(s). Note: the fork will need to use their own GitHub token in addition to the PyPI/npm token.
+
+<!-- TODO: Add Github release image here -->
 
 ## Installation
 
