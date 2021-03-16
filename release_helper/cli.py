@@ -233,13 +233,13 @@ def compute_sha256(path):
     return sha256.hexdigest()
 
 
-def create_release_commit(version):
+def create_release_commit(version, dist_dir="dist"):
     """Generate a release commit that has the sha256 digests for the release files"""
     cmd = f'git commit -am "Publish {version}" -m "SHA256 hashes:"'
 
     shas = dict()
 
-    files = glob("dist/*")
+    files = glob(f"{dist_dir}/*")
     if not files:  # pragma: no cover
         raise ValueError("Missing distribution files")
 
@@ -289,11 +289,9 @@ def is_prerelease(version):
     return final_version != version
 
 
-def check_python_local(*dist_files, test_cmd=""):
+def check_python_local(dist_dir, test_cmd=""):
     """Check a Python package locally (not as a cli)"""
-    if not dist_files:
-        dist_files = glob("./dist/*")
-    for dist_file in dist_files:
+    for dist_file in glob(f"{dist_dir}/*"):
         if Path(dist_file).suffix not in [".gz", ".whl"]:
             print(f"Skipping non-python dist file {dist_file}")
             continue
@@ -332,16 +330,16 @@ def extract_npm_tarball(path):
     return data
 
 
-def build_npm_local(package):
+def build_npm_local(package, dist_dir):
     """Handle a local npm package (not as a cli)"""
     if not osp.exists("./package.json"):
         print("Skipping build-npm since there is no package.json file")
         return
 
     # Clean the dist folder of existing npm tarballs
-    os.makedirs("dist", exist_ok=True)
-    dest = Path("dist")
-    for pkg in glob("dist/*.tgz"):
+    os.makedirs(dist_dir, exist_ok=True)
+    dest = Path(dist_dir)
+    for pkg in glob(f"{dist_dir}/*.tgz"):
         os.remove(pkg)
 
     if osp.isdir(package):
@@ -370,13 +368,12 @@ def build_npm_local(package):
                     os.remove(tarball)
 
 
-def check_npm_local(*packages, test_cmd=None):
+def check_npm_local(dist_dir, test_cmd=None):
     if not osp.exists("./package.json"):
         print("Skipping check-npm since there is no package.json file")
         return
 
-    if not packages:
-        packages = glob("./dist/*.tgz")
+    packages = glob(f"{dist_dir}/*.tgz")
 
     if not test_cmd:
         test_cmd = "node index.js"
@@ -461,6 +458,15 @@ branch_options = [
 
 auth_options = [
     click.option("--auth", envvar="GITHUB_ACCESS_TOKEN", help="The GitHub auth token"),
+]
+
+dist_dir_options = [
+    click.option(
+        "--dist-dir",
+        envvar="DIST_DIR",
+        default="dist",
+        help="The folder to use for dist files",
+    )
 ]
 
 dry_run_options = [
@@ -548,6 +554,10 @@ def prep_env(version_spec, version_cmd, branch, remote, repo, auth, username, ou
 
     # Check out the remote branch so we can push to it
     run(f"git fetch {remote} {branch} --tags")
+
+    # Make sure we have *all* tags
+    run(f"git fetch {remote} --tags")
+
     branches = run("git branch").replace("* ", "").splitlines()
     if branch in branches:
         run(f"git checkout {branch}")
@@ -761,48 +771,50 @@ def check_changelog(
 
 
 @main.command()
-def build_python():
+@add_options(dist_dir_options)
+def build_python(dist_dir):
     """Build Python dist files"""
     # Clean the dist folder of existing npm tarballs
-    os.makedirs("dist", exist_ok=True)
-    dest = Path("dist")
-    for pkg in glob("dist/*.gz") + glob("dist/*.whl"):
+    os.makedirs(dist_dir, exist_ok=True)
+    dest = Path(dist_dir)
+    for pkg in glob(f"{dist_dir}/*.gz") + glob(f"{dist_dir}/*.whl"):
         os.remove(pkg)
 
     if osp.exists("./pyproject.toml"):
-        run("python -m build .")
+        run(f"python -m build --outdir {dist_dir} .")
     elif osp.exists("./setup.py"):
-        run("python setup.py sdist")
-        run("python setup.py bdist_wheel")
+        run(f"python setup.py sdist --dist-dir {dist_dir}")
+        run(f"python setup.py bdist_wheel --dist-dir {dist_dir}")
     else:
         print("Skipping build-python since there are no python package files")
 
 
 @main.command()
-@click.argument("dist-files", nargs=-1)
+@add_options(dist_dir_options)
 @click.option(
     "--test-cmd", envvar="PY_TEST_CMD", help="The command to run in the test venvs"
 )
-def check_python(dist_files, test_cmd):
+def check_python(dist_dir, test_cmd):
     """Check Python dist files"""
-    check_python_local(*dist_files, test_cmd=test_cmd)
+    check_python_local(dist_dir, test_cmd=test_cmd)
 
 
 @main.command()
+@add_options(dist_dir_options)
 @click.argument("package", default=".")
-def build_npm(package):
+def build_npm(package, dist_dir):
     """Build npm package"""
-    build_npm_local(package)
+    build_npm_local(package, dist_dir)
 
 
 @main.command()
-@click.argument("packages", nargs=-1)
+@add_options(dist_dir_options)
 @click.option(
     "--test-cmd", envvar="NPM_TEST_CMD", help="The command to run in isolated install."
 )
-def check_npm(packages, test_cmd):
+def check_npm(dist_dir, test_cmd):
     """Check npm package"""
-    check_npm_local(*packages, test_cmd=test_cmd)
+    check_npm_local(dist_dir, test_cmd=test_cmd)
 
 
 @main.command()
@@ -854,7 +866,9 @@ def check_links(ignore_glob, cache_file, links_expire):
 
 @main.command()
 @add_options(branch_options)
-def tag_release(branch, remote, repo):
+@add_options(dist_dir_options)
+@click.option("--no-git-tag-workspace")
+def tag_release(branch, remote, repo, dist_dir, no_git_tag_workspace):
     """Create release commit and tag"""
     # Get the new version
     version = get_version()
@@ -863,11 +877,30 @@ def tag_release(branch, remote, repo):
     branch = branch or get_branch()
 
     # Create the release commit
-    create_release_commit(version)
+    create_release_commit(version, dist_dir)
 
     # Create the annotated release tag
     tag_name = f"v{version}"
     run(f'git tag {tag_name} -a -m "Release {tag_name}"')
+
+    # Create annotated release tags for workspace packages if given
+    package_json = Path("package.json")
+    if no_git_tag_workspace or not package_json.exists():
+        return
+
+    data = json.loads(package_json.read_text(encoding="utf-8"))
+    tags = run("git tag").splitlines()
+    if "workspaces" in data:
+        packages = data["workspaces"].get("packages", [])
+        for pattern in packages:
+            for path in glob(pattern, recursive=True):
+                sub_package_json = Path(path) / "package.json"
+                sub_data = json.loads(sub_package_json.read_text(encoding="utf-8"))
+                tag_name = f"{sub_data['name']}@{sub_data['version']}"
+                if tag_name in tags:
+                    print(f"Skipping existing tag {tag_name}")
+                else:
+                    run(f"git tag {tag_name}")
 
 
 @main.command()
@@ -875,6 +908,7 @@ def tag_release(branch, remote, repo):
 @add_options(auth_options)
 @add_options(changelog_path_options)
 @add_options(version_cmd_options)
+@add_options(dist_dir_options)
 @add_options(dry_run_options)
 @click.option(
     "--post-version-spec",
@@ -889,6 +923,7 @@ def draft_release(
     auth,
     changelog_path,
     version_cmd,
+    dist_dir,
     dry_run,
     post_version_spec,
     assets,
@@ -897,15 +932,9 @@ def draft_release(
     branch = branch or get_branch()
     repo = repo or get_repo(remote, auth=auth)
 
-    assets = assets or glob("dist/*")
-
-    if not dry_run:
-        run(f"git push {remote} HEAD:{branch} --follow-tags --tags")
+    assets = assets or glob(f"{dist_dir}/*")
 
     version = get_version()
-
-    owner, repo_name = repo.split("/")
-    gh = GhApi(owner=owner, repo=repo_name, token=auth)
 
     body = ""
     if changelog_path and Path(changelog_path).exists():
@@ -919,8 +948,25 @@ def draft_release(
     # Create a draft release
     prerelease = is_prerelease(version)
 
+    # Bump to post version if given
+    if post_version_spec:
+        bump_version(post_version_spec, version_cmd)
+        post_version = get_version()
+        if "setup.py" in os.listdir(".") and not is_canonical(
+            version
+        ):  # pragma: no cover
+            raise ValueError(f"\n\nInvalid post version {version}")
+
+        print(f"Bumped version to {post_version}")
+        run(f'git commit -a -m "Bump to {post_version}"')
+
+    if not dry_run:
+        run(f"git push {remote} HEAD:{branch} --follow-tags --tags")
+
     print(f"Creating release for {version}")
     print(f"With assets: {assets}")
+    owner, repo_name = repo.split("/")
+    gh = GhApi(owner=owner, repo=repo_name, token=auth)
     release = gh.create_release(
         f"v{version}",
         branch,
@@ -934,21 +980,6 @@ def draft_release(
     # Set the GitHub action output
     print(f"\n\nSetting output release_url={release.html_url}")
     actions_output("release_url", release.html_url)
-
-    # Bump to post version if given
-    if post_version_spec:
-        bump_version(post_version_spec, version_cmd)
-        post_version = get_version()
-        if "setup.py" in os.listdir(".") and not is_canonical(
-            version
-        ):  # pragma: no cover
-            raise ValueError(f"\n\nInvalid post version {version}")
-
-        print(f"Bumped version to {post_version}")
-        run(f'git commit -a -m "Bump to {post_version}"')
-
-        if not dry_run:
-            run(f"git push {remote} {branch}")
 
 
 @main.command()
@@ -971,9 +1002,10 @@ def delete_release(auth, release_url):
 
 @main.command()
 @add_options(auth_options)
+@add_options(dist_dir_options)
 @add_options(dry_run_options)
 @click.argument("release_url", nargs=1)
-def extract_release(auth, dry_run, release_url):
+def extract_release(auth, dist_dir, dry_run, release_url):
     """Download and verify assets from a draft GitHub release"""
     match = re.match(RELEASE_HTML_PATTERN, release_url)
     match = match or re.match(RELEASE_API_PATTERN, release_url)
@@ -986,7 +1018,7 @@ def extract_release(auth, dry_run, release_url):
     assets = release.assets
 
     # Clean the dist folder
-    dist = Path("./dist")
+    dist = Path(dist_dir)
     if dist.exists():
         shutil.rmtree(dist, ignore_errors=True)
     os.makedirs(dist)
@@ -1055,6 +1087,7 @@ def extract_release(auth, dry_run, release_url):
 
 @main.command()
 @add_options(auth_options)
+@add_options(dist_dir_options)
 @click.option("--npm_token", help="A token for the npm release", envvar="NPM_TOKEN")
 @click.option(
     "--npm_cmd",
@@ -1070,7 +1103,9 @@ def extract_release(auth, dry_run, release_url):
 )
 @add_options(dry_run_options)
 @click.argument("release_url", nargs=1)
-def publish_release(auth, npm_token, npm_cmd, twine_cmd, dry_run, release_url):
+def publish_release(
+    auth, dist_dir, npm_token, npm_cmd, twine_cmd, dry_run, release_url
+):
     """Publish release asset(s) and finalize GitHub release"""
     match = re.match(RELEASE_HTML_PATTERN, release_url)
     match = match or re.match(RELEASE_API_PATTERN, release_url)
@@ -1085,15 +1120,14 @@ def publish_release(auth, npm_token, npm_cmd, twine_cmd, dry_run, release_url):
         npmrc.write_text(text, encoding="utf-8")
 
     found = False
-    for path in glob("./dist/*.*"):
+    for path in glob(f"{dist_dir}/*.*"):
         name = Path(path).name
         suffix = Path(path).suffix
-        path = normalize_path(path)
         if suffix in [".gz", ".whl"]:
-            run(f"{twine_cmd} {path}")
+            run(f"{twine_cmd} {name}", cwd=dist_dir)
             found = True
         elif suffix == ".tgz":
-            run(f"{npm_cmd} {path}")
+            run(f"{npm_cmd} {name}", cwd=dist_dir)
             found = True
         else:
             print(f"Nothing to upload for {name}")
