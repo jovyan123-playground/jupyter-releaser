@@ -41,6 +41,7 @@ jobs:
       - name: Publish Release
         env:
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }} # use final when ready to publish
+          TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
         uses: ./.github/actions/publish-release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

@@ -177,7 +177,7 @@ def get_changelog_entry(branch, repo, version, *, auth=None, resolve_backports=F
 
     if not md:
         print("No PRs found")
-        return f"## {version}\nNo merged PRs"
+        return f"## {version}\n\nNo merged PRs"
 
     md = md.splitlines()
 
@@ -445,7 +445,7 @@ def main():
 
 # Extracted common options
 version_cmd_options = [
-    click.option("--version-cmd", envvar="VERSION_CMD", help="The version command")
+    click.option("--version-cmd", envvar="VERSION_COMMAND", help="The version command")
 ]
 
 branch_options = [
@@ -792,7 +792,7 @@ def build_python(dist_dir):
 @main.command()
 @add_options(dist_dir_options)
 @click.option(
-    "--test-cmd", envvar="PY_TEST_CMD", help="The command to run in the test venvs"
+    "--test-cmd", envvar="PY_TEST_COMMAND", help="The command to run in the test venvs"
 )
 def check_python(dist_dir, test_cmd):
     """Check Python dist files"""
@@ -810,7 +810,9 @@ def build_npm(package, dist_dir):
 @main.command()
 @add_options(dist_dir_options)
 @click.option(
-    "--test-cmd", envvar="NPM_TEST_CMD", help="The command to run in isolated install."
+    "--test-cmd",
+    envvar="NPM_TEST_COMMAND",
+    help="The command to run in isolated install.",
 )
 def check_npm(dist_dir, test_cmd):
     """Check npm package"""

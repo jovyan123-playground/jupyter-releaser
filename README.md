@@ -99,6 +99,7 @@ To install the latest release locally, make sure you have
   - name: Publish Release
     env:
       TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }} # use final when ready to publish PyPI releases
+      TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/ # remove when switching to final
     uses: ./.github/actions/publish-release
     with:
       dry_run: true # Set to false when ready to publish GitHub releases
