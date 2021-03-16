@@ -12,11 +12,6 @@ from release_helper import other
 from release_helper import python
 from release_helper import util
 
-HERE = osp.abspath(osp.dirname(__file__))
-
-BUF_SIZE = 65536
-TBUMP_CMD = "tbump --non-interactive --only-patch"
-
 
 class NaturalOrderGroup(click.Group):
     """Click group that lists commmands in the order added"""
