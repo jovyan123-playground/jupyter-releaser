@@ -1,5 +1,6 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
+import os
 import os.path as osp
 from glob import glob
 from pathlib import Path
@@ -13,15 +14,63 @@ from release_helper import python
 from release_helper import util
 
 
-class NaturalOrderGroup(click.Group):
-    """Click group that lists commmands in the order added"""
+class ReleaseHelperGroup(click.Group):
+    """Click group tailored to release-helper"""
+
+    def invoke(self, ctx):
+        """Handle release-helper config while invoking a command"""
+        config = util.read_config()
+        cmd_name = ctx.protected_args[0]
+        hooks = config.get("hooks", {})
+
+        # Get all of the environment variables
+        envvals = dict()
+        params = self.commands[cmd_name].get_params(ctx)
+        for param in params:
+            if param.envvar:
+                envvals[param.name] = os.environ.get(param.envvar)
+
+        # Handle before hooks
+        before = f"before:{cmd_name}"
+        if before in hooks:
+            before_hooks = hooks[before]
+            if isinstance(before_hooks, str):
+                before_hooks = [before_hooks]
+            for hook in before_hooks:
+                util.run(hook)
+
+        # Handle config overrides
+        if cmd_name in config:
+            for (key, value) in config[cmd_name].items():
+                # Allow environment overrides
+                if envvals.get(key.replace("-", "_")):
+                    continue
+                target = f"--{key}"
+                # Allow cli overrides
+                if target not in ctx.args:
+                    ctx.args.append(target)
+                    ctx.args.append(value)
+
+        # Run the actual command
+        super().invoke(ctx)
+
+        # Handle after hooks
+        after = f"after:{cmd_name}"
+        if after in hooks:
+            after_hooks = hooks[after]
+            if isinstance(after_hooks, str):
+                after_hooks = [after_hooks]
+            for hook in after_hooks:
+                util.run(hook)
 
     def list_commands(self, ctx):
+        """List commands in insertion order"""
         return self.commands.keys()
 
 
-@click.group(cls=NaturalOrderGroup)
-def main():
+@click.group(cls=ReleaseHelperGroup)
+@click.pass_context
+def main(ctx):
     """Release helper scripts"""
     pass
 
@@ -155,7 +204,7 @@ def check_changelog(
 @add_options(dist_dir_options)
 def build_python(dist_dir):
     """Build Python dist files"""
-    if not osp.exists("pyproject.toml") and not osp.exists("setup.py"):
+    if not util.PYPROJECT.exists() and not util.SETUP_PY.exists():
         print("Skipping build-python since there are no python package files")
         return
     python.build_dist(dist_dir)
@@ -204,10 +253,10 @@ def check_npm(dist_dir, test_cmd):
 @main.command()
 def check_manifest():
     """Check the project manifest"""
-    if Path("setup.py").exists() or Path("pyproject.toml").exists():
+    if util.PYPROJECT.exists() or util.SETUP_PY.exists():
         util.run("check-manifest -v")
     else:
-        print("Skipping build-python since there are no python package files")
+        print("Skipping check-manifest since there are no python package files")
 
 
 @main.command()

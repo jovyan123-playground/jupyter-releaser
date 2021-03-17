@@ -14,6 +14,13 @@ from pathlib import Path
 from subprocess import CalledProcessError
 from subprocess import check_output
 
+import toml
+
+PYPROJECT = Path("pyproject.toml")
+SETUP_PY = Path("setup.py")
+SETUP_CFG = Path("setup.cfg")
+PACKAGE_JSON = Path("package.json")
+RELEASE_HELPER_CONFIG = Path(".release-helper.toml")
 
 BUF_SIZE = 65536
 TBUMP_CMD = "tbump --non-interactive --only-patch"
@@ -21,9 +28,6 @@ TBUMP_CMD = "tbump --non-interactive --only-patch"
 RELEASE_HTML_PATTERN = (
     "https://github.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/releases/tag/(?P<tag>.*)"
 )
-
-# Of the form:
-# https://api.github.com/repos/{owner}/{repo}/releases/tags/{tag}
 RELEASE_API_PATTERN = "https://api.github.com/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/releases/tags/(?P<tag>.*)"
 
 
@@ -70,10 +74,10 @@ def get_repo(remote, auth=None):
 
 def get_version():
     """Get the current package version"""
-    if osp.exists("setup.py"):
+    if SETUP_PY.exists():
         return run("python setup.py --version")
-    elif osp.exists("package.json"):
-        return json.loads(Path("package.json").read_text(encoding="utf-8"))["version"]
+    elif PACKAGE_JSON.exists():
+        return json.loads(PACKAGE_JSON).read_text(encoding="utf-8")["version"]
     else:  # pragma: no cover
         raise ValueError("No version identifier could be found!")
 
@@ -129,15 +133,15 @@ def bump_version(version_spec, version_cmd=""):
         if osp.exists("tbump.toml"):
             version_cmd = version_cmd or TBUMP_CMD
 
-        if osp.exists("pyproject.toml"):
-            if "tbump" in Path("pyproject.toml").read_text(encoding="utf-8"):
+        if PYPROJECT.exists():
+            if "tbump" in PYPROJECT.read_text(encoding="utf-8"):
                 version_cmd = version_cmd or TBUMP_CMD
 
-        if osp.exists("setup.cfg"):
-            if "bumpversion" in Path("setup.cfg").read_text(encoding="utf-8"):
+        if SETUP_CFG.exists():
+            if "bumpversion" in SETUP_CFG.read_text(encoding="utf-8"):
                 version_cmd = version_cmd or "bump2version"
 
-    if not version_cmd and osp.exists("package.json"):
+    if not version_cmd and PACKAGE_JSON.exists():
         version_cmd = "npm version --git-tag-version false"
 
     if not version_cmd:  # pragma: no cover
@@ -166,4 +170,24 @@ def release_for_url(gh, url):
 
 def actions_output(name, value):
     "Print the special GitHub Actions `::set-output` line for `name::value`"
-    print(f"::set-output name={name}::{value}")
+    if "GITHUB_ACTIONS" in os.environ:
+        print(f"::set-output name={name}::{value}")
+
+
+def read_config():
+    """Read the release-helper config data"""
+    if RELEASE_HELPER_CONFIG.exists():
+        return toml.loads(RELEASE_HELPER_CONFIG.read_text(encoding="utf-8"))
+
+    if PYPROJECT.exists():
+        data = toml.loads(PYPROJECT.read_text(encoding="utf-8"))
+        config = data.get("tool", {}).get("release-helper")
+        if config:
+            return config
+
+    if PACKAGE_JSON.exists():
+        data = json.loads(PACKAGE_JSON.read_text(encoding="utf-8"))
+        if "release-helper" in data:
+            return data["release-helper"]
+
+    return {}
