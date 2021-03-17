@@ -2,7 +2,7 @@
 
 ## Motivation
 
-A set of helper scripts and example GitHub Action workflows to aid in automated releases of Python and npm packages.
+A set of helper scripts and GitHub Action workflows to aid in automated releases of Python and npm packages.
 
 - Enforces best practices:
 
@@ -77,6 +77,64 @@ To install the latest release locally, make sure you have
     release-helper build-python --help
 ```
 
+## Configuration
+
+All of the commands support CLI and Environment Variable Overrides.
+The environment variables are defined by the `envvar` parameters in the
+command options in `cli.py`. The environment variables unique to
+`release-helper` are prefixed with `RH_`.
+
+The default values can also be overriden using a config file.
+The config consists of sections for each command, e.g. `build-python`,
+with key-value pairs. You can also define hooks to run before and after
+commands in a `hooks` section. Hooks can be a shell command to run or
+a list of shell commands, and are specified to run `before-` or `after-`
+a command.
+
+This is where `release-helper` looks for configuration:
+
+```code
+    .release-helper.toml
+    pyproject.toml (in the tools.release-helper section )
+    package.json (in the release-helper property)
+```
+
+Example `.release-helper.toml`:
+
+```toml
+[build-python]
+dist_dir = mydist
+
+[hooks]
+before-tag-version = "npm run pre:tag:script"
+```
+
+Example `pyproject.toml` section:
+
+```toml
+[tools.release-helper.build_python]
+dist_dir = mydist
+
+[tools.release-helper.hooks]
+after-build-python = ["python scripts/cleanup.py", "python scripts/send_email.py"]
+```
+
+Example `package.json`:
+
+```json
+{
+  "name": "my-package",
+  "release-helper": {
+    "build-npm": {
+      "dist_dir": "mydist"
+    },
+    "hooks": {
+      "before-publish-dist": "npm run pre:publish:dist"
+    }
+  }
+}
+```
+
 ## Checklist for Adoption
 
 **Note**: The automated changelog handling is optional. If it is not desired, you can use the
@@ -116,7 +174,9 @@ To install the latest release locally, make sure you have
 
 - [ ] If desired, add workflows, changelog, and `tbump` support to other active release branches
 
-## Draft ChangeLog Workflow Details
+## Workflow Details
+
+### Draft ChangeLog Workflow
 
 - Manual Github workflow
 - Input is the version spec
@@ -138,7 +198,7 @@ To install the latest release locally, make sure you have
     GitHub UI it will trigger the workflows.
   - Can be re-run using the same version spec. It will add new entries but preserve existing ones (in case they have been hand modified).
 
-## Draft Release Workflow Details
+### Draft Release Workflow
 
 - Manual Github workflow
 - Takes a version spec and optional post version spec
@@ -165,7 +225,7 @@ To install the latest release locally, make sure you have
 - Notes:
   - This can be run on the repo by anyone with write access, since it only needs the built in `secrets.GITHUB_ACCESS_TOKEN`
 
-## Publish Release Workflow Details
+### Publish Release Workflow
 
 - Manual Github workflow
 - Takes a url for the draft release as an input
@@ -175,45 +235,10 @@ To install the latest release locally, make sure you have
 - Publishes the draft GitHub release
 - ⚠ Warning - It is not recommended that you run this workflow or store PyPI/npm credentials on the source repository. Anyone with write access can run a workflow, and access tokens belong to an individual.
 
-## Check Release Workflow Details
+### Check Release Workflow
 
 - Runs on pull requests to the default branch and on push
 - Runs the Draft Changelog, Draft Release, and Publish Release Steps
 - Publishes to the Test PyPI server
 - Deletes the Release
 - Does not make PRs or push git changes
-
-## TODO
-
-- Use https://raw.githubusercontent.com for README images
-
-- Add support for `.release-helper.toml` config
-
-  - Allow declaritve `pre-`, `post-`, and `skip-` hooks to be run for the different steps so we can support more complex packages
-  - Handle the config at the main cli level
-
-- jupyter/notebook migration:
-
-  - Can be done immediately using the checklist
-  - Add `tbump` config to replace [`jsversion`](https://github.com/jupyter/notebook/blob/4b2e849e83fcf9ffbe0755d38d635e34e56a4fea/setupbase.py#L583) step
-  - Add `babel` and `npm` dependencies in the install step of the new workflows
-
-- workspace support
-
-  - Add to [@jupyterlab/buildutils](https://github.com/jupyterlab/jupyterlab/tree/833cd34de5f7b246208744662c2d4bd62cc3bb35/buildutils/src)
-  - Add ability to start/stop a [verdaccio server](https://github.com/facebook/create-react-app/blob/7e4949a20fc828577fb7626a3262832422f3ae3b/tasks/verdaccio.yaml)
-  - Use the [publish script](https://github.com/jupyterlab/jupyterlab/blob/532eb4161c01bc7e93e86c4ecb8cd1728e498458/buildutils/src/publish.ts) so we pick up `dist-tag` handling. Add option to pass `--yes` for CLI
-
-- jupyterlab/lumino migration:
-
-  - We need to manually update the JS versions since we are in lerna independent mode. We will push the commit and resulting tags directly to the branch.
-  - Use the top level `package.json` as the versioned file (but still keep it private)
-  - After creating the changelog, use the date instead of the version and add the JS packages
-
-- jupyterlab/jupyterlab migration:
-  - Pass a `--yes` flag to lerna `version` and `publish` when releasing on CI
-  - Keep using `bump2version` since we need to use them for the JS packages, but collapse patch release into `jlpm bumpversion patch`
-  - Since we're using verdaccio, we don't need to wait for packages to be available to run [`update-core-mode`](https://github.com/jupyterlab/jupyterlab/blob/9f50c45b39e289072d4c18519ca29c974c226f69/buildutils/src/update-core-mode.ts), so we can just run that directly and remove `prepare-python-release`
-  - Start verdaccio, publish all packages, update core mode, do release test, all before actually publishing to npm
-  - We may have to update the `jupyterlab/staging/yarn.lock` file to replace the verdaccio registry with the public one.
-  - Add `lab-prod` endpoint in [binder](https://github.com/jupyterlab/jupyterlab/blob/9f50c45b39e289072d4c18519ca29c974c226f69/binder/jupyter_notebook_config.py#L17) so we can actually test with "released" packages for a given commit

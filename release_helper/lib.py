@@ -70,7 +70,7 @@ def prep_env(
 
     version = util.get_version()
 
-    if "setup.py" in os.listdir(".") and not is_canonical(version):  # pragma: no cover
+    if util.SETUP_PY.exists() and not is_canonical(version):  # pragma: no cover
         raise ValueError(f"Invalid version {version}")
 
     print(f"version={version}")
@@ -135,7 +135,7 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
     body = title
 
     # Check for multiple versions
-    if Path("package.json").exists():
+    if util.PACKAGE_JSON.exists():
         body += npm.get_package_versions(version)
 
     base = branch
@@ -201,9 +201,7 @@ def draft_release(
     if post_version_spec:
         util.bump_version(post_version_spec, version_cmd)
         post_version = util.get_version()
-        if "setup.py" in os.listdir(".") and not is_canonical(
-            version
-        ):  # pragma: no cover
+        if util.SETUP_PY.exists() and not is_canonical(version):  # pragma: no cover
             raise ValueError(f"\n\nInvalid post version {version}")
 
         print(f"Bumped version to {post_version}")

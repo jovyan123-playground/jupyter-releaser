@@ -9,6 +9,9 @@ from tempfile import TemporaryDirectory
 
 from release_helper import util
 
+PYPROJECT = util.PYPROJECT
+SETUP_PY = util.SETUP_PY
+
 
 def build_dist(dist_dir):
     """Build the python dist files into a dist folder"""
@@ -18,9 +21,9 @@ def build_dist(dist_dir):
     for pkg in glob(f"{dist_dir}/*.gz") + glob(f"{dist_dir}/*.whl"):
         os.remove(pkg)
 
-    if osp.exists("./pyproject.toml"):
+    if PYPROJECT.exists():
         util.run(f"python -m build --outdir {dist_dir} .")
-    elif osp.exists("./setup.py"):
+    elif SETUP_PY.exists():
         util.run(f"python setup.py sdist --dist-dir {dist_dir}")
         util.run(f"python setup.py bdist_wheel --dist-dir {dist_dir}")
 

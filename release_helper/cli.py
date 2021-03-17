@@ -1,5 +1,6 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
+import os
 import os.path as osp
 from glob import glob
 from pathlib import Path
@@ -13,28 +14,84 @@ from release_helper import python
 from release_helper import util
 
 
-class NaturalOrderGroup(click.Group):
-    """Click group that lists commmands in the order added"""
+class ReleaseHelperGroup(click.Group):
+    """Click group tailored to release-helper"""
+
+    def invoke(self, ctx):
+        """Handle release-helper config while invoking a command"""
+        # Get the command name and make sure it is valid
+        cmd_name = ctx.protected_args[0]
+        if not cmd_name in self.commands:
+            super().invoke(ctx)
+
+        # Read in the config
+        config = util.read_config()
+        hooks = config.get("hooks", {})
+
+        # Get all of the set environment variables
+        envvals = dict()
+        for param in self.commands[cmd_name].get_params(ctx):
+            if param.envvar and os.environ.get(param.envvar):
+                envvals[param.name] = os.environ[param.envvar]
+
+        # Handle before hooks
+        before = f"before-{cmd_name}"
+        if before in hooks:
+            before_hooks = hooks[before]
+            if isinstance(before_hooks, str):
+                before_hooks = [before_hooks]
+            for hook in before_hooks:
+                util.run(hook)
+
+        # Handle config overrides
+        if cmd_name in config:
+            for (key, value) in config[cmd_name].items():
+                # Allow names to be specified with hyphens or underscores
+                key = key.replace("-", "_")
+                # Defer to environment overrides
+                if envvals.get(key):
+                    continue
+                arg = f"--{key.replace('_', '-')}"
+                # Defer to cli overrides
+                if arg not in ctx.args:
+                    ctx.args.append(arg)
+                    ctx.args.append(value)
+
+        # Run the actual command
+        super().invoke(ctx)
+
+        # Handle after hooks
+        after = f"after-{cmd_name}"
+        if after in hooks:
+            after_hooks = hooks[after]
+            if isinstance(after_hooks, str):
+                after_hooks = [after_hooks]
+            for hook in after_hooks:
+                util.run(hook)
 
     def list_commands(self, ctx):
+        """List commands in insertion order"""
         return self.commands.keys()
 
 
-@click.group(cls=NaturalOrderGroup)
-def main():
+@click.group(cls=ReleaseHelperGroup)
+@click.pass_context
+def main(ctx):
     """Release helper scripts"""
     pass
 
 
 # Extracted common options
 version_cmd_options = [
-    click.option("--version-cmd", envvar="VERSION_COMMAND", help="The version command")
+    click.option(
+        "--version-cmd", envvar="RH_VERSION_COMMAND", help="The version command"
+    )
 ]
 
 branch_options = [
-    click.option("--branch", envvar="BRANCH", help="The target branch"),
+    click.option("--branch", envvar="RH_BRANCH", help="The target branch"),
     click.option(
-        "--remote", envvar="REMOTE", default="upstream", help="The git remote name"
+        "--remote", envvar="RH_REMOTE", default="upstream", help="The git remote name"
     ),
     click.option("--repo", envvar="GITHUB_REPOSITORY", help="The git repo"),
 ]
@@ -46,20 +103,22 @@ auth_options = [
 dist_dir_options = [
     click.option(
         "--dist-dir",
-        envvar="DIST_DIR",
+        envvar="RH_DIST_DIR",
         default="dist",
         help="The folder to use for dist files",
     )
 ]
 
 dry_run_options = [
-    click.option("--dry-run", is_flag=True, envvar="DRY_RUN", help="Run as a dry run")
+    click.option(
+        "--dry-run", is_flag=True, envvar="RH_DRY_RUN", help="Run as a dry run"
+    )
 ]
 
 changelog_path_options = [
     click.option(
         "--changelog-path",
-        envvar="CHANGELOG",
+        envvar="RH_CHANGELOG",
         default="CHANGELOG.md",
         help="The path to changelog file",
     ),
@@ -72,7 +131,7 @@ changelog_options = (
     + [
         click.option(
             "--resolve-backports",
-            envvar="RESOLVE_BACKPORTS",
+            envvar="RH_RESOLVE_BACKPORTS",
             is_flag=True,
             help="Resolve backport PRs to their originals",
         ),
@@ -95,7 +154,7 @@ def add_options(options):
 @add_options(version_cmd_options)
 @click.option(
     "--version-spec",
-    envvar="VERSION_SPEC",
+    envvar="RH_VERSION_SPEC",
     required=True,
     help="The new version specifier",
 )
@@ -140,7 +199,7 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
 @main.command()
 @add_options(changelog_options)
 @click.option(
-    "--output", envvar="CHANGELOG_OUTPUT", help="The output file for changelog entry"
+    "--output", envvar="RH_CHANGELOG_OUTPUT", help="The output file for changelog entry"
 )
 def check_changelog(
     branch, remote, repo, auth, changelog_path, resolve_backports, output
@@ -155,7 +214,7 @@ def check_changelog(
 @add_options(dist_dir_options)
 def build_python(dist_dir):
     """Build Python dist files"""
-    if not osp.exists("pyproject.toml") and not osp.exists("setup.py"):
+    if not util.PYPROJECT.exists() and not util.SETUP_PY.exists():
         print("Skipping build-python since there are no python package files")
         return
     python.build_dist(dist_dir)
@@ -164,7 +223,9 @@ def build_python(dist_dir):
 @main.command()
 @add_options(dist_dir_options)
 @click.option(
-    "--test-cmd", envvar="PY_TEST_COMMAND", help="The command to run in the test venvs"
+    "--test-cmd",
+    envvar="RH_PY_TEST_COMMAND",
+    help="The command to run in the test venvs",
 )
 def check_python(dist_dir, test_cmd):
     """Check Python dist files"""
@@ -190,7 +251,7 @@ def build_npm(package, dist_dir):
 @add_options(dist_dir_options)
 @click.option(
     "--test-cmd",
-    envvar="NPM_TEST_COMMAND",
+    envvar="RH_NPM_TEST_COMMAND",
     help="The command to run in isolated install.",
 )
 def check_npm(dist_dir, test_cmd):
@@ -204,30 +265,29 @@ def check_npm(dist_dir, test_cmd):
 @main.command()
 def check_manifest():
     """Check the project manifest"""
-    if Path("setup.py").exists() or Path("pyproject.toml").exists():
+    if util.PYPROJECT.exists() or util.SETUP_PY.exists():
         util.run("check-manifest -v")
     else:
-        print("Skipping build-python since there are no python package files")
+        print("Skipping check-manifest since there are no python package files")
 
 
 @main.command()
 @click.option(
     "--ignore-glob",
-    envvar="IGNORE_MD",
     default=["CHANGELOG.md"],
     multiple=True,
     help="Ignore test file paths based on glob pattern",
 )
 @click.option(
     "--cache-file",
-    envvar="CACHE_FILE",
+    envvar="RH_CACHE_FILE",
     default="~/.cache/pytest-link-check",
     help="The cache file to use",
 )
 @click.option(
     "--links-expire",
     default=604800,
-    envvar="LINKS_EXPIRE",
+    envvar="RH_LINKS_EXPIRE",
     help="Duration in seconds for links to be cached (default one week)",
 )
 def check_links(ignore_glob, cache_file, links_expire):
@@ -257,7 +317,7 @@ def tag_release(branch, remote, repo, dist_dir, no_git_tag_workspace):
 @add_options(dry_run_options)
 @click.option(
     "--post-version-spec",
-    envvar="POST_VERSION_SPEC",
+    envvar="RH_POST_VERSION_SPEC",
     help="The post release version (usually dev)",
 )
 @click.argument("assets", nargs=-1)
@@ -313,7 +373,7 @@ def extract_release(auth, dist_dir, dry_run, release_url):
 @click.option(
     "--npm_cmd",
     help="The command to run for npm release",
-    envvar="NPM_COMMAND",
+    envvar="RH_NPM_COMMAND",
     default="npm publish",
 )
 @click.option(

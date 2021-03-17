@@ -11,6 +11,8 @@ from tempfile import TemporaryDirectory
 
 from release_helper import util
 
+PACKAGE_JSON = util.PACKAGE_JSON
+
 
 def build_dist(package, dist_dir):
     """Build npm dist file(s) from a package"""
@@ -121,7 +123,7 @@ def handle_auth_token(npm_token):
 def get_package_versions(version):
     """Get the formatted list of npm package names and versions"""
     message = ""
-    data = json.loads(Path("package.json").read_text(encoding="utf-8"))
+    data = json.loads(PACKAGE_JSON.read_text(encoding="utf-8"))
     if data["version"] != version:
         message += f"\nPython version: {version}"
         message += f'\nnpm version: {data["name"]}: {data["version"]}'
@@ -138,11 +140,10 @@ def get_package_versions(version):
 
 def tag_workspace_packages():
     """Generate tags for npm workspace packages"""
-    package_json = Path("package.json")
-    if not package_json.exists():
+    if not PACKAGE_JSON.exists():
         return
 
-    data = json.loads(package_json.read_text(encoding="utf-8"))
+    data = json.loads(PACKAGE_JSON.read_text(encoding="utf-8"))
     tags = util.run("git tag").splitlines()
     if not "workspaces" in data:
         return

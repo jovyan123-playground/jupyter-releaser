@@ -6,6 +6,7 @@ import re
 import shutil
 import sys
 from glob import glob
+from pathlib import Path
 from unittest.mock import call
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -28,6 +29,7 @@ from release_helper.tests.util import MockHTTPResponse
 from release_helper.tests.util import MockRequestResponse
 from release_helper.tests.util import PR_ENTRY
 from release_helper.tests.util import REPO_DATA
+from release_helper.tests.util import TOML_CONFIG
 from release_helper.tests.util import VERSION_SPEC
 from release_helper.util import bump_version
 from release_helper.util import normalize_path
@@ -44,7 +46,7 @@ def test_prep_env_simple(py_package, runner):
 
 def test_prep_env_pr(py_package, runner):
     """With GITHUB_BASE_REF (Pull Request)"""
-    env = dict(GITHUB_BASE_REF="foo", VERSION_SPEC="1.0.1", GITHUB_ACTION="")
+    env = dict(GITHUB_BASE_REF="foo", RH_VERSION_SPEC="1.0.1", GITHUB_ACTION="")
     result = runner(["prep-env"], env=env)
     assert "branch=foo" in result.output
 
@@ -60,7 +62,7 @@ def test_prep_env_full(py_package, tmp_path, mocker, runner):
         GITHUB_WORKFLOW="check-release",
         GITHUB_ACTIONS="true",
         GITHUB_REPOSITORY="baz/bar",
-        VERSION_SPEC=version_spec,
+        RH_VERSION_SPEC=version_spec,
         GITHUB_ENV=str(env_file),
         GITHUB_ACTOR="snuffy",
         GITHUB_ACCESS_TOKEN="abc123",
@@ -249,6 +251,8 @@ def test_draft_release_final(npm_dist, runner, mocker, open_mock):
 
 def test_delete_release(npm_dist, runner, mocker, open_mock):
     # Publish the release
+    # Mimic being on GitHub actions so we get the magic output
+    os.environ["GITHUB_ACTIONS"] = "true"
     result = runner(["draft-release", "--dry-run"])
     assert len(open_mock.call_args) == 2
 
@@ -373,3 +377,79 @@ def test_publish_release_npm(npm_dist, runner, mocker, open_mock):
         ]
     )
     assert len(open_mock.call_args) == 2
+
+
+def test_config_file(py_package, runner, mocker):
+    config = util.RELEASE_HELPER_CONFIG
+    config.write_text(TOML_CONFIG, encoding="utf-8")
+
+    orig_run = util.run
+    hooked = 0
+    called = False
+
+    def wrapped(cmd, **kwargs):
+        nonlocal called, hooked
+        if cmd.startswith("python -m build --outdir foo"):
+            called = True
+            return ""
+        if cmd.startswith("python setup.py"):
+            hooked += 1
+            return ""
+        return orig_run(cmd, **kwargs)
+
+    mock_run = mocker.patch("release_helper.util.run", wraps=wrapped)
+
+    runner(["build-python"])
+    assert hooked == 3, hooked
+    assert called
+
+
+def test_config_file_env_override(py_package, runner, mocker):
+    config = util.RELEASE_HELPER_CONFIG
+    config.write_text(TOML_CONFIG, encoding="utf-8")
+
+    orig_run = util.run
+    called = False
+    hooked = 0
+
+    def wrapped(cmd, **kwargs):
+        nonlocal called, hooked
+        if cmd.startswith("python -m build --outdir bar"):
+            called = True
+            return ""
+        if cmd.startswith("python setup.py"):
+            hooked += 1
+            return ""
+        return orig_run(cmd, **kwargs)
+
+    mock_run = mocker.patch("release_helper.util.run", wraps=wrapped)
+
+    os.environ["RH_DIST_DIR"] = "bar"
+    runner(["build-python"])
+    assert hooked == 3, hooked
+    assert called
+
+
+def test_config_file_cli_override(py_package, runner, mocker):
+    config = util.RELEASE_HELPER_CONFIG
+    config.write_text(TOML_CONFIG, encoding="utf-8")
+
+    orig_run = util.run
+    called = False
+    hooked = 0
+
+    def wrapped(cmd, **kwargs):
+        nonlocal called, hooked
+        if cmd.startswith("python -m build --outdir bar"):
+            called = True
+            return ""
+        if cmd.startswith("python setup.py"):
+            hooked += 1
+            return ""
+        return orig_run(cmd, **kwargs)
+
+    mock_run = mocker.patch("release_helper.util.run", wraps=wrapped)
+
+    runner(["build-python", "--dist-dir", "bar"])
+    assert hooked == 3, hooked
+    assert called

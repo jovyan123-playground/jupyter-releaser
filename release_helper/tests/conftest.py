@@ -30,11 +30,15 @@ Initial commit
 
 @fixture(autouse=True)
 def mock_env_vars(mocker):
-    """Clear any GitHub related environment variables"""
+    """Clear unwanted environment variables"""
+    # Anything that starts with RH_ or GITHUB_
+    prefixes = ["GITHUB_", "RH_"]
     env = os.environ.copy()
-    for key in list(env.keys()):
-        if key.startswith("GITHUB_"):
-            del env[key]
+    for key in list(env):
+        for prefix in prefixes:
+            if key.startswith(prefix):
+                del env[key]
+
     mocker.patch.dict(os.environ, env, clear=True)
     yield
 

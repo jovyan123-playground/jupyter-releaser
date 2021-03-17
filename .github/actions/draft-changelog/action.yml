@@ -21,10 +21,10 @@ runs:
         set -eux
         pip install release-helper
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
-        export VERSION_SPEC=${{ inputs.version_spec }}
-        export CHANGELOG=${{ inputs.changelog }}
-        export DRY_RUN=${{ inputs.dry_run }}
+        export RH_VERSION_SPEC=${{ inputs.version_spec }}
+        export RH_CHANGELOG=${{ inputs.changelog }}
+        export RH_DRY_RUN=${{ inputs.dry_run }}
         release-helper prep-env
         release-helper build-changelog
         release-helper draft-changelog
-        cat $CHANGELOG
+        cat ${RH_CHANGELOG}
