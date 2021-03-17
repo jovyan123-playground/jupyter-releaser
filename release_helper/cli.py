@@ -23,12 +23,11 @@ class ReleaseHelperGroup(click.Group):
         cmd_name = ctx.protected_args[0]
         hooks = config.get("hooks", {})
 
-        # Get all of the environment variables
+        # Get all of the set environment variables
         envvals = dict()
-        params = self.commands[cmd_name].get_params(ctx)
-        for param in params:
-            if param.envvar:
-                envvals[param.name] = os.environ.get(param.envvar)
+        for param in self.commands[cmd_name].get_params(ctx):
+            if param.envvar and os.environ.get(param.envvar):
+                envvals[param.name] = os.environ[param.envvar]
 
         # Handle before hooks
         before = f"before:{cmd_name}"
@@ -42,13 +41,15 @@ class ReleaseHelperGroup(click.Group):
         # Handle config overrides
         if cmd_name in config:
             for (key, value) in config[cmd_name].items():
-                # Allow environment overrides
-                if envvals.get(key.replace("-", "_")):
+                # Allow names to be specified with hyphens or underscores
+                key = key.replace("-", "_")
+                # Defer to environment overrides
+                if envvals.get(key):
                     continue
-                target = f"--{key}"
-                # Allow cli overrides
-                if target not in ctx.args:
-                    ctx.args.append(target)
+                arg = f"--{key.replace('_', '-')}"
+                # Defer to cli overrides
+                if arg not in ctx.args:
+                    ctx.args.append(arg)
                     ctx.args.append(value)
 
         # Run the actual command
