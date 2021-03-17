@@ -19,8 +19,13 @@ class ReleaseHelperGroup(click.Group):
 
     def invoke(self, ctx):
         """Handle release-helper config while invoking a command"""
-        config = util.read_config()
+        # Get the command name and make sure it is valid
         cmd_name = ctx.protected_args[0]
+        if not cmd_name in self.commands:
+            super().invoke(ctx)
+
+        # Read in the config
+        config = util.read_config()
         hooks = config.get("hooks", {})
 
         # Get all of the set environment variables

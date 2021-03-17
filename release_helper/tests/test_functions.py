@@ -3,6 +3,8 @@
 import json
 import shutil
 
+import toml
+
 from release_helper import changelog
 from release_helper import util
 from release_helper.tests import util as testutil
@@ -97,3 +99,33 @@ def test_bump_version(py_package):
     for spec in ["1.0.1", "1.0.1.dev1", "1.0.3a4"]:
         util.bump_version(spec)
         assert util.get_version() == spec
+
+
+def test_get_config_python(py_package):
+    text = util.PYPROJECT.read_text(encoding="utf-8")
+    text = testutil.TOML_CONFIG.replace("\n[", "\n[tool.release-helper.")
+    util.PYPROJECT.write_text(text, encoding="utf-8")
+    config = util.read_config()
+    assert config["hooks"]["before:build-python"] == "python setup.py --version"
+    assert config["build-python"]["dist_dir"] == "foo"
+
+
+def test_get_config_npm(npm_package):
+    package_json = util.PACKAGE_JSON
+    data = json.loads(package_json.read_text(encoding="utf-8"))
+    data["release-helper"] = toml.loads(testutil.TOML_CONFIG)
+    package_json.write_text(json.dumps(data))
+    config = util.read_config()
+    assert config["hooks"]["after:build-python"] == [
+        "python setup.py --version",
+        "python setup.py --name",
+    ]
+    assert config["build-python"]["dist_dir"] == "foo"
+
+
+def test_get_config_file(git_repo):
+    config = util.RELEASE_HELPER_CONFIG
+    config.write_text(testutil.TOML_CONFIG, encoding="utf-8")
+    config = util.read_config()
+    assert config["hooks"]["before:build-python"] == "python setup.py --version"
+    assert config["build-python"]["dist_dir"] == "foo"
