@@ -30,7 +30,7 @@ Initial commit
 
 @fixture(autouse=True)
 def mock_env_vars(mocker):
-    """Clear environment variables other"""
+    """Clear unwanted environment variables"""
     env = dict(PATH=os.environ["PATH"], LANG=os.environ["LANG"])
     mocker.patch.dict(os.environ, env, clear=True)
     yield
