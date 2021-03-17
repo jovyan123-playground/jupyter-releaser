@@ -35,7 +35,7 @@ class ReleaseHelperGroup(click.Group):
                 envvals[param.name] = os.environ[param.envvar]
 
         # Handle before hooks
-        before = f"before:{cmd_name}"
+        before = f"before-{cmd_name}"
         if before in hooks:
             before_hooks = hooks[before]
             if isinstance(before_hooks, str):
@@ -61,7 +61,7 @@ class ReleaseHelperGroup(click.Group):
         super().invoke(ctx)
 
         # Handle after hooks
-        after = f"after:{cmd_name}"
+        after = f"after-{cmd_name}"
         if after in hooks:
             after_hooks = hooks[after]
             if isinstance(after_hooks, str):

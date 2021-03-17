@@ -13,11 +13,11 @@ VERSION_SPEC = "1.0.1"
 
 TOML_CONFIG = """
 [hooks]
-"before:build-python" = "python setup.py --version"
-"after:build-python" = ["python setup.py --version", "python setup.py --name"]
+before-build-python = "python setup.py --version"
+after-build-python = ["python setup.py --version", "python setup.py --name"]
 
 [build-python]
-"dist_dir" = "foo"
+dist_dir = "foo"
 """
 
 PR_ENTRY = "Mention the required GITHUB_ACCESS_TOKEN [#1](https://github.com/executablebooks/github-activity/pull/1) ([@consideRatio](https://github.com/consideRatio))"

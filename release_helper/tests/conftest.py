@@ -31,7 +31,11 @@ Initial commit
 @fixture(autouse=True)
 def mock_env_vars(mocker):
     """Clear unwanted environment variables"""
-    env = dict(PATH=os.environ["PATH"], LANG=os.environ["LANG"])
+    keep = ["PATH", "LANG"]
+    env = dict()
+    for key in keep:
+        if key in os.environ:
+            env[key] = os.environ[key]
     mocker.patch.dict(os.environ, env, clear=True)
     yield
 
