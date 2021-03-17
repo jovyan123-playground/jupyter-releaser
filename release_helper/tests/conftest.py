@@ -31,11 +31,14 @@ Initial commit
 @fixture(autouse=True)
 def mock_env_vars(mocker):
     """Clear unwanted environment variables"""
-    keep = ["PATH", "LANG"]
-    env = dict()
-    for key in keep:
-        if key in os.environ:
-            env[key] = os.environ[key]
+    # Anything that starts with RH_ or GITHUB_
+    prefixes = ["GITHUB_", "RH_"]
+    env = os.environ.copy()
+    for key in list(env):
+        for prefix in prefixes:
+            if key.startswith(prefix):
+                del env[key]
+
     mocker.patch.dict(os.environ, env, clear=True)
     yield
 

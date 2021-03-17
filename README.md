@@ -80,11 +80,16 @@ To install the latest release locally, make sure you have
 ## Configuration
 
 All of the commands support CLI and Environment Variable Overrides.
+The environment variables are defined by the `envvar` parameters in the
+command options in `cli.py`. The environment variables unique to
+`release-helper` are prefixed with `RH_`.
+
 The default values can also be overriden using a config file.
-The config file consists of sections for each sub-command, e.g. `build-python`,
-with key-value pairs. You can also define hooks to run before and after commands
-in a `hooks` section. Hooks can be a shell command to run or a list of shell commands,
-and are specified to run `before-` or `after-` a command.
+The config consists of sections for each command, e.g. `build-python`,
+with key-value pairs. You can also define hooks to run before and after
+commands in a `hooks` section. Hooks can be a shell command to run or
+a list of shell commands, and are specified to run `before-` or `after-`
+a command.
 
 This is where `release-helper` looks for configuration:
 

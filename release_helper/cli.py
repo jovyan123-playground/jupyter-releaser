@@ -83,13 +83,15 @@ def main(ctx):
 
 # Extracted common options
 version_cmd_options = [
-    click.option("--version-cmd", envvar="VERSION_COMMAND", help="The version command")
+    click.option(
+        "--version-cmd", envvar="RH_VERSION_COMMAND", help="The version command"
+    )
 ]
 
 branch_options = [
-    click.option("--branch", envvar="BRANCH", help="The target branch"),
+    click.option("--branch", envvar="RH_BRANCH", help="The target branch"),
     click.option(
-        "--remote", envvar="REMOTE", default="upstream", help="The git remote name"
+        "--remote", envvar="RH_REMOTE", default="upstream", help="The git remote name"
     ),
     click.option("--repo", envvar="GITHUB_REPOSITORY", help="The git repo"),
 ]
@@ -101,20 +103,22 @@ auth_options = [
 dist_dir_options = [
     click.option(
         "--dist-dir",
-        envvar="DIST_DIR",
+        envvar="RH_DIST_DIR",
         default="dist",
         help="The folder to use for dist files",
     )
 ]
 
 dry_run_options = [
-    click.option("--dry-run", is_flag=True, envvar="DRY_RUN", help="Run as a dry run")
+    click.option(
+        "--dry-run", is_flag=True, envvar="RH_DRY_RUN", help="Run as a dry run"
+    )
 ]
 
 changelog_path_options = [
     click.option(
         "--changelog-path",
-        envvar="CHANGELOG",
+        envvar="RH_CHANGELOG",
         default="CHANGELOG.md",
         help="The path to changelog file",
     ),
@@ -127,7 +131,7 @@ changelog_options = (
     + [
         click.option(
             "--resolve-backports",
-            envvar="RESOLVE_BACKPORTS",
+            envvar="RH_RESOLVE_BACKPORTS",
             is_flag=True,
             help="Resolve backport PRs to their originals",
         ),
@@ -150,7 +154,7 @@ def add_options(options):
 @add_options(version_cmd_options)
 @click.option(
     "--version-spec",
-    envvar="VERSION_SPEC",
+    envvar="RH_VERSION_SPEC",
     required=True,
     help="The new version specifier",
 )
@@ -195,7 +199,7 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
 @main.command()
 @add_options(changelog_options)
 @click.option(
-    "--output", envvar="CHANGELOG_OUTPUT", help="The output file for changelog entry"
+    "--output", envvar="RH_CHANGELOG_OUTPUT", help="The output file for changelog entry"
 )
 def check_changelog(
     branch, remote, repo, auth, changelog_path, resolve_backports, output
@@ -219,7 +223,9 @@ def build_python(dist_dir):
 @main.command()
 @add_options(dist_dir_options)
 @click.option(
-    "--test-cmd", envvar="PY_TEST_COMMAND", help="The command to run in the test venvs"
+    "--test-cmd",
+    envvar="RH_PY_TEST_COMMAND",
+    help="The command to run in the test venvs",
 )
 def check_python(dist_dir, test_cmd):
     """Check Python dist files"""
@@ -245,7 +251,7 @@ def build_npm(package, dist_dir):
 @add_options(dist_dir_options)
 @click.option(
     "--test-cmd",
-    envvar="NPM_TEST_COMMAND",
+    envvar="RH_NPM_TEST_COMMAND",
     help="The command to run in isolated install.",
 )
 def check_npm(dist_dir, test_cmd):
@@ -268,21 +274,20 @@ def check_manifest():
 @main.command()
 @click.option(
     "--ignore-glob",
-    envvar="IGNORE_MD",
     default=["CHANGELOG.md"],
     multiple=True,
     help="Ignore test file paths based on glob pattern",
 )
 @click.option(
     "--cache-file",
-    envvar="CACHE_FILE",
+    envvar="RH_CACHE_FILE",
     default="~/.cache/pytest-link-check",
     help="The cache file to use",
 )
 @click.option(
     "--links-expire",
     default=604800,
-    envvar="LINKS_EXPIRE",
+    envvar="RH_LINKS_EXPIRE",
     help="Duration in seconds for links to be cached (default one week)",
 )
 def check_links(ignore_glob, cache_file, links_expire):
@@ -312,7 +317,7 @@ def tag_release(branch, remote, repo, dist_dir, no_git_tag_workspace):
 @add_options(dry_run_options)
 @click.option(
     "--post-version-spec",
-    envvar="POST_VERSION_SPEC",
+    envvar="RH_POST_VERSION_SPEC",
     help="The post release version (usually dev)",
 )
 @click.argument("assets", nargs=-1)
@@ -368,7 +373,7 @@ def extract_release(auth, dist_dir, dry_run, release_url):
 @click.option(
     "--npm_cmd",
     help="The command to run for npm release",
-    envvar="NPM_COMMAND",
+    envvar="RH_NPM_COMMAND",
     default="npm publish",
 )
 @click.option(

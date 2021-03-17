@@ -46,7 +46,7 @@ def test_prep_env_simple(py_package, runner):
 
 def test_prep_env_pr(py_package, runner):
     """With GITHUB_BASE_REF (Pull Request)"""
-    env = dict(GITHUB_BASE_REF="foo", VERSION_SPEC="1.0.1", GITHUB_ACTION="")
+    env = dict(GITHUB_BASE_REF="foo", RH_VERSION_SPEC="1.0.1", GITHUB_ACTION="")
     result = runner(["prep-env"], env=env)
     assert "branch=foo" in result.output
 
@@ -62,7 +62,7 @@ def test_prep_env_full(py_package, tmp_path, mocker, runner):
         GITHUB_WORKFLOW="check-release",
         GITHUB_ACTIONS="true",
         GITHUB_REPOSITORY="baz/bar",
-        VERSION_SPEC=version_spec,
+        RH_VERSION_SPEC=version_spec,
         GITHUB_ENV=str(env_file),
         GITHUB_ACTOR="snuffy",
         GITHUB_ACCESS_TOKEN="abc123",
@@ -424,7 +424,7 @@ def test_config_file_env_override(py_package, runner, mocker):
 
     mock_run = mocker.patch("release_helper.util.run", wraps=wrapped)
 
-    os.environ["DIST_DIR"] = "bar"
+    os.environ["RH_DIST_DIR"] = "bar"
     runner(["build-python"])
     assert hooked == 3, hooked
     assert called
