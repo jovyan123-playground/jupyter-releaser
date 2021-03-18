@@ -27,16 +27,24 @@ class ReleaseHelperGroup(click.Group):
         # Read in the config
         config = util.read_config()
         hooks = config.get("hooks", {})
+        options = config.get("options", {})
 
         # Group the output of the command if on GitHub Actions
         if os.environ.get("GITHUB_ACTIONS"):
             print(f"::group::{cmd_name}")
 
-        # Get all of the set environment variables
-        envvals = dict()
+        # Handle all of the parameters
         for param in self.commands[cmd_name].get_params(ctx):
+            # Defer to env var overrides
             if param.envvar and os.environ.get(param.envvar):
-                envvals[param.name] = os.environ[param.envvar]
+                continue
+            name = param.name
+            if name in options:
+                arg = f"--{name.replace('_', '-')}"
+                # Defer to cli overrides
+                if arg not in ctx.args:
+                    ctx.args.append(arg)
+                    ctx.args.append(options[name])
 
         # Handle before hooks
         before = f"before-{cmd_name}"
@@ -46,20 +54,6 @@ class ReleaseHelperGroup(click.Group):
                 before_hooks = [before_hooks]
             for hook in before_hooks:
                 util.run(hook)
-
-        # Handle config overrides
-        if cmd_name in config:
-            for (key, value) in config[cmd_name].items():
-                # Allow names to be specified with hyphens or underscores
-                key = key.replace("-", "_")
-                # Defer to environment overrides
-                if envvals.get(key):
-                    continue
-                arg = f"--{key.replace('_', '-')}"
-                # Defer to cli overrides
-                if arg not in ctx.args:
-                    ctx.args.append(arg)
-                    ctx.args.append(value)
 
         # Run the actual command
         super().invoke(ctx)

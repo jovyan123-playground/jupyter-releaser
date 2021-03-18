@@ -85,8 +85,8 @@ command options in `cli.py`. The environment variables unique to
 `release-helper` are prefixed with `RH_`.
 
 The default values can also be overriden using a config file.
-The config consists of sections for each command, e.g. `build-python`,
-with key-value pairs. You can also define hooks to run before and after
+Options can be overridden using the `options` section.
+You can also define hooks to run before and after
 commands in a `hooks` section. Hooks can be a shell command to run or
 a list of shell commands, and are specified to run `before-` or `after-`
 a command.
@@ -102,7 +102,7 @@ This is where `release-helper` looks for configuration:
 Example `.release-helper.toml`:
 
 ```toml
-[build-python]
+[options]
 dist_dir = mydist
 
 [hooks]
@@ -112,7 +112,7 @@ before-tag-version = "npm run pre:tag:script"
 Example `pyproject.toml` section:
 
 ```toml
-[tools.release-helper.build_python]
+[tools.release-helper.options]
 dist_dir = mydist
 
 [tools.release-helper.hooks]
@@ -125,7 +125,7 @@ Example `package.json`:
 {
   "name": "my-package",
   "release-helper": {
-    "build-npm": {
+    "options": {
       "dist_dir": "mydist"
     },
     "hooks": {

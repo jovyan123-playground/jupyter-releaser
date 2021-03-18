@@ -16,7 +16,7 @@ TOML_CONFIG = """
 before-build-python = "python setup.py --version"
 after-build-python = ["python setup.py --version", "python setup.py --name"]
 
-[build-python]
+[options]
 dist_dir = "foo"
 """
 
