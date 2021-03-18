@@ -89,6 +89,15 @@ def main(ctx):
 
 
 # Extracted common options
+version_spec_options = [
+    click.option(
+        "--version-spec",
+        envvar="RH_VERSION_SPEC",
+        required=True,
+        help="The new version specifier",
+    )
+]
+
 version_cmd_options = [
     click.option(
         "--version-cmd", envvar="RH_VERSION_COMMAND", help="The version command"
@@ -158,13 +167,8 @@ def add_options(options):
 
 
 @main.command()
+@add_options(version_spec_options)
 @add_options(version_cmd_options)
-@click.option(
-    "--version-spec",
-    envvar="RH_VERSION_SPEC",
-    required=True,
-    help="The new version specifier",
-)
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(dist_dir_options)
@@ -195,13 +199,13 @@ def build_changelog(branch, remote, repo, auth, changelog_path, resolve_backport
 
 
 @main.command()
-@add_options(version_cmd_options)
+@add_options(version_spec_options)
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(dry_run_options)
-def draft_changelog(version_spec_cmd, branch, remote, repo, auth, dry_run):
+def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
     """Create a changelog entry PR"""
-    lib.draft_changelog(version_spec_cmd, branch, remote, repo, auth, dry_run)
+    lib.draft_changelog(version_spec, branch, remote, repo, auth, dry_run)
 
 
 @main.command()

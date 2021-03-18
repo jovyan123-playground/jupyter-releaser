@@ -107,7 +107,7 @@ def check_links(ignore_glob, cache_file, links_expire):
         util.run(cmd + " --lf")
 
 
-def draft_changelog(version_spec_cmd, branch, remote, repo, auth, dry_run):
+def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
     """Create a changelog entry PR"""
     repo = repo or util.get_repo(remote, auth=auth)
     branch = branch or util.get_branch()
@@ -139,7 +139,7 @@ def draft_changelog(version_spec_cmd, branch, remote, repo, auth, dry_run):
         body += npm.get_package_versions(version)
 
     body += '\n\nAfter merging this PR run the "Draft Release" Workflow'
-    body + f"with Version Spec Command: {version_spec_cmd}"
+    body + f"with Version Spec: {version_spec}"
 
     base = branch
     head = pr_branch
