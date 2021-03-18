@@ -28,6 +28,10 @@ class ReleaseHelperGroup(click.Group):
         config = util.read_config()
         hooks = config.get("hooks", {})
 
+        # Group the output of the command if on GitHub Actions
+        if os.environ.get("GITHUB_ACTIONS"):
+            print(f"::group::{cmd_name}")
+
         # Get all of the set environment variables
         envvals = dict()
         for param in self.commands[cmd_name].get_params(ctx):
@@ -68,6 +72,9 @@ class ReleaseHelperGroup(click.Group):
                 after_hooks = [after_hooks]
             for hook in after_hooks:
                 util.run(hook)
+
+        if os.environ.get("GITHUB_ACTIONS"):
+            print("::endgroup::")
 
     def list_commands(self, ctx):
         """List commands in insertion order"""
@@ -188,12 +195,13 @@ def build_changelog(branch, remote, repo, auth, changelog_path, resolve_backport
 
 
 @main.command()
+@add_options(version_cmd_options)
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(dry_run_options)
-def draft_changelog(branch, remote, repo, auth, dry_run):
+def draft_changelog(version_spec_cmd, branch, remote, repo, auth, dry_run):
     """Create a changelog entry PR"""
-    lib.draft_changelog(branch, remote, repo, auth, dry_run)
+    lib.draft_changelog(version_spec_cmd, branch, remote, repo, auth, dry_run)
 
 
 @main.command()

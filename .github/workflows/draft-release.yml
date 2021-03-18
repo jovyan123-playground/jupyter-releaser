@@ -45,8 +45,13 @@ jobs:
         run: |
           pip install -e .
       - name: Create Draft GitHub Release
+        id: draft-release
         uses: ./.github/actions/draft-release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version_spec: ${{ github.event.inputs.version_spec }}
           post_version_spec: ${{ github.event.inputs.post_version_spec }}
+      - name: Next Step Prompt
+        run: |
+          echo "Run the "Publish Release" Workflow with Release Url:"
+          echo ${{ steps.draft-release.outputs.release_url }}"

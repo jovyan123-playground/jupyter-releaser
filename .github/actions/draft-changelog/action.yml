@@ -13,8 +13,13 @@ inputs:
   dry_run:
     description: "If set, do not make a PR"
     default: false
+outputs:
+  pr_url:
+    description: "The URL of the Changelog Pull Request"
+    value: ${{ steps.draft-changelog.outputs.pr_url }}
 runs:
   using: "composite"
+  id: draft-changelog
   steps:
     - shell: bash
       run: |

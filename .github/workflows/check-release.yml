@@ -49,7 +49,7 @@ jobs:
           version_spec: 0.0.1a0
           dry_run: true
       - name: Draft GitHub Release
-        id: draft-release
+        id: draft_release
         uses: ./.github/actions/draft-release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
