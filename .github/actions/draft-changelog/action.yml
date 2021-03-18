@@ -20,8 +20,8 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - id: draft-changelog
     - shell: bash
+      id: draft-changelog
       run: |
         set -eux
         pip install release-helper
