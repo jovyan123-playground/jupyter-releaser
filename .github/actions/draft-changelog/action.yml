@@ -19,8 +19,8 @@ outputs:
     value: ${{ steps.draft-changelog.outputs.pr_url }}
 runs:
   using: "composite"
-  id: draft-changelog
   steps:
+    - id: draft-changelog
     - shell: bash
       run: |
         set -eux
