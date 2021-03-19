@@ -113,11 +113,11 @@ def workspace_package(npm_package):
 
 
 @fixture
-def py_dist(py_package, runner, mocker):
+def py_dist(py_package, runner, mocker, build_mock):
     changelog_entry = testutil.mock_changelog_entry(py_package, runner, mocker)
 
     # Create the dist files
-    run("python -m build .")
+    util.run("python -m build .")
 
     # Finalize the release
     runner(["tag-release"])

@@ -192,7 +192,7 @@ def test_check_changelog(py_package, tmp_path, mocker, runner):
     assert changelog.END_MARKER in text
 
 
-def test_build_python(py_package, runner):
+def test_build_python(py_package, runner, build_mock):
     runner(["build-python"])
 
 
@@ -201,11 +201,11 @@ def test_build_python_setup(py_package, runner):
     runner(["build-python"])
 
 
-def test_build_python_npm(npm_package, runner):
+def test_build_python_npm(npm_package, runner, build_mock):
     runner(["build-python"])
 
 
-def test_check_python(py_package, runner):
+def test_check_python(py_package, runner, build_mock):
     runner(["build-python"])
     runner(["check-python"])
 
@@ -273,7 +273,14 @@ def test_delete_release(npm_dist, runner, mocker, open_mock):
     os.name == "nt" and sys.version_info.major == 3 and sys.version_info.minor < 8,
     reason="See https://bugs.python.org/issue26660",
 )
-def test_extract_dist_py(py_dist, runner, mocker, open_mock, tmp_path):
+def test_extract_dist_py(py_package, runner, mocker, open_mock, tmp_path):
+    changelog_entry = mock_changelog_entry(py_package, runner, mocker)
+
+    # Create the dist files
+    run("python -m build .")
+
+    # Finalize the release
+    runner(["tag-release"])
 
     os.makedirs("staging")
     shutil.move("dist", "staging")
