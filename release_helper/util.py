@@ -13,6 +13,7 @@ from glob import glob
 from pathlib import Path
 from subprocess import CalledProcessError
 from subprocess import check_output
+from subprocess import PIPE
 
 import toml
 
@@ -36,9 +37,14 @@ def run(cmd, **kwargs):
     if not kwargs.pop("quiet", False):
         print(f"+ {cmd}")
 
+    kwargs.setdefault("stderr", PIPE)
+
     parts = shlex.split(cmd)
     if "/" not in parts[0]:
-        parts[0] = normalize_path(shutil.which(parts[0]))
+        executable = shutil.which(parts[0])
+        if not executable:
+            raise CalledProcessError(1, f'Could not find executable "{parts[0]}"')
+        parts[0] = normalize_path(executable)
 
     try:
         return check_output(parts, **kwargs).decode("utf-8").strip()
