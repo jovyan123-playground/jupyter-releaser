@@ -107,7 +107,7 @@ def test_get_config_python(py_package):
     util.PYPROJECT.write_text(text, encoding="utf-8")
     config = util.read_config()
     assert config["hooks"]["before-build-python"] == "python setup.py --version"
-    assert config["build-python"]["dist_dir"] == "foo"
+    assert config["options"]["dist_dir"] == "foo"
 
 
 def test_get_config_npm(npm_package):
@@ -120,7 +120,7 @@ def test_get_config_npm(npm_package):
         "python setup.py --version",
         "python setup.py --name",
     ]
-    assert config["build-python"]["dist_dir"] == "foo"
+    assert config["options"]["dist_dir"] == "foo"
 
 
 def test_get_config_file(git_repo):
@@ -128,4 +128,4 @@ def test_get_config_file(git_repo):
     config.write_text(testutil.TOML_CONFIG, encoding="utf-8")
     config = util.read_config()
     assert config["hooks"]["before-build-python"] == "python setup.py --version"
-    assert config["build-python"]["dist_dir"] == "foo"
+    assert config["options"]["dist_dir"] == "foo"
