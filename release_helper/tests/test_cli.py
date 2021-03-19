@@ -228,11 +228,11 @@ def test_check_manifest_npm(npm_package, runner):
     runner(["check-manifest"])
 
 
-def test_tag_release(py_package, runner):
+def test_tag_release(py_package, runner, build_mock):
     # Prep the env
     runner(["prep-env", "--version-spec", VERSION_SPEC])
     # Create the dist files
-    run("python -m build .")
+    util.run("python -m build .")
     # Tag the release
     runner(["tag-release"])
 
