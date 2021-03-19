@@ -27,12 +27,24 @@ class ReleaseHelperGroup(click.Group):
         # Read in the config
         config = util.read_config()
         hooks = config.get("hooks", {})
+        options = config.get("options", {})
 
-        # Get all of the set environment variables
-        envvals = dict()
+        # Group the output of the command if on GitHub Actions
+        if os.environ.get("GITHUB_ACTIONS"):
+            print(f"::group::{cmd_name}")
+
+        # Handle all of the parameters
         for param in self.commands[cmd_name].get_params(ctx):
+            # Defer to env var overrides
             if param.envvar and os.environ.get(param.envvar):
-                envvals[param.name] = os.environ[param.envvar]
+                continue
+            name = param.name
+            if name in options:
+                arg = f"--{name.replace('_', '-')}"
+                # Defer to cli overrides
+                if arg not in ctx.args:
+                    ctx.args.append(arg)
+                    ctx.args.append(options[name])
 
         # Handle before hooks
         before = f"before-{cmd_name}"
@@ -42,20 +54,6 @@ class ReleaseHelperGroup(click.Group):
                 before_hooks = [before_hooks]
             for hook in before_hooks:
                 util.run(hook)
-
-        # Handle config overrides
-        if cmd_name in config:
-            for (key, value) in config[cmd_name].items():
-                # Allow names to be specified with hyphens or underscores
-                key = key.replace("-", "_")
-                # Defer to environment overrides
-                if envvals.get(key):
-                    continue
-                arg = f"--{key.replace('_', '-')}"
-                # Defer to cli overrides
-                if arg not in ctx.args:
-                    ctx.args.append(arg)
-                    ctx.args.append(value)
 
         # Run the actual command
         super().invoke(ctx)
@@ -68,6 +66,9 @@ class ReleaseHelperGroup(click.Group):
                 after_hooks = [after_hooks]
             for hook in after_hooks:
                 util.run(hook)
+
+        if os.environ.get("GITHUB_ACTIONS"):
+            print("::endgroup::")
 
     def list_commands(self, ctx):
         """List commands in insertion order"""
@@ -82,6 +83,15 @@ def main(ctx):
 
 
 # Extracted common options
+version_spec_options = [
+    click.option(
+        "--version-spec",
+        envvar="RH_VERSION_SPEC",
+        required=True,
+        help="The new version specifier",
+    )
+]
+
 version_cmd_options = [
     click.option(
         "--version-cmd", envvar="RH_VERSION_COMMAND", help="The version command"
@@ -151,13 +161,8 @@ def add_options(options):
 
 
 @main.command()
+@add_options(version_spec_options)
 @add_options(version_cmd_options)
-@click.option(
-    "--version-spec",
-    envvar="RH_VERSION_SPEC",
-    required=True,
-    help="The new version specifier",
-)
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(dist_dir_options)
@@ -188,12 +193,13 @@ def build_changelog(branch, remote, repo, auth, changelog_path, resolve_backport
 
 
 @main.command()
+@add_options(version_spec_options)
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(dry_run_options)
-def draft_changelog(branch, remote, repo, auth, dry_run):
+def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
     """Create a changelog entry PR"""
-    lib.draft_changelog(branch, remote, repo, auth, dry_run)
+    lib.draft_changelog(version_spec, branch, remote, repo, auth, dry_run)
 
 
 @main.command()

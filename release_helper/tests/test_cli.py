@@ -146,18 +146,18 @@ def test_build_changelog_existing(py_package, mocker, runner):
 
 def test_draft_changelog_full(py_package, mocker, runner, open_mock):
     mock_changelog_entry(py_package, runner, mocker)
-    runner(["draft-changelog"])
+    runner(["draft-changelog", "--version-spec", VERSION_SPEC])
     open_mock.assert_called_once()
 
 
 def test_draft_changelog_dry_run(npm_package, mocker, runner):
     mock_changelog_entry(npm_package, runner, mocker)
-    runner(["draft-changelog", "--dry-run"])
+    runner(["draft-changelog", "--dry-run", "--version-spec", VERSION_SPEC])
 
 
 def test_draft_changelog_lerna(workspace_package, mocker, runner, open_mock):
     mock_changelog_entry(workspace_package, runner, mocker)
-    runner(["draft-changelog"])
+    runner(["draft-changelog", "--version-spec", VERSION_SPEC])
     open_mock.assert_called_once()
 
 

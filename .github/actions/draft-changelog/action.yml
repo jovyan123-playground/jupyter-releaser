@@ -13,10 +13,15 @@ inputs:
   dry_run:
     description: "If set, do not make a PR"
     default: false
+outputs:
+  pr_url:
+    description: "The URL of the Changelog Pull Request"
+    value: ${{ steps.draft-changelog.outputs.pr_url }}
 runs:
   using: "composite"
   steps:
     - shell: bash
+      id: draft-changelog
       run: |
         set -eux
         pip install release-helper

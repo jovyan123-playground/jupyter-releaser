@@ -85,8 +85,8 @@ command options in `cli.py`. The environment variables unique to
 `release-helper` are prefixed with `RH_`.
 
 The default values can also be overriden using a config file.
-The config consists of sections for each command, e.g. `build-python`,
-with key-value pairs. You can also define hooks to run before and after
+Options can be overridden using the `options` section.
+You can also define hooks to run before and after
 commands in a `hooks` section. Hooks can be a shell command to run or
 a list of shell commands, and are specified to run `before-` or `after-`
 a command.
@@ -102,7 +102,7 @@ This is where `release-helper` looks for configuration:
 Example `.release-helper.toml`:
 
 ```toml
-[build-python]
+[options]
 dist_dir = mydist
 
 [hooks]
@@ -112,7 +112,7 @@ before-tag-version = "npm run pre:tag:script"
 Example `pyproject.toml` section:
 
 ```toml
-[tools.release-helper.build_python]
+[tools.release-helper.options]
 dist_dir = mydist
 
 [tools.release-helper.hooks]
@@ -125,7 +125,7 @@ Example `package.json`:
 {
   "name": "my-package",
   "release-helper": {
-    "build-npm": {
+    "options": {
       "dist_dir": "mydist"
     },
     "hooks": {
@@ -152,11 +152,13 @@ Example `package.json`:
 
 - [ ] Add workflows for `check_release`, `draft_changelog`, and `draft_release` - see the workflows in this [repo](./.github/workflows)
 - [ ] Change the action calls from the local `./.github/actions/<foo>` to `jupyter-server/release-helper.github/actions/<foo>/@<version_or_branch>`
+- [ ] Try out the "Draft Changelog" and "Draft Release" process on a fork first so you don't accidentally push tags and GitHub releases to the source repository.
 - [ ] Optionally add workflow for `cancel` to cancel previous workflow runs when a new one is started - see [cancel.yml](./.github/workflows/cancel.yml)
 - [ ] Optionally make a new branch or repository on your personal account that has a `publish-release` [workflow](./.github/workflows/publish-release.yml)
 
   - [ ] You will need to add access tokens for [PyPI](https://packaging.python.org/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/#saving-credentials-on-github) and/or [npm](https://docs.npmjs.com/creating-and-viewing-access-tokens)
-  - [ ] Start with the test PyPI server in `publish-release`, then switch to the production server once it is fully working.
+  - [ ] Start with `dry-run: true`, which will target the test pypi registy and use `npm publish --dry-run`
+  - [ ] Then switch to the production server once it is fully working.
 
   ```yaml
   - name: Publish Release

@@ -107,7 +107,7 @@ def check_links(ignore_glob, cache_file, links_expire):
         util.run(cmd + " --lf")
 
 
-def draft_changelog(branch, remote, repo, auth, dry_run):
+def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
     """Create a changelog entry PR"""
     repo = repo or util.get_repo(remote, auth=auth)
     branch = branch or util.get_branch()
@@ -138,6 +138,9 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
     if util.PACKAGE_JSON.exists():
         body += npm.get_package_versions(version)
 
+    body += '\n\nAfter merging this PR run the "Draft Release" Workflow'
+    body + f"with Version Spec: {version_spec}"
+
     base = branch
     head = pr_branch
     maintainer_can_modify = True
@@ -149,7 +152,9 @@ def draft_changelog(branch, remote, repo, auth, dry_run):
     util.run(f"git push {remote} {pr_branch}")
 
     #  title, head, base, body, maintainer_can_modify, draft, issue
-    gh.pulls.create(title, head, base, body, maintainer_can_modify, False, None)
+    pull = gh.pulls.create(title, head, base, body, maintainer_can_modify, False, None)
+
+    util.actions_output("pr_url", pull.html_url)
 
 
 def tag_release(branch, remote, repo, dist_dir, no_git_tag_workspace):

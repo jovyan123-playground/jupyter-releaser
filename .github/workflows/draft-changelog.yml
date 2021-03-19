@@ -28,7 +28,11 @@ jobs:
         run: |
           pip install -e .
       - name: Draft Changelog
+        id: draft-changelog
         uses: ./.github/actions/draft-changelog
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version_spec: ${{ github.event.inputs.version_spec }}
+      - name: Next Step Prompt
+        run: |
+          echo "Review PR: ${{ steps.draft-changelog.outputs.pr_url }}"
