@@ -113,11 +113,11 @@ def workspace_package(npm_package):
 
 
 @fixture
-def py_dist(py_package, runner, mocker):
+def py_dist(py_package, runner, mocker, build_mock):
     changelog_entry = testutil.mock_changelog_entry(py_package, runner, mocker)
 
     # Create the dist files
-    run("python -m build .")
+    util.run("python -m build .")
 
     # Finalize the release
     runner(["tag-release"])
@@ -155,3 +155,20 @@ def open_mock(mocker):
     open_mock = mocker.patch.object(OpenerDirector, "open", autospec=True)
     open_mock.return_value = testutil.MockHTTPResponse()
     yield open_mock
+
+
+@fixture
+def build_mock(mocker):
+    orig_run = util.run
+
+    def wrapped(cmd, **kwargs):
+        if cmd == "python -m build .":
+            os.makedirs("dist", exist_ok=True)
+            Path("dist/foo-0.0.2a0.tar.gz").write_text("hello", encoding="utf-8")
+            Path("dist/foo-0.0.2a0-py3-none-any.whl").write_text(
+                "hello", encoding="utf-8"
+            )
+            return ""
+        return orig_run(cmd, **kwargs)
+
+    mock_run = mocker.patch("release_helper.util.run", wraps=wrapped)

@@ -74,12 +74,12 @@ jobs:
         run: |
           pip freeze
           pip check
-      - name: Run the tests with coverage
-        if: ${{ matrix.os != 'windows' }}
+      - name: Run the tests with coverage on Ubuntu
+        if: ${{ matrix.os == 'ubuntu' }}
         run: |
           pytest -vv --cov release_helper --cov-branch --cov-report term-missing:skip-covered
-      - name: Run the tests on Windows
-        if: ${{ matrix.os == 'windows' }}
+      - name: Run the tests on Windows and macOS
+        if: ${{ matrix.os != 'ubuntu' }}
         run: |
           pytest -vv
       - name: Coverage

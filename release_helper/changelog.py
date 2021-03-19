@@ -67,7 +67,9 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
     since = since.splitlines()[-1]
     print(f"Getting changes to {repo} since {since}...")
 
-    md = generate_activity_md(repo, since=since, kind="pr", auth=auth)
+    md = generate_activity_md(
+        repo, since=since, kind="pr", heading_level=2, auth=auth, branch=branch
+    )
 
     if not md:
         print("No PRs found")
@@ -94,11 +96,9 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
 
     prs = "\n".join(prs).strip()
 
-    # Move the contributor list to a heading level 3
-    prs = prs.replace("## Contributors", "### Contributors")
-
     # Replace "*" unordered list marker with "-" since this is what
     # Prettier uses
+    # TODO: remove after github_activity 0.1.4+ is available
     prs = re.sub(r"^\* ", "- ", prs)
     prs = re.sub(r"\n\* ", "\n- ", prs)
 
