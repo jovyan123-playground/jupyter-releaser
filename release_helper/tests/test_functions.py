@@ -50,7 +50,9 @@ def test_get_changelog_version_entry(py_package, mocker):
     mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
     mocked_gen.return_value = testutil.CHANGELOG_ENTRY
     resp = changelog.get_version_entry("foo", "bar/baz", version)
-    mocked_gen.assert_called_with("bar/baz", since="v0.0.1", kind="pr", auth=None)
+    mocked_gen.assert_called_with(
+        "bar/baz", since="v0.0.1", kind="pr", heading_level=2, auth=None
+    )
 
     assert f"## {version}" in resp
     assert testutil.PR_ENTRY in resp
@@ -59,7 +61,9 @@ def test_get_changelog_version_entry(py_package, mocker):
     resp = changelog.get_version_entry(
         "foo", "bar/baz", version, resolve_backports=True, auth="bizz"
     )
-    mocked_gen.assert_called_with("bar/baz", since="v0.0.1", kind="pr", auth="bizz")
+    mocked_gen.assert_called_with(
+        "bar/baz", since="v0.0.1", kind="pr", heading_level=2, auth="bizz"
+    )
 
     assert f"## {version}" in resp
     assert testutil.PR_ENTRY in resp
