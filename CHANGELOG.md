@@ -4,10 +4,12 @@
 
 ## 0.1.5
 
-([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.1.3...7c94b2da351f163d55b7981bb780d389ef00d767))
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.1.3...293055fa739ab43f15beb93835922dd9c9b7eb7e))
 
 ### Merged PRs
 
+- syntax and casing [#76](https://github.com/jovyan123-playground/release-helper-playground/pull/76) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Automated Changelog for 0.1.5 on main [#75](https://github.com/jovyan123-playground/release-helper-playground/pull/75) ([@github-actions](https://github.com/github-actions))
 - Fix changelog branch [#74](https://github.com/jovyan123-playground/release-helper-playground/pull/74) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 - make build and extract helper functions [#72](https://github.com/jovyan123-playground/release-helper-playground/pull/72) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 - clean up changelog [#70](https://github.com/jovyan123-playground/release-helper-playground/pull/70) ([@jovyan123-playground](https://github.com/jovyan123-playground))
@@ -20,7 +22,7 @@
 
 ([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-16&to=2021-03-20&type=c))
 
-[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-16..2021-03-20&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-16..2021-03-20&type=Issues)
+[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-16..2021-03-20&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Agithub-actions+updated%3A2021-03-16..2021-03-20&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-16..2021-03-20&type=Issues)
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
