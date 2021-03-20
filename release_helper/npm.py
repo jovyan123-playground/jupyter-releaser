@@ -105,7 +105,7 @@ def check_dist(dist_dir, test_cmd=None):
 
     install_str = " ".join(f"./staging/{name}" for name in names)
 
-    util.run(f"yarn add {install_str}", cwd=tmp_dir)
+    util.run(f"npm install {install_str}", cwd=tmp_dir)
 
     text = "\n".join([f'require("{name}")' for name in names])
     tmp_dir.joinpath("index.js").write_text(text, encoding="utf-8")
