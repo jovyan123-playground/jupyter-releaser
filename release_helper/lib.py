@@ -139,7 +139,7 @@ def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
         body += npm.get_package_versions(version)
 
     body += '\n\nAfter merging this PR run the "Draft Release" Workflow'
-    body += f"with Version Spec: {version_spec}"
+    body += f"\nWith Version Spec: {version_spec}"
 
     base = branch
     head = pr_branch
