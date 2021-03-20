@@ -65,6 +65,7 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
         raise ValueError(f"No tags found on branch {branch}")
 
     since = since.splitlines()[-1]
+    branch = branch.split("/")[-1]
     print(f"Getting changes to {repo} since {since} on branch {branch}...")
 
     md = generate_activity_md(
