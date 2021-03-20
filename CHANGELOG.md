@@ -2,6 +2,28 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.1.5
+
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.1.3...7c94b2da351f163d55b7981bb780d389ef00d767))
+
+### Merged PRs
+
+- Fix changelog branch [#74](https://github.com/jovyan123-playground/release-helper-playground/pull/74) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- make build and extract helper functions [#72](https://github.com/jovyan123-playground/release-helper-playground/pull/72) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- clean up changelog [#70](https://github.com/jovyan123-playground/release-helper-playground/pull/70) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Workflow improvements [#69](https://github.com/jovyan123-playground/release-helper-playground/pull/69) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Config file handling [#67](https://github.com/jovyan123-playground/release-helper-playground/pull/67) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Refactor tests [#66](https://github.com/jovyan123-playground/release-helper-playground/pull/66) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- update screenshots [#65](https://github.com/jovyan123-playground/release-helper-playground/pull/65) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-16&to=2021-03-20&type=c))
+
+[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-16..2021-03-20&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-16..2021-03-20&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.1.3
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.1.2...7a1b2105557f88bc103808bf30d5ea5b6c2e7ecb))
@@ -13,8 +35,6 @@
 ([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-16&to=2021-03-16&type=c))
 
 [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-16..2021-03-16&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.1.2
 
