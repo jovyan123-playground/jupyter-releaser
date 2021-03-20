@@ -54,4 +54,4 @@ jobs:
       - name: Next Step Prompt
         run: |
           echo "Run the "Publish Release" Workflow with Release Url:"
-          echo ${{ steps.draft-release.outputs.release_url }}"
+          echo ${{ steps.draft-release.outputs.release_url }}
