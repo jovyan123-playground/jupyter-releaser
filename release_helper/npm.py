@@ -23,8 +23,10 @@ def build_dist(package, dist_dir):
         os.remove(pkg)
 
     if osp.isdir(package):
-        tarball = osp.join(os.getcwd(), util.run("npm pack"))
+        basedir = package
+        tarball = osp.join(package, util.run("npm pack", cwd=package))
     else:
+        basedir = osp.dirname(package)
         tarball = package
 
     data = extract_package(tarball)
@@ -35,23 +37,60 @@ def build_dist(package, dist_dir):
     elif osp.isdir(package):
         os.remove(tarball)
 
+    if not osp.isdir(package):
+        return
+
     if "workspaces" in data:
         packages = data["workspaces"].get("packages", [])
         for pattern in packages:
-            for path in glob(pattern, recursive=True):
+            for path in glob(osp.join(basedir, pattern), recursive=True):
                 path = Path(path)
-                tarball = path / util.run("npm pack", cwd=path)
-                data = extract_package(tarball)
-                if not data.get("private", False) == True:
-                    shutil.move(str(tarball), str(dest))
-                else:
-                    os.remove(tarball)
+                package_json = path / "package.json"
+                if not osp.exists(package_json):
+                    continue
+                data = json.loads(package_json.read_text(encoding="utf-8"))
+                if data.get("private", False) == True:
+                    continue
+                print(f'Packing {data["name"]}')
+                tarball = path / util.run("npm pack", cwd=path, quiet=True)
+                shutil.move(str(tarball), str(dest))
+
+
+def extract_dist(dist_dir, target):
+    """Extract dist files from a dist_dir into a target dir"""
+    names = []
+    for package in glob(f"{dist_dir}/*.tgz"):
+        path = Path(package)
+        if path.suffix != ".tgz":
+            print(f"Skipping non-npm package {path.name}")
+            continue
+
+        data = extract_package(path)
+        name = data["name"]
+
+        print(f"Extracting {name}")
+
+        # Skip if it is a private package
+        if data.get("private", False):  # pragma: no cover
+            print(f"Skipping private package {name}")
+            continue
+
+        names.append(name)
+
+        pkg_dir = target / name
+        if not pkg_dir.parent.exists():
+            os.makedirs(pkg_dir.parent)
+
+        tar = tarfile.open(path)
+        tar.extractall(target)
+        tar.close()
+
+        shutil.move(target / "package", pkg_dir)
+    return names
 
 
 def check_dist(dist_dir, test_cmd=None):
     """Check npm dist file(s) in a dist dir"""
-    packages = glob(f"{dist_dir}/*.tgz")
-
     if not test_cmd:
         test_cmd = "node index.js"
 
@@ -62,33 +101,7 @@ def check_dist(dist_dir, test_cmd=None):
     names = []
     staging = tmp_dir / "staging"
 
-    deps = []
-
-    for package in packages:
-        path = Path(package)
-        if path.suffix != ".tgz":
-            print(f"Skipping non-npm package {path.name}")
-            continue
-
-        data = extract_package(path)
-        name = data["name"]
-
-        # Skip if it is a private package
-        if data.get("private", False):  # pragma: no cover
-            print(f"Skipping private package {name}")
-            continue
-
-        names.append(name)
-
-        pkg_dir = staging / name
-        if not pkg_dir.parent.exists():
-            os.makedirs(pkg_dir.parent)
-
-        tar = tarfile.open(path)
-        tar.extractall(staging)
-        tar.close()
-
-        shutil.move(staging / "package", pkg_dir)
+    names = extract_dist(dist_dir, staging)
 
     install_str = " ".join(f"./staging/{name}" for name in names)
 

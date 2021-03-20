@@ -21,7 +21,7 @@ runs:
       id: publish-release
       run: |
         set -eux
-        pip install release-helper
+        pip install -q release-helper
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
         export RH_DRY_RUN=${{ inputs.dry_run }}
         export TWINE_USERNAME=${TWINE_USERNAME:-"__token__"}

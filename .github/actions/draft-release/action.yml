@@ -26,7 +26,7 @@ runs:
       id: draft-release
       run: |
         set -eux
-        pip install release-helper
+        pip install -q release-helper
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
         export RH_VERSION_SPEC=${{ inputs.version_spec }}
         export RH_CHANGELOG=${{ inputs.changelog }}
