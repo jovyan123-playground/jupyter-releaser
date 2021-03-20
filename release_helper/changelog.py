@@ -65,6 +65,7 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
         raise ValueError(f"No tags found on branch {branch}")
 
     since = since.splitlines()[-1]
+    branch = branch.split("/")[-1]
     print(f"Getting changes to {repo} since {since} on branch {branch}...")
 
     md = generate_activity_md(
@@ -82,32 +83,32 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
     for (ind, line) in enumerate(md):
         if "[full changelog]" in line:
             full_changelog = line.replace("full changelog", "Full Changelog")
-        elif line.strip().startswith("## Merged PRs"):
-            start = ind + 1
+        elif line.strip().startswith("### Merged PRs"):
+            start = ind
 
-    prs = md[start:]
+    entry = md[start:]
 
     if resolve_backports:
-        for (ind, line) in enumerate(prs):
+        for (ind, line) in enumerate(entry):
             if re.search(r"\[@meeseeksmachine\]", line) is not None:
                 match = re.search(r"Backport PR #(\d+)", line)
                 if match:
-                    prs[ind] = format_pr_entry(match.groups()[0])
+                    entry[ind] = format_pr_entry(match.groups()[0])
 
-    prs = "\n".join(prs).strip()
+    entry = "\n".join(entry).strip()
 
     # Replace "*" unordered list marker with "-" since this is what
     # Prettier uses
     # TODO: remove after github_activity 0.1.4+ is available
-    prs = re.sub(r"^\* ", "- ", prs)
-    prs = re.sub(r"\n\* ", "\n- ", prs)
+    entry = re.sub(r"^\* ", "- ", entry)
+    entry = re.sub(r"\n\* ", "\n- ", entry)
 
     output = f"""
 ## {version}
 
 {full_changelog}
 
-{prs}
+{entry}
 """.strip()
 
     return output
