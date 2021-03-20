@@ -39,6 +39,7 @@ jobs:
         run: |
           pip install -e .
       - name: Publish Release
+        id: publish-release
         env:
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }} # use final when ready to publish
           TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
@@ -46,3 +47,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           release_url: ${{ github.event.inputs.release_url }}
+      - name: "** Next Step **"
+        run: |
+          echo "Verify the final release"
+          echo ${{ steps.publish-release.outputs.release_url }}

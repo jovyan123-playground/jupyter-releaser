@@ -51,7 +51,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           version_spec: ${{ github.event.inputs.version_spec }}
           post_version_spec: ${{ github.event.inputs.post_version_spec }}
-      - name: Next Step Prompt
+      - name: "** Next Step **"
         run: |
           echo "Run the "Publish Release" Workflow with Release Url:"
           echo ${{ steps.draft-release.outputs.release_url }}
