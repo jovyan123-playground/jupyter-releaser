@@ -23,11 +23,11 @@ dist_dir = "foo"
 PR_ENTRY = "Mention the required GITHUB_ACCESS_TOKEN [#1](https://github.com/executablebooks/github-activity/pull/1) ([@consideRatio](https://github.com/consideRatio))"
 
 CHANGELOG_ENTRY = f"""
-# master@{{2019-09-01}}...master@{{2019-11-01}}
+## master@{{2019-09-01}}...master@{{2019-11-01}}
 
 ([full changelog](https://github.com/executablebooks/github-activity/compare/479cc4b2f5504945021e3c4ee84818a10fabf810...ed7f1ed78b523c6b9fe6b3ac29e834087e299296))
 
-## Merged PRs
+### Merged PRs
 
 * defining contributions [#14](https://github.com/executablebooks/github-activity/pull/14) ([@choldgraf](https://github.com/choldgraf))
 * updating CLI for new tags [#12](https://github.com/executablebooks/github-activity/pull/12) ([@choldgraf](https://github.com/choldgraf))
@@ -38,7 +38,7 @@ CHANGELOG_ENTRY = f"""
 * adding authentication information [#2](https://github.com/executablebooks/github-activity/pull/2) ([@choldgraf](https://github.com/choldgraf))
 * {PR_ENTRY}
 
-## Contributors to this release
+### Contributors to this release
 
 ([GitHub contributors page for this release](https://github.com/executablebooks/github-activity/graphs/contributors?from=2019-09-01&to=2019-11-01&type=c))
 
