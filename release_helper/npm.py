@@ -41,6 +41,7 @@ def build_dist(package, dist_dir):
         return
 
     if "workspaces" in data:
+        all_data = dict()
         packages = data["workspaces"].get("packages", [])
         for pattern in packages:
             for path in glob(osp.join(basedir, pattern), recursive=True):
@@ -51,24 +52,29 @@ def build_dist(package, dist_dir):
                 data = json.loads(package_json.read_text(encoding="utf-8"))
                 if data.get("private", False) == True:
                     continue
-                print(f'Packing {data["name"]}')
-                tarball = path / util.run("npm pack", cwd=path, quiet=True)
-                shutil.move(str(tarball), str(dest))
+                data["__path__"] = path
+                all_data[data["name"]] = data
+
+        i = 0
+        for (name, data) in sorted(all_data.items()):
+            i += 1
+            path = data["__path__"]
+            print(f'({i}/{len(all_data)}) Packing {data["name"]}...')
+            tarball = path / util.run("npm pack", cwd=path, quiet=True)
+            shutil.move(str(tarball), str(dest))
 
 
 def extract_dist(dist_dir, target):
     """Extract dist files from a dist_dir into a target dir"""
     names = []
-    for package in glob(f"{dist_dir}/*.tgz"):
+    paths = sorted(glob(f"{dist_dir}/*.tgz"))
+    print(f"Extracting {len(paths)} packages...")
+
+    for package in paths:
         path = Path(package)
-        if path.suffix != ".tgz":
-            print(f"Skipping non-npm package {path.name}")
-            continue
 
         data = extract_package(path)
         name = data["name"]
-
-        print(f"Extracting {name}")
 
         # Skip if it is a private package
         if data.get("private", False):  # pragma: no cover
@@ -86,6 +92,7 @@ def extract_dist(dist_dir, target):
         tar.close()
 
         shutil.move(target / "package", pkg_dir)
+
     return names
 
 
