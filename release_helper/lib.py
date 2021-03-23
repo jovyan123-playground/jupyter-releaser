@@ -389,7 +389,7 @@ def publish_release(
     util.actions_output("release_url", release.html_url)
 
 
-def forwardport_changelog(branch, remote, repo, auth, changelog_path):
+def forwardport_changelog(branch, remote, repo, auth, changelog_path, tag):
     """Forwardport Changelog Entries to the Default Branch"""
     # Find the default branch
     default_branch = ""
@@ -397,15 +397,13 @@ def forwardport_changelog(branch, remote, repo, auth, changelog_path):
         if "HEAD branch" in line:
             default_branch = line.strip().split()[-1]
 
-    # Get the current branch
-    branch = branch or util.get_branch()
+    # Bail if the tag has been merged to the default branch
+    tags = util.run(f"git --no-pager tag --merged {default_branch}")
+    if tag in tags.splitlines():
+        print(f"Skipping since tag is already merged into {default_branch}")
 
-    # Bail if the current branch is the default
-    if branch == default_branch:
-        print("Skipping forward port since this is the default branch")
-        return
-
-    # Get the entry for the branch
+    # Get the entry for the tag
+    util.run(f"git checkout {tag}")
     entry = changelog.extract_current(changelog_path)
 
     # Get the previous header for the branch
@@ -436,8 +434,8 @@ def forwardport_changelog(branch, remote, repo, auth, changelog_path):
     default_log = default_log[:insertion_point] + entry + default_log[insertion_point:]
 
     # Create a forward port PR
-    commit_message = 'git commit -a -m "Forwardport changelog entry"'
-    title = f"Forward Ported Changelog Entry from {branch}"
+    commit_message = f'git commit -a -m "Forward port changelog entry from {tag}"'
+    title = f"Forward Ported Changelog Entry from {tag}"
     body = title
 
-    make_changelog_pr(auth, branch, remote, repo, title, commit_message, body)
+    make_changelog_pr(auth, default_log, remote, repo, title, commit_message, body)

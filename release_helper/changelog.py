@@ -60,11 +60,11 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
     str
         A formatted changelog entry with markers
     """
-    since = util.run(f"git --no-pager tag --sort=-creatordate --merged {branch}")
-    if not since:  # pragma: no cover
+    tags = util.run(f"git --no-pager tag --sort=-creatordate --merged {branch}")
+    if not tags:  # pragma: no cover
         raise ValueError(f"No tags found on branch {branch}")
 
-    since = since.splitlines()[0]
+    since = tags.splitlines()[0]
     branch = branch.split("/")[-1]
     print(f"Getting changes to {repo} since {since} on branch {branch}...")
 
