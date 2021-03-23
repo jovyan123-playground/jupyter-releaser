@@ -389,11 +389,11 @@ def publish_release(
     util.actions_output("release_url", release.html_url)
 
 
-def forwardport_changelog(branch, remote, repo, auth, changelog_path, tag):
+def forwardport_changelog(auth, branch, remote, repo, changelog_path, tag):
     """Forwardport Changelog Entries to the Default Branch"""
     # Find the default branch
     default_branch = ""
-    for line in util.run(f"remote show {remote}").splitlines():
+    for line in util.run(f"git remote show {remote}").splitlines():
         if "HEAD branch" in line:
             default_branch = line.strip().split()[-1]
 
@@ -420,7 +420,7 @@ def forwardport_changelog(branch, remote, repo, auth, changelog_path, tag):
         raise ValueError("No anchor for previous entry")
 
     # Check out the default branch
-    util.run(f"git checkout -b {default_branch} {remote}/{default_branch}")
+    util.run(f"git checkout -B {default_branch} {remote}/{default_branch}")
 
     # Look for the previous header
     default_log = Path(changelog_path).read_text(encoding="utf-8")
@@ -431,11 +431,14 @@ def forwardport_changelog(branch, remote, repo, auth, changelog_path, tag):
 
     # Insert the new entry ahead of the previous header
     insertion_point = default_log.index(prev_header)
-    default_log = default_log[:insertion_point] + entry + default_log[insertion_point:]
+    default_log = (
+        default_log[:insertion_point] + entry.lstrip() + default_log[insertion_point:]
+    )
+    Path(changelog_path).write_text(default_log, encoding="utf-8")
 
     # Create a forward port PR
     commit_message = f'git commit -a -m "Forward port changelog entry from {tag}"'
     title = f"Forward Ported Changelog Entry from {tag}"
     body = title
 
-    make_changelog_pr(auth, default_log, remote, repo, title, commit_message, body)
+    make_changelog_pr(auth, default_branch, remote, repo, title, commit_message, body)
