@@ -391,6 +391,8 @@ def publish_release(
 
 def forwardport_changelog(auth, branch, remote, repo, changelog_path, tag):
     """Forwardport Changelog Entries to the Default Branch"""
+    tag = tag.split("/")[-1]
+
     # Find the default branch
     default_branch = ""
     for line in util.run(f"git remote show {remote}").splitlines():
