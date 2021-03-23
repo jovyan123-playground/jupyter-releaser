@@ -138,3 +138,7 @@ def test_get_config_file(git_repo):
     config = util.read_config()
     assert config["hooks"]["before-build-python"] == "python setup.py --version"
     assert config["options"]["dist_dir"] == "foo"
+
+
+def test_forwardport_changelog(git_repo):
+    assert False

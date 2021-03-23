@@ -176,6 +176,13 @@ Example `package.json`:
 
 - [ ] If desired, add workflows, changelog, and `tbump` support to other active release branches
 
+## Backport Branches
+
+- Create backport branches the usual way, e.g. `git checkout -b 3.0.x v3.0.1; git push origin 3.0.x`
+- Make sure you have a copy of the [`forwardport_changelog`](./.github/workflows/forwardport_changelog.yml) workflow into your repository
+- When PRs are merged to a backport branch, an automatic PR is generated for the default branch targeting the appropriate place in the
+  changelog.
+
 ## Workflow Details
 
 ### Draft ChangeLog Workflow
@@ -244,3 +251,10 @@ Example `package.json`:
 - Publishes to the Test PyPI server
 - Deletes the Release
 - Does not make PRs or push git changes
+
+## Forwardport Changelog Workflow
+
+- Automatic workflow that runs when an automated changelog PR is merged
+- If the PR is merged on a branch other than default, it gets the markdown header prior to the new entry in the backport branch.
+  If that header exists in the default branch, insert the new backport entry ahead of it.
+- Opens a PR against the default branch with the new entry.

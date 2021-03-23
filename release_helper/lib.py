@@ -116,6 +116,28 @@ def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
     # Check out any unstaged files from version bump
     util.run("git checkout -- .")
 
+    commit_message = f'git commit -a -m "Generate changelog for {version}"'
+
+    title = f"Automated Changelog for {version} on {branch}"
+    body = title
+
+    # Check for multiple versions
+    if util.PACKAGE_JSON.exists():
+        body += npm.get_package_versions(version)
+
+    body += '\n\nAfter merging this PR run the "Draft Release" Workflow'
+    body += f"\nwith Version Spec: {version_spec}"
+
+    make_changelog_pr(
+        auth, branch, remote, repo, title, commit_message, body, dry_run=dry_run
+    )
+
+
+def make_changelog_pr(
+    auth, branch, remote, repo, title, commit_message, body, dry_run=False
+):
+    repo = repo or util.get_repo(remote, auth=auth)
+
     # Make a new branch with a uuid suffix
     pr_branch = f"changelog-{uuid.uuid1().hex}"
 
@@ -126,20 +148,11 @@ def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
         util.run("git stash apply")
 
     # Add a commit with the message
-    util.run(f'git commit -a -m "Generate changelog for {version}"')
+    util.run(commit_message)
 
     # Create the pull
     owner, repo_name = repo.split("/")
     gh = GhApi(owner=owner, repo=repo_name, token=auth)
-    title = f"Automated Changelog for {version} on {branch}"
-    body = title
-
-    # Check for multiple versions
-    if util.PACKAGE_JSON.exists():
-        body += npm.get_package_versions(version)
-
-    body += '\n\nAfter merging this PR run the "Draft Release" Workflow'
-    body += f"\nwith Version Spec: {version_spec}"
 
     base = branch
     head = pr_branch
@@ -374,3 +387,57 @@ def publish_release(
     # Set the GitHub action output
     print(f"\n\nSetting output release_url={release.html_url}")
     util.actions_output("release_url", release.html_url)
+
+
+def forwardport_changelog(branch, remote, repo, auth, changelog_path):
+    """Forwardport Changelog Entries to the Default Branch"""
+    # Find the default branch
+    default_branch = ""
+    for line in util.run(f"remote show {remote}").splitlines():
+        if "HEAD branch" in line:
+            default_branch = line.strip().split()[-1]
+
+    # Get the current branch
+    branch = branch or util.get_branch()
+
+    # Bail if the current branch is the default
+    if branch == default_branch:
+        print("Skipping forward port since this is the default branch")
+        return
+
+    # Get the entry for the branch
+    entry = changelog.extract_current(changelog_path)
+
+    # Get the previous header for the branch
+    full_log = Path(changelog_path).read_text(encoding="utf-8")
+    start = full_log.index(changelog.END_MARKER)
+
+    prev_header = ""
+    for line in full_log[start:].splitlines():
+        if line.strip().startswith("#"):
+            prev_header = line
+            break
+
+    if not prev_header:
+        raise ValueError("No anchor for previous entry")
+
+    # Check out the default branch
+    util.run(f"git checkout -b {default_branch} {remote}/{default_branch}")
+
+    # Look for the previous header
+    default_log = Path(changelog_path).read_text(encoding="utf-8")
+    if not prev_header in default_log:
+        raise ValueError(
+            f'Could not find previous header "{prev_header}" in {changelog_path} on branch {default_branch}'
+        )
+
+    # Insert the new entry ahead of the previous header
+    insertion_point = default_log.index(prev_header)
+    default_log = default_log[:insertion_point] + entry + default_log[insertion_point:]
+
+    # Create a forward port PR
+    commit_message = 'git commit -a -m "Forwardport changelog entry"'
+    title = f"Forward Ported Changelog Entry from {branch}"
+    body = title
+
+    make_changelog_pr(auth, branch, remote, repo, title, commit_message, body)
