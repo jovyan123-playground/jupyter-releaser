@@ -66,6 +66,8 @@ def git_repo(tmp_path):
     run('git commit -m "foo"')
     run("git tag v0.0.1")
     run(f"git remote add upstream {util.normalize_path(tmp_path)}")
+    run("git push upstream foo")
+    run("git remote set-head upstream foo")
     run("git checkout -b bar foo")
     run("git fetch upstream")
     yield tmp_path

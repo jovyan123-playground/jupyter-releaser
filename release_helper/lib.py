@@ -116,6 +116,28 @@ def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
     # Check out any unstaged files from version bump
     util.run("git checkout -- .")
 
+    commit_message = f'git commit -a -m "Generate changelog for {version}"'
+
+    title = f"Automated Changelog for {version} on {branch}"
+    body = title
+
+    # Check for multiple versions
+    if util.PACKAGE_JSON.exists():
+        body += npm.get_package_versions(version)
+
+    body += '\n\nAfter merging this PR run the "Draft Release" Workflow'
+    body += f"\nwith Version Spec: {version_spec}"
+
+    make_changelog_pr(
+        auth, branch, remote, repo, title, commit_message, body, dry_run=dry_run
+    )
+
+
+def make_changelog_pr(
+    auth, branch, remote, repo, title, commit_message, body, dry_run=False
+):
+    repo = repo or util.get_repo(remote, auth=auth)
+
     # Make a new branch with a uuid suffix
     pr_branch = f"changelog-{uuid.uuid1().hex}"
 
@@ -126,20 +148,11 @@ def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
         util.run("git stash apply")
 
     # Add a commit with the message
-    util.run(f'git commit -a -m "Generate changelog for {version}"')
+    util.run(commit_message)
 
     # Create the pull
     owner, repo_name = repo.split("/")
     gh = GhApi(owner=owner, repo=repo_name, token=auth)
-    title = f"Automated Changelog for {version} on {branch}"
-    body = title
-
-    # Check for multiple versions
-    if util.PACKAGE_JSON.exists():
-        body += npm.get_package_versions(version)
-
-    body += '\n\nAfter merging this PR run the "Draft Release" Workflow'
-    body += f"\nwith Version Spec: {version_spec}"
 
     base = branch
     head = pr_branch
@@ -374,3 +387,60 @@ def publish_release(
     # Set the GitHub action output
     print(f"\n\nSetting output release_url={release.html_url}")
     util.actions_output("release_url", release.html_url)
+
+
+def forwardport_changelog(auth, branch, remote, repo, changelog_path, tag):
+    """Forwardport Changelog Entries to the Default Branch"""
+    tag = tag.split("/")[-1]
+
+    # Find the default branch
+    default_branch = ""
+    for line in util.run(f"git remote show {remote}").splitlines():
+        if "HEAD branch" in line:
+            default_branch = line.strip().split()[-1]
+
+    # Bail if the tag has been merged to the default branch
+    tags = util.run(f"git --no-pager tag --merged {default_branch}")
+    if tag in tags.splitlines():
+        print(f"Skipping since tag is already merged into {default_branch}")
+
+    # Get the entry for the tag
+    util.run(f"git checkout {tag}")
+    entry = changelog.extract_current(changelog_path)
+
+    # Get the previous header for the branch
+    full_log = Path(changelog_path).read_text(encoding="utf-8")
+    start = full_log.index(changelog.END_MARKER)
+
+    prev_header = ""
+    for line in full_log[start:].splitlines():
+        if line.strip().startswith("#"):
+            prev_header = line
+            break
+
+    if not prev_header:
+        raise ValueError("No anchor for previous entry")
+
+    # Check out the default branch
+    util.run(f"git checkout -B {default_branch} {remote}/{default_branch}")
+
+    # Look for the previous header
+    default_log = Path(changelog_path).read_text(encoding="utf-8")
+    if not prev_header in default_log:
+        raise ValueError(
+            f'Could not find previous header "{prev_header}" in {changelog_path} on branch {default_branch}'
+        )
+
+    # Insert the new entry ahead of the previous header
+    insertion_point = default_log.index(prev_header)
+    default_log = (
+        default_log[:insertion_point] + entry.lstrip() + default_log[insertion_point:]
+    )
+    Path(changelog_path).write_text(default_log, encoding="utf-8")
+
+    # Create a forward port PR
+    commit_message = f'git commit -a -m "Forward port changelog entry from {tag}"'
+    title = f"Forward Ported Changelog Entry from {tag}"
+    body = title
+
+    make_changelog_pr(auth, default_branch, remote, repo, title, commit_message, body)
