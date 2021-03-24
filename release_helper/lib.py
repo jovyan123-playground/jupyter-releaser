@@ -34,24 +34,8 @@ def prep_env(
     repo = repo or util.get_repo(remote, auth=auth)
     print(f"repository={repo}")
 
-    is_action = bool(os.environ.get("GITHUB_ACTIONS"))
-
-    # Set up git config if on GitHub Actions
-    if is_action:
-        # Use email address for the GitHub Actions bot
-        # https://github.community/t/github-actions-bot-email-address/17204/6
-        util.run(
-            'git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"'
-        )
-        util.run('git config --global user.name "GitHub Action"')
-
-        remotes = util.run("git remote").splitlines()
-        if remote not in remotes:
-            if auth:
-                url = f"http://{username}:{auth}@github.com/{repo}.git"
-            else:
-                url = f"http://github.com/{repo}.git"
-            util.run(f"git remote add {remote} {url}")
+    # Set up git
+    git_setup(remote, repo, username, auth)
 
     # Check out the remote branch so we can push to it
     util.run(f"git fetch {remote} {branch} --tags")
@@ -390,8 +374,33 @@ def publish_release(
     util.actions_output("release_url", release.html_url)
 
 
-def forwardport_changelog(auth, branch, remote, repo, changelog_path, tag):
+def git_setup(remote, repo, username, auth):
+    """Set up git on GitHub Actions"""
+    is_action = bool(os.environ.get("GITHUB_ACTIONS"))
+    if not is_action:
+        return
+
+    # Use email address for the GitHub Actions bot
+    # https://github.community/t/github-actions-bot-email-address/17204/6
+    util.run(
+        'git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"'
+    )
+    util.run('git config --global user.name "GitHub Action"')
+
+    remotes = util.run("git remote").splitlines()
+    if remote not in remotes:
+        if auth:
+            url = f"http://{username}:{auth}@github.com/{repo}.git"
+        else:
+            url = f"http://github.com/{repo}.git"
+        util.run(f"git remote add {remote} {url}")
+
+
+def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, tag):
     """Forwardport Changelog Entries to the Default Branch"""
+    # Set up the git repo
+    git_setup(remote, repo, username, auth)
+
     tag = tag.split("/")[-1]
 
     # Find the default branch

@@ -110,6 +110,10 @@ auth_options = [
     click.option("--auth", envvar="GITHUB_ACCESS_TOKEN", help="The GitHub auth token"),
 ]
 
+username_options = [
+    click.option("--username", envvar="GITHUB_ACTOR", help="The git username")
+]
+
 dist_dir_options = [
     click.option(
         "--dist-dir",
@@ -166,7 +170,7 @@ def add_options(options):
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(dist_dir_options)
-@click.option("--username", envvar="GITHUB_ACTOR", help="The git username")
+@add_options(username_options)
 @click.option("--output", envvar="GITHUB_ENV", help="Output file for env variables")
 def prep_env(
     version_spec, version_cmd, branch, remote, repo, auth, dist_dir, username, output
@@ -402,11 +406,12 @@ def publish_release(
 @main.command()
 @add_options(auth_options)
 @add_options(branch_options)
+@add_options(username_options)
 @add_options(changelog_path_options)
 @click.argument("tag")
-def forwardport_changelog(auth, branch, remote, repo, changelog_path, tag):
+def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, tag):
     """Forwardport Changelog Entries to the Default Branch"""
-    lib.forwardport_changelog(auth, branch, remote, repo, changelog_path, tag)
+    lib.forwardport_changelog(auth, branch, remote, repo, username, changelog_path, tag)
 
 
 if __name__ == "__main__":  # pragma: no cover
