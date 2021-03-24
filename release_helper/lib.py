@@ -412,6 +412,9 @@ def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, 
             default_branch = default_branch.split("/")[-1]
             break
 
+    # Check out the default branch
+    util.run(f"git checkout -B {default_branch} {remote}/{default_branch}")
+
     # Bail if the tag has been merged to the default branch
     tags = util.run(f"git --no-pager tag --merged {default_branch}")
     if tag in tags.splitlines():
@@ -433,9 +436,6 @@ def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, 
 
     if not prev_header:
         raise ValueError("No anchor for previous entry")
-
-    # Check out the default branch
-    util.run(f"git checkout -B {default_branch} {remote}/{default_branch}")
 
     default_entry = changelog.extract_current(changelog_path)
 
