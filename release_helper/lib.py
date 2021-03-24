@@ -126,6 +126,7 @@ def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
         body += npm.get_package_versions(version)
 
     body += '\n\nAfter merging this PR run the "Draft Release" Workflow'
+    body += f"\non Branch: {branch}"
     body += f"\nwith Version Spec: {version_spec}"
 
     make_changelog_pr(
@@ -424,6 +425,8 @@ def forwardport_changelog(auth, branch, remote, repo, changelog_path, tag):
     # Check out the default branch
     util.run(f"git checkout -B {default_branch} {remote}/{default_branch}")
 
+    default_entry = changelog.extract_current(changelog_path)
+
     # Look for the previous header
     default_log = Path(changelog_path).read_text(encoding="utf-8")
     if not prev_header in default_log:
@@ -431,11 +434,19 @@ def forwardport_changelog(auth, branch, remote, repo, changelog_path, tag):
             f'Could not find previous header "{prev_header}" in {changelog_path} on branch {default_branch}'
         )
 
-    # Insert the new entry ahead of the previous header
-    insertion_point = default_log.index(prev_header)
-    default_log = (
-        default_log[:insertion_point] + entry.lstrip() + default_log[insertion_point:]
-    )
+    # If the previous header is the current entry in the default branch, we need to move the change markers
+    if prev_header in default_entry:
+        default_log = changelog.insert_entry(default_log, entry)
+
+    # Otherwise insert the new entry ahead of the previous header
+    else:
+        insertion_point = default_log.index(prev_header)
+        default_log = (
+            default_log[:insertion_point]
+            + entry.lstrip()
+            + default_log[insertion_point:]
+        )
+
     Path(changelog_path).write_text(default_log, encoding="utf-8")
 
     # Create a forward port PR
