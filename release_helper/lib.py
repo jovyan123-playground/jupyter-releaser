@@ -365,23 +365,21 @@ def publish_release(
 def prep_git(branch, remote, repo, username, auth):
     """Set up git"""
     is_action = bool(os.environ.get("GITHUB_ACTIONS"))
-    if not is_action:
-        return
+    if is_action:
+        # Use email address for the GitHub Actions bot
+        # https://github.community/t/github-actions-bot-email-address/17204/6
+        util.run(
+            'git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"'
+        )
+        util.run('git config --global user.name "GitHub Action"')
 
-    # Use email address for the GitHub Actions bot
-    # https://github.community/t/github-actions-bot-email-address/17204/6
-    util.run(
-        'git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"'
-    )
-    util.run('git config --global user.name "GitHub Action"')
-
-    remotes = util.run("git remote").splitlines()
-    if remote not in remotes:
-        if auth:
-            url = f"http://{username}:{auth}@github.com/{repo}.git"
-        else:
-            url = f"http://github.com/{repo}.git"
-        util.run(f"git remote add {remote} {url}")
+        remotes = util.run("git remote").splitlines()
+        if remote not in remotes:
+            if auth:
+                url = f"http://{username}:{auth}@github.com/{repo}.git"
+            else:
+                url = f"http://github.com/{repo}.git"
+            util.run(f"git remote add {remote} {url}")
 
     # Make sure we have *all* tags
     util.run(f"git fetch {remote} --tags")
@@ -414,6 +412,9 @@ def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, 
             default_branch = default_branch.split("/")[-1]
             break
 
+    # Check out the default branch
+    util.run(f"git checkout -B {default_branch} {remote}/{default_branch}")
+
     # Bail if the tag has been merged to the default branch
     tags = util.run(f"git --no-pager tag --merged {default_branch}")
     if tag in tags.splitlines():
@@ -435,9 +436,6 @@ def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, 
 
     if not prev_header:
         raise ValueError("No anchor for previous entry")
-
-    # Check out the default branch
-    util.run(f"git checkout -B {default_branch} {remote}/{default_branch}")
 
     default_entry = changelog.extract_current(changelog_path)
 
