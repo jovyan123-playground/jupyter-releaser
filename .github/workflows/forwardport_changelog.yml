@@ -1,7 +1,8 @@
 name: Forwardport Changelog
 on:
   push:
-    tags: v*
+    tags:
+    - 'v*'
 jobs:
   check_release:
     runs-on: ubuntu-latest
