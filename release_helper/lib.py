@@ -382,14 +382,14 @@ def prep_git(branch, remote, repo, username, auth):
             url = f"http://github.com/{repo}.git"
         util.run(f"git remote add {remote} {url}")
 
-    # Check out the remote branch so we can push to it
-    util.run(f"git fetch {remote} {branch} --tags")
-
     # Make sure we have *all* tags
     util.run(f"git fetch {remote} --tags")
 
     if branch is None:
         return
+
+    # Check out the remote branch so we can push to it
+    util.run(f"git fetch {remote} {branch} --tags")
 
     branches = util.run("git branch").replace("* ", "").splitlines()
     if branch in branches:
