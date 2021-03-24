@@ -407,6 +407,8 @@ def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, 
     for line in util.run(f"git remote show {remote}").splitlines():
         if "HEAD branch" in line:
             default_branch = line.strip().split()[-1]
+            default_branch = default_branch.split("/")[-1]
+            break
 
     # Bail if the tag has been merged to the default branch
     tags = util.run(f"git --no-pager tag --merged {default_branch}")
