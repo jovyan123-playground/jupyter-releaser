@@ -35,7 +35,7 @@ def prep_env(
     print(f"repository={repo}")
 
     # Set up git
-    setup_git(branch, remote, repo, username, auth)
+    prep_git(branch, remote, repo, username, auth)
 
     # Bump the version
     util.bump_version(version_spec, version_cmd=version_cmd)
@@ -361,7 +361,7 @@ def publish_release(
     util.actions_output("release_url", release.html_url)
 
 
-def setup_git(branch, remote, repo, username, auth):
+def prep_git(branch, remote, repo, username, auth):
     """Set up git"""
     is_action = bool(os.environ.get("GITHUB_ACTIONS"))
     if not is_action:
@@ -388,6 +388,9 @@ def setup_git(branch, remote, repo, username, auth):
     # Make sure we have *all* tags
     util.run(f"git fetch {remote} --tags")
 
+    if branch is None:
+        return
+
     branches = util.run("git branch").replace("* ", "").splitlines()
     if branch in branches:
         util.run(f"git checkout {branch}")
@@ -398,7 +401,7 @@ def setup_git(branch, remote, repo, username, auth):
 def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, tag):
     """Forwardport Changelog Entries to the Default Branch"""
     # Set up the git repo
-    setup_git(branch, remote, repo, username, auth)
+    prep_git(branch, remote, repo, username, auth)
 
     tag = tag.split("/")[-1]
 
