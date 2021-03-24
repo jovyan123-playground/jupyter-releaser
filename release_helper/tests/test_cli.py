@@ -465,6 +465,7 @@ def test_config_file_cli_override(py_package, runner, mocker):
 def test_forwardport_changelog(npm_package, runner, mocker, open_mock):
     # Create a branch with a changelog entry
     util.run("git checkout -b backport_branch")
+    util.run("git push upstream backport_branch")
     mock_changelog_entry(npm_package, runner, mocker)
     util.run('git commit -a -m "Add changelog entry"')
     util.run(f"git tag v{VERSION_SPEC}")
