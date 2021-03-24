@@ -35,19 +35,7 @@ def prep_env(
     print(f"repository={repo}")
 
     # Set up git
-    git_setup(remote, repo, username, auth)
-
-    # Check out the remote branch so we can push to it
-    util.run(f"git fetch {remote} {branch} --tags")
-
-    # Make sure we have *all* tags
-    util.run(f"git fetch {remote} --tags")
-
-    branches = util.run("git branch").replace("* ", "").splitlines()
-    if branch in branches:
-        util.run(f"git checkout {branch}")
-    else:
-        util.run(f"git checkout -B {branch} {remote}/{branch}")
+    setup_git(branch, remote, repo, username, auth)
 
     # Bump the version
     util.bump_version(version_spec, version_cmd=version_cmd)
@@ -374,8 +362,8 @@ def publish_release(
     util.actions_output("release_url", release.html_url)
 
 
-def git_setup(remote, repo, username, auth):
-    """Set up git on GitHub Actions"""
+def setup_git(branch, remote, repo, username, auth):
+    """Set up git"""
     is_action = bool(os.environ.get("GITHUB_ACTIONS"))
     if not is_action:
         return
@@ -395,11 +383,23 @@ def git_setup(remote, repo, username, auth):
             url = f"http://github.com/{repo}.git"
         util.run(f"git remote add {remote} {url}")
 
+    # Check out the remote branch so we can push to it
+    util.run(f"git fetch {remote} {branch} --tags")
+
+    # Make sure we have *all* tags
+    util.run(f"git fetch {remote} --tags")
+
+    branches = util.run("git branch").replace("* ", "").splitlines()
+    if branch in branches:
+        util.run(f"git checkout {branch}")
+    else:
+        util.run(f"git checkout -B {branch} {remote}/{branch}")
+
 
 def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, tag):
     """Forwardport Changelog Entries to the Default Branch"""
     # Set up the git repo
-    git_setup(remote, repo, username, auth)
+    setup_git(branch, remote, repo, username, auth)
 
     tag = tag.split("/")[-1]
 
@@ -408,6 +408,8 @@ def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, 
     for line in util.run(f"git remote show {remote}").splitlines():
         if "HEAD branch" in line:
             default_branch = line.strip().split()[-1]
+            default_branch = default_branch.split("/")[-1]
+            break
 
     # Bail if the tag has been merged to the default branch
     tags = util.run(f"git --no-pager tag --merged {default_branch}")
