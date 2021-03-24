@@ -2,11 +2,30 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.4.0
+
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.2.1...94d3ff539321cc1038713f9edc517c03e3cc1cbd))
+
+### Merged PRs
+
+- Forward Ported Changelog Entry from v0.2.1-6 [#98](https://github.com/jovyan123-playground/release-helper-playground/pull/98) ([@github-actions](https://github.com/github-actions))
+- Fix forwardport again 4 [#97](https://github.com/jovyan123-playground/release-helper-playground/pull/97) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- another fix [#96](https://github.com/jovyan123-playground/release-helper-playground/pull/96) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- handle branch being none [#95](https://github.com/jovyan123-playground/release-helper-playground/pull/95) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- fix forwardport again [#94](https://github.com/jovyan123-playground/release-helper-playground/pull/94) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- forwardport is self contained [#93](https://github.com/jovyan123-playground/release-helper-playground/pull/93) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-24&to=2021-03-24&type=c))
+
+[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-24..2021-03-24&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Agithub-actions+updated%3A2021-03-24..2021-03-24&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-24..2021-03-24&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.2.1
 
 No merged PRs
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.3.0
 
