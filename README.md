@@ -180,6 +180,7 @@ Example `package.json`:
 
 - Create backport branches the usual way, e.g. `git checkout -b 3.0.x v3.0.1; git push origin 3.0.x`
 - Make sure you have a copy of the [`forwardport_changelog`](./.github/workflows/forwardport_changelog.yml) workflow into your repository (change `pip install .` to `pip install release_helper`).
+- The `forwardport_changelog` workflow and a set of changelog entry markers must exist in the backport branch.
 - When tags are created on a backport branch, an automatic PR is generated for the default branch targeting the appropriate place in the
   changelog.
 

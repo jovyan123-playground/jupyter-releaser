@@ -2,7 +2,7 @@ name: Forwardport Changelog
 on:
   push:
     tags:
-    - 'v*'
+      - "v*"
 
 jobs:
   check_release:

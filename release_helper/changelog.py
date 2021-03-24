@@ -140,7 +140,15 @@ def build_entry(branch, remote, repo, auth, changelog_path, resolve_backports):
         resolve_backports=resolve_backports,
     )
 
-    # Insert the entry into the file
+    changelog = insert_entry(changelog, entry, version=version)
+    Path(changelog_path).write_text(changelog, encoding="utf-8")
+
+    # Stage changelog
+    util.run(f"git add {util.normalize_path(changelog_path)}")
+
+
+def insert_entry(changelog, entry, version=None):
+    """Insert the entry into the existing changelog."""
     # Test if we are augmenting an existing changelog entry (for new PRs)
     # Preserve existing PR entries since we may have formatted them
     new_entry = f"{START_MARKER}\n\n{entry}\n\n{END_MARKER}"
@@ -163,11 +171,7 @@ def build_entry(branch, remote, repo, auth, changelog_path, resolve_backports):
         changelog = changelog.replace(END_MARKER + "\n\n", "")
         changelog = changelog.replace(END_MARKER + "\n", "")
         changelog = changelog.replace(START_MARKER, new_entry)
-
-    Path(changelog_path).write_text(changelog, encoding="utf-8")
-
-    # Stage changelog
-    util.run(f"git add {util.normalize_path(changelog_path)}")
+    return changelog
 
 
 def check_entry(branch, remote, repo, auth, changelog_path, resolve_backports, output):
