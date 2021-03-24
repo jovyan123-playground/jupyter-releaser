@@ -176,6 +176,10 @@ Example `package.json`:
 
 - [ ] If desired, add workflows, changelog, and `tbump` support to other active release branches
 
+## Silly
+
+Hi I made this silly section.
+
 ## Workflow Details
 
 ### Draft ChangeLog Workflow
