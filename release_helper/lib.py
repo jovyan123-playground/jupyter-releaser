@@ -364,23 +364,21 @@ def publish_release(
 def prep_git(branch, remote, repo, username, auth):
     """Set up git"""
     is_action = bool(os.environ.get("GITHUB_ACTIONS"))
-    if not is_action:
-        return
+    if is_action:
+        # Use email address for the GitHub Actions bot
+        # https://github.community/t/github-actions-bot-email-address/17204/6
+        util.run(
+            'git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"'
+        )
+        util.run('git config --global user.name "GitHub Action"')
 
-    # Use email address for the GitHub Actions bot
-    # https://github.community/t/github-actions-bot-email-address/17204/6
-    util.run(
-        'git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"'
-    )
-    util.run('git config --global user.name "GitHub Action"')
-
-    remotes = util.run("git remote").splitlines()
-    if remote not in remotes:
-        if auth:
-            url = f"http://{username}:{auth}@github.com/{repo}.git"
-        else:
-            url = f"http://github.com/{repo}.git"
-        util.run(f"git remote add {remote} {url}")
+        remotes = util.run("git remote").splitlines()
+        if remote not in remotes:
+            if auth:
+                url = f"http://{username}:{auth}@github.com/{repo}.git"
+            else:
+                url = f"http://github.com/{repo}.git"
+            util.run(f"git remote add {remote} {url}")
 
     # Make sure we have *all* tags
     util.run(f"git fetch {remote} --tags")
