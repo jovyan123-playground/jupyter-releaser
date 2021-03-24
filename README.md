@@ -135,6 +135,10 @@ Example `package.json`:
 }
 ```
 
+## Silly
+
+Here is a silly edit.
+
 ## Checklist for Adoption
 
 **Note**: The automated changelog handling is optional. If it is not desired, you can use the
