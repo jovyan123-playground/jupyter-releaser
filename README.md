@@ -2,31 +2,31 @@
 
 ## Motivation
 
-A set of helper scripts and GitHub Action workflows to aid in automated releases of Python and npm packages.
+A set of helper scripts and GitHub Action actions and workflows to aid in automated releases of Python and npm packages.
 
 - Enforces best practices:
 
-  - Has automated changelog for every release (optional)
-  - Is published to test server and verified with install and import of dist asset(s)
-  - Has commit message with hashes of dist file(s)
-  - Has annotated git tag in standard format
-  - Has GitHub release with changelog entry
-  - Checks url links in markdown files
-  - Verifies integrity of Python manifest
-  - Reverts to Dev version after release (optional)
-  - Ensures packages are publishable on every commit
+  - Automated changelog for every release (optional)
+  - Published to test server and verified with install and import of dist asset(s)
+  - Commit message with hashes of dist file(s)
+  - Annotated git tag in standard format
+  - GitHub release with changelog entry
+  - Verified url links in markdown files
+  - Verified integrity of Python manifest
+  - Revert to Dev version after release (optional)
+  - Dry run publish on CI
 
 - Prerequisites (see [checklist](#Checklist-for-Adoption) below for details):
-
   - Markdown changelog (optional)
   - Bump version configuration (if using Python)
   - Write access to GitHub repo to run GitHub Actions
   - Access token for the test [PyPI registry](https://packaging.python.org/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/#saving-credentials-on-github) stored as `TEST_PYPI_TOKEN`
 
-- Typical workflow:
-  - When ready to make a release, go to the source repository and go to the Actions panel
-  - Select the Draft Changelog workflow
-  - Run the Workflow with the version spec (usually the new version number), and make sure the target branch is correct
+## Typical Workflow
+
+- When ready to make a release, go to the source repository and go to the Actions panel
+- Select the `Draft Changelog` workflow
+- Run the workflow with the version spec (usually the new version number), and make sure the target branch is correct
 
 <p align="center">
 <img src="media/draft_changelog_workflow.png" alt="Draft Changelog Workflow"
@@ -42,37 +42,42 @@ A set of helper scripts and GitHub Action workflows to aid in automated releases
 
 - Merge the PR
 - Return to the Actions panel
-- Select the Draft Release workflow
+- Select the `Draft Release` workflow
 
 <p align="center">
 <img src="media/draft_release_workflow.png" alt="Draft Release Workflow"
 	title="Draft Release Workflow" width="50%" />
 </p>
 
-- Run the Workflow with the same version spec as before, and an optional post version spec if you want to go back to a dev version in the target branch.
+- Run the workflow with the same version spec as before, and an optional post version spec if you want to go back to a dev version in the target branch.
 - When the workflow completes, go to the releases page in the main repository and verify that the new draft release is there with the correct changelog and dist files.
+- Copy the url of the draft changelog.
+- Run the `Publish Release` workflow from a fork or manually download an publish the dist file(s). Note: the fork will need to use their own GitHub token in addition to the PyPI/npm token.
 
 <p align="center">
 <img src="media/publish_release_workflow.png" alt="Publish Release Workflow"
 	title="Publish Release Workflow" width="50%" />
 </p>
 
-- Run the Publish Release workflow from a fork or manually download an publish the dist file(s). Note: the fork will need to use their own GitHub token in addition to the PyPI/npm token.
-
 <!-- TODO: Add Github release image here -->
+
+- If the release was on a backport branch, a PR will have been opened against
+  the default branch with the new changelog entry. Review and merge this PR.
+
+<!-- TODO: Add forward port PR image here -->
 
 ## Installation
 
 To install the latest release locally, make sure you have
 [pip installed](https://pip.readthedocs.io/en/stable/installing/) and run:
 
-```
+```bash
     pip install git+https://github.com/jupyter-server/release-helper
 ```
 
-## Usage
+## Library Usage
 
-```
+```bash
     release-helper --help
     release-helper build-python --help
 ```
@@ -91,7 +96,7 @@ commands in a `hooks` section. Hooks can be a shell command to run or
 a list of shell commands, and are specified to run `before-` or `after-`
 a command.
 
-This is where `release-helper` looks for configuration:
+This is where `release-helper` looks for configuration (first one found is used):
 
 ```code
     .release-helper.toml
@@ -137,9 +142,6 @@ Example `package.json`:
 
 ## Checklist for Adoption
 
-**Note**: The automated changelog handling is optional. If it is not desired, you can use the
-`check_release` and `draft_release` workflows only and leave the changelog calls out of them. You will need to generate your own text for the GitHub release.
-
 - [ ] Switch to Markdown Changelog
   - We recommend [MyST](https://myst-parser.readthedocs.io/en/latest/?badge=latest), especially if some of your docs are in reStructuredText
   - Can use `pandoc -s changelog.rst -o changelog.md` and some hand edits as needed
@@ -147,17 +149,17 @@ Example `package.json`:
 - [ ] Add HTML start and end comment markers to Changelog file - see example in [CHANGELOG.md](./CHANGELOG.md) (view in raw mode)
 - [ ] Add [tbump](https://github.com/tankerhq/tbump) support if using Python - see example metadata in [pyproject.toml](./pyproject.toml)
 
-  - We recommend using `setup.cfg` and using `version attr: <package_name>.__version__`, see example [`setup.cfg`](./setup.cfg)
+  - We recommend putting `setuptools` metadata in `setup.cfg` and using `version attr: <package_name>.__version__`, see example [`setup.cfg`](./setup.cfg)
   - See documentation on `setup.cfg` [metadata](https://setuptools.readthedocs.io/en/latest/userguide/declarative_config.html)
 
-- [ ] Add workflows for `check_release`, `draft_changelog`, and `draft_release` - see the workflows in this [repo](./.github/workflows)
+- [ ] Add workflows for `check_release`, `draft_changelog`, and `draft_release` in the source repository - see the workflows in this [repo](./.github/workflows)
 - [ ] Change the action calls from the local `./.github/actions/<foo>` to `jupyter-server/release-helper.github/actions/<foo>/@<version_or_branch>`
-- [ ] Try out the "Draft Changelog" and "Draft Release" process on a fork first so you don't accidentally push tags and GitHub releases to the source repository.
+- [ ] Try out the `Draft Changelog` and `Draft Release` process on a fork first so you don't accidentally push tags and GitHub releases to the source repository.
 - [ ] Optionally add workflow for `cancel` to cancel previous workflow runs when a new one is started - see [cancel.yml](./.github/workflows/cancel.yml)
-- [ ] Optionally make a new branch or repository on your personal account that has a `publish-release` [workflow](./.github/workflows/publish-release.yml)
+- [ ] Make a new branch or repository on your personal fork that has a `publish-release` [workflow](./.github/workflows/publish-release.yml)
 
   - [ ] You will need to add access tokens for [PyPI](https://packaging.python.org/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/#saving-credentials-on-github) and/or [npm](https://docs.npmjs.com/creating-and-viewing-access-tokens)
-  - [ ] Start with `dry-run: true`, which will target the test pypi registy and use `npm publish --dry-run`
+  - [ ] Start with `dry-run: true`, which will target the test pypi registry and use `npm publish --dry-run`
   - [ ] Then switch to the production server once it is fully working.
 
   ```yaml
@@ -179,14 +181,14 @@ Example `package.json`:
 ## Backport Branches
 
 - Create backport branches the usual way, e.g. `git checkout -b 3.0.x v3.0.1; git push origin 3.0.x`
-- When running the Publish Workflow, an automatic PR is generated for the default branch targeting the appropriate place in the changelog.
+- When running the `Publish Release` Workflow, an automatic PR is generated for the default branch targeting the appropriate place in the changelog.
 
 ## Workflow Details
 
 ### Draft ChangeLog Workflow
 
 - Manual Github workflow
-- Input is the version spec
+  - Input is the version spec
 - Targets the branch selected when starting the workflow
 - Bumps the version
   - By default, uses [tbump](https://github.com/tankerhq/tbump) or [bump2version](https://github.com/c4urself/bump2version) to bump the version based on presence of config files
@@ -208,14 +210,13 @@ Example `package.json`:
 ### Draft Release Workflow
 
 - Manual Github workflow
-- Takes a version spec and optional post version spec
+  - Input is a version spec and optional post version spec
 - Bumps version using the same method as the changelog action
 - Prepares the environment using the same method as the changelog action
 - Checks the changelog entry
   - Looks for the current entry using the HTML comment markers
   - Gets the expected changelog values using `github-activity`
   - Ensures that all PRs are the same between the two
-  - Writes the changelog entry out to a file to be used as the GitHub Release text
 - For Python packages:
   - Builds the wheel and source distributions if applicable
   - Makes sure Python dists can be installed and imported in a virtual environment
@@ -235,17 +236,17 @@ Example `package.json`:
 ### Publish Release Workflow
 
 - Manual Github workflow
-- Takes a url for the draft release as an input
+  - Input is the url of the draft release
 - Downloads the dist assets from the release
 - Verifies shas and integrity of release assets
 - Publishes assets to appropriate registries
 - If the tag is on a backport branch, makes a forwardport PR for the changelog entry
-- ⚠ Warning - It is not recommended that you run this workflow or store PyPI/npm credentials on the source repository. Anyone with write access can run a workflow, and access tokens belong to an individual.
+- ⚠ Warning - It is _not_ recommended that you run this workflow or store PyPI/npm credentials on the source repository. Anyone with write access can run a workflow, and access tokens belong to an individual.
 
 ### Check Release Workflow
 
 - Runs on pull requests to the default branch and on push
-- Runs the Draft Changelog, Draft Release, and Publish Release Steps
+- Runs the `Draft Changelog`, `Draft Release`, and `Publish Release` actions in dry run mode
 - Publishes to the Test PyPI server
 - Deletes the Release
 - Does not make PRs or push git changes
