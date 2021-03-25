@@ -123,6 +123,7 @@ def make_changelog_pr(
     pr_branch = f"changelog-{uuid.uuid1().hex}"
 
     if not dry_run:
+        util.run("git --no-pager diff")
         util.run("git stash")
         util.run(f"git fetch {remote} {branch}")
         util.run(f"git checkout -b {pr_branch} {remote}/{branch}")
@@ -417,7 +418,7 @@ def prep_git(branch, remote, repo, username, auth):
 
 
 def forwardport_changelog(
-    auth, branch, remote, repo, username, changelog_path, release_url
+    auth, branch, remote, repo, username, changelog_path, dry_run, release_url
 ):
     """Forwardport Changelog Entries to the Default Branch"""
     # Set up the git repo
@@ -492,5 +493,5 @@ def forwardport_changelog(
     body = title
 
     pr = make_changelog_pr(
-        auth, default_branch, remote, repo, title, commit_message, body
+        auth, default_branch, remote, repo, title, commit_message, body, dry_run=dry_run
     )

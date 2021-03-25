@@ -408,13 +408,14 @@ def publish_release(
 @add_options(branch_options)
 @add_options(username_options)
 @add_options(changelog_path_options)
+@add_options(dry_run_options)
 @click.argument("release_url")
 def forwardport_changelog(
-    auth, branch, remote, repo, username, changelog_path, release_url
+    auth, branch, remote, repo, username, changelog_path, dry_run, release_url
 ):
     """Forwardport Changelog Entries to the Default Branch"""
     lib.forwardport_changelog(
-        auth, branch, remote, repo, username, changelog_path, release_url
+        auth, branch, remote, repo, username, changelog_path, dry_run, release_url
     )
 
 
