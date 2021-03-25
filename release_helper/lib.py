@@ -5,6 +5,7 @@ import os.path as osp
 import re
 import shutil
 import uuid
+from datetime import datetime
 from glob import glob
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -192,6 +193,17 @@ def draft_release(
 
     body = changelog.extract_current(changelog_path)
 
+    owner, repo_name = repo.split("/")
+    gh = GhApi(owner=owner, repo=repo_name, token=auth)
+
+    # Remove draft releases over a day old
+    for release in gh.repos.list_releases():
+        created = release.created_at
+        d_created = datetime.strptime(created, r"%Y-%m-%dT%H:%M:%SZ")
+        delta = d_created - datetime.utcnow()
+        if delta.days > 0:
+            gh.repos.delete_release(release.id)
+
     # Create a draft release
     prerelease = util.is_prerelease(version)
 
@@ -210,8 +222,6 @@ def draft_release(
 
     print(f"Creating release for {version}")
     print(f"With assets: {assets}")
-    owner, repo_name = repo.split("/")
-    gh = GhApi(owner=owner, repo=repo_name, token=auth)
     release = gh.create_release(
         f"v{version}",
         branch,
@@ -223,7 +233,6 @@ def draft_release(
     )
 
     # Set the GitHub action output
-    print(f"\n\nSetting output release_url={release.html_url}")
     util.actions_output("release_url", release.html_url)
 
 
@@ -244,11 +253,7 @@ def delete_release(auth, release_url):
 
 def extract_release(auth, dist_dir, dry_run, release_url):
     """Download and verify assets from a draft GitHub release"""
-    match = re.match(util.RELEASE_HTML_PATTERN, release_url)
-    match = match or re.match(util.RELEASE_API_PATTERN, release_url)
-    if not match:  # pragma: no cover
-        raise ValueError(f"Release url is not valid: {release_url}")
-
+    match = parse_release_url(release_url)
     owner, repo = match["owner"], match["repo"]
     gh = GhApi(owner=owner, repo=repo, token=auth)
     release = util.release_for_url(gh, release_url)
@@ -322,14 +327,20 @@ def extract_release(auth, dist_dir, dry_run, release_url):
             raise ValueError(f"Invalid file {asset.name}")
 
 
-def publish_release(
-    auth, dist_dir, npm_token, npm_cmd, twine_cmd, dry_run, release_url
-):
-    """Publish release asset(s) and finalize GitHub release"""
+def parse_release_url(release_url):
+    """Parse a release url into a regex match"""
     match = re.match(util.RELEASE_HTML_PATTERN, release_url)
     match = match or re.match(util.RELEASE_API_PATTERN, release_url)
     if not match:
         raise ValueError(f"Release url is not valid: {release_url}")
+    return match
+
+
+def publish_release(
+    auth, dist_dir, npm_token, npm_cmd, twine_cmd, dry_run, release_url
+):
+    """Publish release asset(s) and finalize GitHub release"""
+    match = parse_release_url(release_url)
 
     if npm_token:
         npm.handle_auth_token(npm_token)
@@ -365,7 +376,6 @@ def publish_release(
     )
 
     # Set the GitHub action output
-    print(f"\n\nSetting output release_url={release.html_url}")
     util.actions_output("release_url", release.html_url)
 
 
@@ -404,12 +414,17 @@ def prep_git(branch, remote, repo, username, auth):
         util.run(f"git checkout -B {branch} {remote}/{branch}")
 
 
-def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, tag):
+def forwardport_changelog(
+    auth, branch, remote, repo, username, changelog_path, release_url
+):
     """Forwardport Changelog Entries to the Default Branch"""
     # Set up the git repo
     prep_git(branch, remote, repo, username, auth)
 
-    tag = tag.split("/")[-1]
+    match = parse_release_url(release_url)
+    gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
+    release = util.release_for_url(gh, release_url)
+    tag = release.tag_name
 
     # Find the default branch
     default_branch = ""
@@ -426,6 +441,7 @@ def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, 
     tags = util.run(f"git --no-pager tag --merged {default_branch}")
     if tag in tags.splitlines():
         print(f"Skipping since tag is already merged into {default_branch}")
+        return
 
     # Get the entry for the tag
     util.run(f"git checkout {tag}")
@@ -473,4 +489,6 @@ def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, 
     title = f"Forward Ported Changelog Entry from {tag}"
     body = title
 
-    make_changelog_pr(auth, default_branch, remote, repo, title, commit_message, body)
+    pr = make_changelog_pr(
+        auth, default_branch, remote, repo, title, commit_message, body
+    )

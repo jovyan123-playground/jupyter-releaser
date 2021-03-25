@@ -14,6 +14,9 @@ outputs:
   release_url:
     description: "The html URL of the GitHub release"
     value: ${{ steps.publish-release.outputs.release_url }}
+  pr_url:
+    description: "The html URL of the forwardport PR if applicable"
+    value: ${{ steps.publish-release.outputs.pr_url }}
 runs:
   using: "composite"
   steps:
@@ -33,4 +36,5 @@ runs:
         fi
 
         release-helper extract-release ${{ inputs.release_url }}
+        release-helper forwardport-changelog ${{ inputs.release_url }}
         release-helper publish-release ${{ inputs.release_url }}

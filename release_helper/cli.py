@@ -408,10 +408,14 @@ def publish_release(
 @add_options(branch_options)
 @add_options(username_options)
 @add_options(changelog_path_options)
-@click.argument("tag")
-def forwardport_changelog(auth, branch, remote, repo, username, changelog_path, tag):
+@click.argument("release_url")
+def forwardport_changelog(
+    auth, branch, remote, repo, username, changelog_path, release_url
+):
     """Forwardport Changelog Entries to the Default Branch"""
-    lib.forwardport_changelog(auth, branch, remote, repo, username, changelog_path, tag)
+    lib.forwardport_changelog(
+        auth, branch, remote, repo, username, changelog_path, release_url
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover
