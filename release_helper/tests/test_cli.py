@@ -51,6 +51,17 @@ def test_prep_env_pr(py_package, runner):
     assert "branch=foo" in result.output
 
 
+def test_prep_env_bad_version(py_package, runner):
+    with pytest.raises(AssertionError):
+        runner(["prep-env", "--version-spec", "a1.0.1"], env=dict(GITHUB_ACTION=""))
+
+
+def test_prep_env_tag_exists(py_package, runner):
+    run("git tag v1.0.1")
+    with pytest.raises(AssertionError):
+        runner(["prep-env", "--version-spec", "1.0.1"], env=dict(GITHUB_ACTION=""))
+
+
 def test_prep_env_full(py_package, tmp_path, mocker, runner):
     """Full GitHub Actions simulation (Push)"""
     version_spec = "1.0.1a1"

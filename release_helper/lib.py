@@ -42,8 +42,15 @@ def prep_env(
 
     version = util.get_version()
 
-    if util.SETUP_PY.exists() and not is_canonical(version):  # pragma: no cover
+    if util.SETUP_PY.exists() and not is_canonical(version):
         raise ValueError(f"Invalid version {version}")
+
+    # Bail if tag already exists
+    tag_name = f"v{version}"
+    if tag_name in util.run("git --no-pager tag").splitlines():
+        msg = f"Tag {tag_name} already exists!"
+        msg += " To delete run: `git push --delete upstream {tag_name}`"
+        raise ValueError(msg)
 
     print(f"version={version}")
     is_prerelease_str = str(util.is_prerelease(version)).lower()
