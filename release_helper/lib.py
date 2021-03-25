@@ -198,6 +198,8 @@ def draft_release(
 
     # Remove draft releases over a day old
     for release in gh.repos.list_releases():
+        if release.draft == "false":
+            continue
         created = release.created_at
         d_created = datetime.strptime(created, r"%Y-%m-%dT%H:%M:%SZ")
         delta = d_created - datetime.utcnow()
