@@ -463,6 +463,9 @@ def forwardport_changelog(
     if not prev_header:
         raise ValueError("No anchor for previous entry")
 
+    # Check out the default branch again
+    util.run(f"git checkout -B {default_branch} {remote}/{default_branch}")
+
     default_entry = changelog.extract_current(changelog_path)
 
     # Look for the previous header
