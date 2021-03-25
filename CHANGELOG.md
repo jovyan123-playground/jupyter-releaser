@@ -32,6 +32,20 @@
 
 [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-25..2021-03-25&type=Issues)
 
+## 0.6.1
+
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.5.0...e6985249cb244f9001afcb07e50e805c5654d9c4))
+
+### Merged PRs
+
+- make a silly edit [#110](https://github.com/jovyan123-playground/release-helper-playground/pull/110) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-25&to=2021-03-25&type=c))
+
+[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-25..2021-03-25&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-25..2021-03-25&type=Issues)
+
 ## 0.5.0
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.4.0...385df34ee2239fe428db82e40935f964a9908533))
