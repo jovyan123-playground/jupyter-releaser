@@ -23,10 +23,6 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
-## 0.2.1
-
-No merged PRs
-
 ## 0.3.0
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.2.0-1...b1b5d2292c463563dcb1faa537814cbd65316377))
