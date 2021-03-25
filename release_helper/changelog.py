@@ -84,7 +84,7 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
         if re.search(r"\[@meeseeksmachine\]", line) is not None:
             match = re.search(r"Backport PR #(\d+)", line)
             if match:
-                entry[ind] = format_pr_entry(match.groups()[0])
+                entry[ind] = format_pr_entry(repo, match.groups()[0])
 
     entry = "\n".join(entry).strip()
 

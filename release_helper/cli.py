@@ -146,7 +146,7 @@ changelog_options = (
         click.option(
             "--resolve-backports",
             envvar="RH_RESOLVE_BACKPORTS",
-            is_flag=True,
+            default=True,
             help="Resolve backport PRs to their originals",
         ),
     ]
