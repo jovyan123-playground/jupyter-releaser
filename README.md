@@ -1,5 +1,9 @@
 # Release Helper
 
+## Silly
+
+This is a silly section
+
 ## Motivation
 
 A set of helper scripts and GitHub Action workflows to aid in automated releases of Python and npm packages.
