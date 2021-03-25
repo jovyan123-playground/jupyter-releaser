@@ -76,24 +76,15 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
         print("No PRs found")
         return f"## {version}\n\nNo merged PRs"
 
-    md = md.splitlines()
+    entry = md.replace("[full changelog]", "[Full Changelog]")
 
-    start = -1
-    full_changelog = ""
-    for (ind, line) in enumerate(md):
-        if "[full changelog]" in line:
-            full_changelog = line.replace("full changelog", "Full Changelog")
-        elif line.strip().startswith("### Merged PRs"):
-            start = ind
+    entry = entry.splitlines()[2:]
 
-    entry = md[start:]
-
-    if resolve_backports:
-        for (ind, line) in enumerate(entry):
-            if re.search(r"\[@meeseeksmachine\]", line) is not None:
-                match = re.search(r"Backport PR #(\d+)", line)
-                if match:
-                    entry[ind] = format_pr_entry(match.groups()[0])
+    for (ind, line) in enumerate(entry):
+        if re.search(r"\[@meeseeksmachine\]", line) is not None:
+            match = re.search(r"Backport PR #(\d+)", line)
+            if match:
+                entry[ind] = format_pr_entry(match.groups()[0])
 
     entry = "\n".join(entry).strip()
 
@@ -105,8 +96,6 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
 
     output = f"""
 ## {version}
-
-{full_changelog}
 
 {entry}
 """.strip()
