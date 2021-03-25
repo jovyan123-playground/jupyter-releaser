@@ -51,6 +51,17 @@ def test_prep_env_pr(py_package, runner):
     assert "branch=foo" in result.output
 
 
+def test_prep_env_bad_version(py_package, runner):
+    with pytest.raises(AssertionError):
+        runner(["prep-env", "--version-spec", "a1.0.1"], env=dict(GITHUB_ACTION=""))
+
+
+def test_prep_env_tag_exists(py_package, runner):
+    run("git tag v1.0.1")
+    with pytest.raises(AssertionError):
+        runner(["prep-env", "--version-spec", "1.0.1"], env=dict(GITHUB_ACTION=""))
+
+
 def test_prep_env_full(py_package, tmp_path, mocker, runner):
     """Full GitHub Actions simulation (Push)"""
     version_spec = "1.0.1a1"
@@ -238,12 +249,29 @@ def test_tag_release(py_package, runner, build_mock):
 
 
 def test_draft_release_dry_run(py_dist, mocker, runner, open_mock):
+    open_mock.side_effect = [
+        MockHTTPResponse([REPO_DATA]),
+        MockHTTPResponse(),
+        MockHTTPResponse(),
+        MockHTTPResponse(),
+    ]
+
     # Publish the release - dry run
     runner(["draft-release", "--dry-run", "--post-version-spec", "1.1.0.dev0"])
     assert len(open_mock.call_args) == 2
 
 
 def test_draft_release_final(npm_dist, runner, mocker, open_mock):
+    open_mock.side_effect = [
+        MockHTTPResponse([REPO_DATA]),
+        MockHTTPResponse(),
+        MockHTTPResponse(),
+        MockHTTPResponse(),
+        MockHTTPResponse(),
+        MockHTTPResponse(),
+        MockHTTPResponse(),
+    ]
+
     # Publish the release
     runner(["draft-release"])
     assert len(open_mock.call_args) == 2
@@ -253,6 +281,14 @@ def test_delete_release(npm_dist, runner, mocker, open_mock):
     # Publish the release
     # Mimic being on GitHub actions so we get the magic output
     os.environ["GITHUB_ACTIONS"] = "true"
+    open_mock.side_effect = [
+        MockHTTPResponse([REPO_DATA]),
+        MockHTTPResponse(),
+        MockHTTPResponse(),
+        MockHTTPResponse(),
+        MockHTTPResponse(),
+        MockHTTPResponse(),
+    ]
     result = runner(["draft-release", "--dry-run"])
     assert len(open_mock.call_args) == 2
 
@@ -264,7 +300,11 @@ def test_delete_release(npm_dist, runner, mocker, open_mock):
 
     # Delete the release
     data = dict(assets=[dict(id="bar")])
-    open_mock.return_value = MockHTTPResponse([data])
+    open_mock.side_effect = [
+        MockHTTPResponse([data]),
+        MockHTTPResponse(),
+        MockHTTPResponse(),
+    ]
     runner(["delete-release", url])
     assert len(open_mock.call_args) == 2
 
@@ -463,6 +503,9 @@ def test_config_file_cli_override(py_package, runner, mocker):
 
 
 def test_forwardport_changelog(npm_package, runner, mocker, open_mock):
+
+    open_mock.side_effect = [MockHTTPResponse([REPO_DATA]), MockHTTPResponse()]
+
     # Create a branch with a changelog entry
     util.run("git checkout -b backport_branch")
     util.run("git push upstream backport_branch")
@@ -471,6 +514,6 @@ def test_forwardport_changelog(npm_package, runner, mocker, open_mock):
     util.run(f"git tag v{VERSION_SPEC}")
 
     # Run the forwardport workflow against default branch
-    runner(["forwardport-changelog", f"v{VERSION_SPEC}"])
+    runner(["forwardport-changelog", HTML_URL])
 
     open_mock.assert_called_once()

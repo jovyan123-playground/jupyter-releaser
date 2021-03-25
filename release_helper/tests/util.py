@@ -118,7 +118,13 @@ Initial commit
 HTML_URL = "https://github.com/snuffy/test/releases/tag/bar"
 URL = "https://api.gihub.com/repos/snuffy/test/releases/tags/bar"
 REPO_DATA = dict(
-    body="bar", tag_name="foo", target_commitish="bar", name="foo", prerelease=False
+    body="bar",
+    tag_name=f"v{VERSION_SPEC}",
+    target_commitish="bar",
+    name="foo",
+    prerelease=False,
+    draft=True,
+    created_at="2013-02-27T19:35:32Z",
 )
 
 

@@ -177,6 +177,7 @@ def release_for_url(gh, url):
 
 def actions_output(name, value):
     "Print the special GitHub Actions `::set-output` line for `name::value`"
+    print(f"\n\nSetting output {name}={value}")
     if "GITHUB_ACTIONS" in os.environ:
         print(f"::set-output name={name}::{value}")
 
