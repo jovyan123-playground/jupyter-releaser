@@ -179,10 +179,7 @@ Example `package.json`:
 ## Backport Branches
 
 - Create backport branches the usual way, e.g. `git checkout -b 3.0.x v3.0.1; git push origin 3.0.x`
-- Make sure you have a copy of the [`forwardport_changelog`](./.github/workflows/forwardport_changelog.yml) workflow into your repository (change `pip install .` to `pip install release_helper`).
-- The `forwardport_changelog` workflow and a set of changelog entry markers must exist in the backport branch.
-- When tags are created on a backport branch, an automatic PR is generated for the default branch targeting the appropriate place in the
-  changelog.
+- When running the Publish Workflow, an automatic PR is generated for the default branch targeting the appropriate place in the changelog.
 
 ## Workflow Details
 
@@ -242,7 +239,7 @@ Example `package.json`:
 - Downloads the dist assets from the release
 - Verifies shas and integrity of release assets
 - Publishes assets to appropriate registries
-- Publishes the draft GitHub release
+- If the tag is on a backport branch, makes a forwardport PR for the changelog entry
 - ⚠ Warning - It is not recommended that you run this workflow or store PyPI/npm credentials on the source repository. Anyone with write access can run a workflow, and access tokens belong to an individual.
 
 ### Check Release Workflow
@@ -252,10 +249,3 @@ Example `package.json`:
 - Publishes to the Test PyPI server
 - Deletes the Release
 - Does not make PRs or push git changes
-
-## Forwardport Changelog Workflow
-
-- Automatic workflow that runs when a tag is created on a previous branch
-- Gets the markdown header prior to the new entry in the backport branch.
-  If that header exists in the default branch, insert the new backport entry ahead of it.
-- Opens a PR against the default branch with the new entry.
