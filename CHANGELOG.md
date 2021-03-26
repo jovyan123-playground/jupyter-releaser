@@ -2,6 +2,23 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.8.1
+
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.8.0...15839e702c267f72849111bef86bc9a197fdc0ad))
+
+### Merged PRs
+
+- ignore automated changelog prs in changelog entries [#124](https://github.com/jovyan123-playground/release-helper-playground/pull/124) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Forward Ported Changelog Entry from v0.7.2 [#123](https://github.com/jovyan123-playground/release-helper-playground/pull/123) ([@github-actions](https://github.com/github-actions))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-26&to=2021-03-26&type=c))
+
+[@github-actions](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Agithub-actions+updated%3A2021-03-26..2021-03-26&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-26..2021-03-26&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.8.0
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.7.0...17f5a17370c089418e7e0438dc821758f0df1813))
@@ -17,7 +34,6 @@
 
 [@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-26..2021-03-26&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Agithub-actions+updated%3A2021-03-26..2021-03-26&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-26..2021-03-26&type=Issues)
 
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.7.2
 
