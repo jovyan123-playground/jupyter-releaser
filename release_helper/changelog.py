@@ -10,6 +10,7 @@ from release_helper import util
 
 START_MARKER = "<!-- <START NEW CHANGELOG ENTRY> -->"
 END_MARKER = "<!-- <END NEW CHANGELOG ENTRY> -->"
+PR_PREFIX = "Automated Changelog Entry"
 
 
 def format_pr_entry(target, number, auth=None):
@@ -86,8 +87,8 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
             if match:
                 entry[ind] = format_pr_entry(repo, match.groups()[0])
 
-    # Remove release helper PRs
-    entry = [e for e in entry if util.PR_PREFIX not in e]
+    # Remove automated changelog PRs
+    entry = [e for e in entry if PR_PREFIX not in e]
 
     entry = "\n".join(entry).strip()
 

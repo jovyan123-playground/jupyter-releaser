@@ -102,7 +102,7 @@ def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
 
     commit_message = f'git commit -a -m "Generate changelog for {version}"'
 
-    title = f"{util.PR_PREFIX} for {version} on {branch}"
+    title = f"{changelog.PR_PREFIX} for {version} on {branch}"
     body = title
 
     # Check for multiple versions
@@ -496,7 +496,7 @@ def forwardport_changelog(
 
     # Create a forward port PR
     commit_message = f'git commit -a -m "Forward port changelog entry from {tag}"'
-    title = f"{util.PR_PREFIX} Forward Ported from {tag}"
+    title = f"{changelog.PR_PREFIX} Forward Ported from {tag}"
     body = title
 
     pr = make_changelog_pr(
