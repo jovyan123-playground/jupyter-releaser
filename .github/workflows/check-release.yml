@@ -2,11 +2,6 @@ name: Check Release
 on:
   push:
     branches: "*"
-
-defaults:
-  run:
-    shell: bash -l {0}
-
 jobs:
   check_release:
     runs-on: ubuntu-latest

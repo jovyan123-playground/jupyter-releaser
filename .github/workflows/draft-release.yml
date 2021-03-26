@@ -7,11 +7,6 @@ on:
         required: true
       post_version_spec:
         description: "Post Version Specifier"
-
-defaults:
-  run:
-    shell: bash -l {0}
-
 jobs:
   release:
     runs-on: ${{ matrix.os }}-latest
