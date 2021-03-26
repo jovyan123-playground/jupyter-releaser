@@ -486,10 +486,8 @@ def forwardport_changelog(
     # Otherwise insert the new entry ahead of the previous header
     else:
         insertion_point = default_log.index(prev_header)
-        default_log = (
-            default_log[:insertion_point]
-            + entry.lstrip()
-            + default_log[insertion_point:]
+        default_log = changelog.format(
+            default_log[:insertion_point] + entry + default_log[insertion_point:]
         )
 
     Path(changelog_path).write_text(default_log, encoding="utf-8")
