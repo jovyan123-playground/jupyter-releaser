@@ -5,6 +5,11 @@ on:
       version_spec:
         description: "New Version Spec"
         required: true
+
+defaults:
+  run:
+    shell: bash -l {0}
+
 jobs:
   changelog:
     runs-on: ${{ matrix.os }}-latest

@@ -4,6 +4,11 @@ on:
     branches: "main"
   pull_request:
     branches: "*"
+
+defaults:
+  run:
+    shell: bash -l {0}
+
 jobs:
   # Run "pre-commit run --all-files"
   pre-commit:
