@@ -529,7 +529,7 @@ def test_config_file_cli_override(py_package, runner, mocker):
     assert called
 
 
-def test_forwardport_changelog(npm_package, runner, mocker, open_mock):
+def test_forwardport_changelog_no_new(npm_package, runner, mocker, open_mock):
 
     open_mock.side_effect = [MockHTTPResponse([REPO_DATA]), MockHTTPResponse()]
 
@@ -544,3 +544,49 @@ def test_forwardport_changelog(npm_package, runner, mocker, open_mock):
     runner(["forwardport-changelog", HTML_URL])
 
     open_mock.assert_called_once()
+
+    expected = """
+<!-- <START NEW CHANGELOG ENTRY> -->
+
+## 1.0.1
+"""
+    assert expected in Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+
+def test_forwardport_changelog_has_new(npm_package, runner, mocker, open_mock):
+
+    open_mock.side_effect = [MockHTTPResponse([REPO_DATA]), MockHTTPResponse()]
+    current = util.run("git branch --show-current")
+
+    # Create a branch with a changelog entry
+    util.run("git checkout -b backport_branch")
+    util.run("git push upstream backport_branch")
+    mock_changelog_entry(npm_package, runner, mocker)
+    util.run('git commit -a -m "Add changelog entry"')
+    util.run(f"git tag v{VERSION_SPEC}")
+
+    # Add a new changelog entry in main branch
+    util.run(f"git checkout {current}")
+    mock_changelog_entry(npm_package, runner, mocker, version_spec="2.0.0")
+    util.run('git commit -a -m "Add changelog entry"')
+    util.run("git tag v2.0.0")
+
+    # Run the forwardport workflow against default branch
+    runner(["forwardport-changelog", HTML_URL])
+
+    assert len(open_mock.call_args) == 2
+
+    expected = """
+<!-- <START NEW CHANGELOG ENTRY> -->
+
+## 2.0.0
+"""
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+    assert expected in text, text
+
+    expect = """
+<!-- <END NEW CHANGELOG ENTRY> -->
+
+## 1.0.1
+"""
+    assert expected in text, text

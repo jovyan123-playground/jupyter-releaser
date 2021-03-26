@@ -108,11 +108,11 @@ CHANGELOG_TEMPLATE = f"""# Changelog
 
 {changelog.START_MARKER}
 
-{changelog.END_MARKER}
-
 ## 0.0.1
 
 Initial commit
+
+{changelog.END_MARKER}
 """
 
 HTML_URL = "https://github.com/snuffy/test/releases/tag/bar"
@@ -128,8 +128,8 @@ REPO_DATA = dict(
 )
 
 
-def mock_changelog_entry(package_path, runner, mocker):
-    runner(["prep-env", "--version-spec", VERSION_SPEC])
+def mock_changelog_entry(package_path, runner, mocker, version_spec=VERSION_SPEC):
+    runner(["prep-env", "--version-spec", version_spec])
     changelog = package_path / "CHANGELOG.md"
     mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
     mocked_gen.return_value = CHANGELOG_ENTRY

@@ -16,18 +16,6 @@ from release_helper.tests import util as testutil
 from release_helper.util import run
 
 
-CHANGELOG_TEMPLATE = f"""# Changelog
-
-{changelog.START_MARKER}
-
-{changelog.END_MARKER}
-
-## 0.0.1
-
-Initial commit
-"""
-
-
 @fixture(autouse=True)
 def mock_env_vars(mocker):
     """Clear unwanted environment variables"""
@@ -57,7 +45,7 @@ def git_repo(tmp_path):
     gitignore.write_text("dist/*\nbuild/*\n", encoding="utf-8")
 
     changelog = tmp_path / "CHANGELOG.md"
-    changelog.write_text(CHANGELOG_TEMPLATE, encoding="utf-8")
+    changelog.write_text(testutil.CHANGELOG_TEMPLATE, encoding="utf-8")
 
     readme = tmp_path / "README.md"
     readme.write_text("Hello from foo project\n", encoding="utf-8")
