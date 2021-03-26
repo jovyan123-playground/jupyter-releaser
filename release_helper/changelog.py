@@ -86,6 +86,9 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
             if match:
                 entry[ind] = format_pr_entry(repo, match.groups()[0])
 
+    # Remove release helper PRs
+    entry = [e for e in entry if util.PR_PREFIX not in e]
+
     entry = "\n".join(entry).strip()
 
     # Replace "*" unordered list marker with "-" since this is what

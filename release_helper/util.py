@@ -31,6 +31,8 @@ RELEASE_HTML_PATTERN = (
 )
 RELEASE_API_PATTERN = "https://api.github.com/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/releases/tags/(?P<tag>.*)"
 
+PR_PREFIX = "Automated Changelog"
+
 
 def run(cmd, **kwargs):
     """Run a command as a subprocess and get the output as a string"""
