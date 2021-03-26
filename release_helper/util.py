@@ -31,7 +31,7 @@ RELEASE_HTML_PATTERN = (
 )
 RELEASE_API_PATTERN = "https://api.github.com/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/releases/tags/(?P<tag>.*)"
 
-PR_PREFIX = "Automated Changelog"
+PR_PREFIX = "Automated Changelog Entry"
 
 
 def run(cmd, **kwargs):
