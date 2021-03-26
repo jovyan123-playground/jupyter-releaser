@@ -36,7 +36,7 @@ def format_pr_entry(target, number, auth=None):
     url = pull.url
     user_name = pull.user.login
     user_url = pull.user.html_url
-    return f"- {title} [{number}]({url}) [@{user_name}]({user_url})"
+    return f"- {title} [#{number}]({url}) [@{user_name}]({user_url})"
 
 
 def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=False):
@@ -84,7 +84,7 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
         if re.search(r"\[@meeseeksmachine\]", line) is not None:
             match = re.search(r"Backport PR #(\d+)", line)
             if match:
-                entry[ind] = format_pr_entry(match.groups()[0])
+                entry[ind] = format_pr_entry(repo, match.groups()[0])
 
     entry = "\n".join(entry).strip()
 
@@ -105,6 +105,7 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
 
 def build_entry(branch, remote, repo, auth, changelog_path, resolve_backports):
     """Build a python version entry"""
+    repo = repo or util.get_repo(remote, auth=auth)
     branch = branch or util.get_branch()
 
     # Get the new version

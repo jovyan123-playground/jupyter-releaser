@@ -155,6 +155,33 @@ def test_build_changelog_existing(py_package, mocker, runner):
     run("pre-commit run -a")
 
 
+def test_build_changelog_backport(py_package, mocker, runner, open_mock):
+    changelog_path = py_package / "CHANGELOG.md"
+
+    data = dict(title="foo", url="bar", user=dict(login="snuffy", html_url="baz"))
+    open_mock.return_value = MockHTTPResponse(data)
+
+    runner(["prep-env", "--version-spec", VERSION_SPEC])
+    entry = CHANGELOG_ENTRY.replace("consideRatio", "meeseeksmachine")
+    entry = entry.replace(
+        "Support git references etc.", "Backport PR #50 (original title"
+    )
+
+    mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
+    mocked_gen.return_value = entry
+    runner(["build-changelog", "--changelog-path", changelog_path])
+    text = changelog_path.read_text(encoding="utf-8")
+    assert changelog.START_MARKER in text
+    assert changelog.END_MARKER in text
+
+    assert "- foo [#50](bar) [@snuffy](baz)" in text, text
+
+    assert len(re.findall(changelog.START_MARKER, text)) == 1
+    assert len(re.findall(changelog.END_MARKER, text)) == 1
+
+    run("pre-commit run -a")
+
+
 def test_draft_changelog_full(py_package, mocker, runner, open_mock):
     mock_changelog_entry(py_package, runner, mocker)
     runner(["draft-changelog", "--version-spec", VERSION_SPEC])
