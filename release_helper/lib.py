@@ -93,6 +93,10 @@ def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
     branch = branch or util.get_branch()
     version = util.get_version()
 
+    tags = util.run("git --no-pager tag")
+    if f"v{version}" in tags.splitlines():
+        raise ValueError(f"Tag v{version} already exists")
+
     # Check out any unstaged files from version bump
     util.run("git checkout -- .")
 
