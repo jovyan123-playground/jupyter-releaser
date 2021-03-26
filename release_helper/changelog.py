@@ -10,6 +10,7 @@ from release_helper import util
 
 START_MARKER = "<!-- <START NEW CHANGELOG ENTRY> -->"
 END_MARKER = "<!-- <END NEW CHANGELOG ENTRY> -->"
+PR_PREFIX = "Automated Changelog Entry"
 
 
 def format_pr_entry(target, number, auth=None):
@@ -86,6 +87,9 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
             if match:
                 entry[ind] = format_pr_entry(repo, match.groups()[0])
 
+    # Remove automated changelog PRs
+    entry = [e for e in entry if PR_PREFIX not in e]
+
     entry = "\n".join(entry).strip()
 
     # Replace "*" unordered list marker with "-" since this is what
@@ -158,14 +162,16 @@ def insert_entry(changelog, entry, version=None):
                     lines[ind] = old_line
         changelog = changelog.replace(prev_entry, "\n".join(lines))
     else:
-        changelog = changelog.replace(END_MARKER + "\n", "")
+        changelog = changelog.replace(END_MARKER, "")
         changelog = changelog.replace(START_MARKER, new_entry)
 
-    # Clean up formatting
-    changelog = changelog.replace("\n\n\n", "\n\n")
-    changelog = re.sub(r"\n\n$", r"\n", changelog, re.MULTILINE)
+    return format(changelog)
 
-    return changelog
+
+def format(changelog):
+    """Clean up changelog formatting"""
+    changelog = changelog.replace("\n\n\n", "\n\n")
+    return re.sub(r"\n\n$", r"\n", changelog, re.MULTILINE)
 
 
 def check_entry(branch, remote, repo, auth, changelog_path, resolve_backports, output):

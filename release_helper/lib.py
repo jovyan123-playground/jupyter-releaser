@@ -100,9 +100,8 @@ def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
     # Check out any unstaged files from version bump
     util.run("git checkout -- .")
 
-    commit_message = f'git commit -a -m "Generate changelog for {version}"'
-
-    title = f"Automated Changelog for {version} on {branch}"
+    title = f"{changelog.PR_PREFIX} for {version} on {branch}"
+    commit_message = f'git commit -a -m "{title}"'
     body = title
 
     # Check for multiple versions
@@ -486,17 +485,15 @@ def forwardport_changelog(
     # Otherwise insert the new entry ahead of the previous header
     else:
         insertion_point = default_log.index(prev_header)
-        default_log = (
-            default_log[:insertion_point]
-            + entry.lstrip()
-            + default_log[insertion_point:]
+        default_log = changelog.format(
+            default_log[:insertion_point] + entry + default_log[insertion_point:]
         )
 
     Path(changelog_path).write_text(default_log, encoding="utf-8")
 
     # Create a forward port PR
-    commit_message = f'git commit -a -m "Forward port changelog entry from {tag}"'
-    title = f"Forward Ported Changelog Entry from {tag}"
+    title = f"{changelog.PR_PREFIX} Forward Ported from {tag}"
+    commit_message = f'git commit -a -m "{title}"'
     body = title
 
     pr = make_changelog_pr(
