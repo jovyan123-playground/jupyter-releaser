@@ -2,6 +2,24 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.7.0
+
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.6.0...30ffa7fcafbbf14cc7de4629609042cfbd4a76ad))
+
+### Merged PRs
+
+- Add tests [#114](https://github.com/jovyan123-playground/release-helper-playground/pull/114) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- fix handling of backport prs [#112](https://github.com/jovyan123-playground/release-helper-playground/pull/112) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Forward Ported Changelog Entry from v0.5.1 [#109](https://github.com/jovyan123-playground/release-helper-playground/pull/109) ([@github-actions](https://github.com/github-actions))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-25&to=2021-03-26&type=c))
+
+[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-25..2021-03-26&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Agithub-actions+updated%3A2021-03-25..2021-03-26&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-25..2021-03-26&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.6.0
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.5.0...5b5aeda9b6aea657c04bdf257e75bf974af4fa40))
@@ -15,8 +33,6 @@
 ([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-25&to=2021-03-25&type=c))
 
 [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-25..2021-03-25&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.5.1
 
