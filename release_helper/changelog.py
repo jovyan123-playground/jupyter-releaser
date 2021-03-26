@@ -158,9 +158,13 @@ def insert_entry(changelog, entry, version=None):
                     lines[ind] = old_line
         changelog = changelog.replace(prev_entry, "\n".join(lines))
     else:
-        changelog = changelog.replace(END_MARKER + "\n\n", "")
         changelog = changelog.replace(END_MARKER + "\n", "")
         changelog = changelog.replace(START_MARKER, new_entry)
+
+    # Clean up formatting
+    changelog = changelog.replace("\n\n\n", "\n\n")
+    changelog = re.sub(r"\n\n$", r"\n", changelog, re.MULTILINE)
+
     return changelog
 
 
