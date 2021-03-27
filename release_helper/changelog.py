@@ -171,7 +171,7 @@ def insert_entry(changelog, entry, version=None):
 def format(changelog):
     """Clean up changelog formatting"""
     changelog = re.sub(r"\n\n+", r"\n\n", changelog, re.MULTILINE)
-    return re.sub(r"\n\n$", r"\n", changelog, re.MULTILINE)
+    return re.sub(r"\n\n+$", r"\n", changelog, re.MULTILINE)
 
 
 def check_entry(branch, remote, repo, auth, changelog_path, resolve_backports, output):
