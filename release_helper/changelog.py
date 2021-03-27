@@ -87,13 +87,9 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
             if match:
                 entry[ind] = format_pr_entry(repo, match.groups()[0])
 
-    # Remove github actions contributor links
-    patt = r"\[@github-actions\]\(https://github.com/search\.*type=Issues\)"
-    entry = [re.sub(patt + " | ", "", e) for e in entry]
-    entry = [re.sub(patt, "", e) for e in entry]
-
     # Remove github actions PRs
-    entry = [e for e in entry if "[@github-actions]" not in entry]
+    gh_actions = "[@github-actions](https://github.com/github-actions)"
+    entry = [e for e in entry if gh_actions not in entry]
 
     entry = "\n".join(entry).strip()
 

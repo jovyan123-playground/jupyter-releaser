@@ -291,7 +291,7 @@ def check_manifest():
 @click.option(
     "--ignore-links",
     multiple=True,
-    default=["https://github.com/.*/(pull|issues)/.*"],
+    default=["https://github.com/.*/(pull|issues)/.*", "https://github.com/search?"],
     help="Ignore links based on regex pattern(s)",
 )
 @click.option(
