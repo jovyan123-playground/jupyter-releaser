@@ -284,9 +284,15 @@ def check_manifest():
 @main.command()
 @click.option(
     "--ignore-glob",
-    default=["CHANGELOG.md"],
+    default=[],
     multiple=True,
     help="Ignore test file paths based on glob pattern",
+)
+@click.option(
+    "--ignore-links",
+    multiple=True,
+    default=["https://github.com/.*/(pull|issues)/.*", "https://github.com/search?"],
+    help="Ignore links based on regex pattern(s)",
 )
 @click.option(
     "--cache-file",
@@ -300,9 +306,9 @@ def check_manifest():
     envvar="RH_LINKS_EXPIRE",
     help="Duration in seconds for links to be cached (default one week)",
 )
-def check_links(ignore_glob, cache_file, links_expire):
+def check_links(ignore_glob, ignore_links, cache_file, links_expire):
     """Check Markdown file links"""
-    lib.check_links(ignore_glob, cache_file, links_expire)
+    lib.check_links(ignore_glob, ignore_links, cache_file, links_expire)
 
 
 @main.command()

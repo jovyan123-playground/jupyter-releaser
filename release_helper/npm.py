@@ -33,7 +33,7 @@ def build_dist(package, dist_dir):
 
     # Move the tarball into the dist folder if public
     if not data.get("private", False) == True:
-        shutil.move(tarball, dest)
+        shutil.move(str(tarball), str(dest))
     elif osp.isdir(package):
         os.remove(tarball)
 
@@ -91,7 +91,7 @@ def extract_dist(dist_dir, target):
         tar.extractall(target)
         tar.close()
 
-        shutil.move(target / "package", pkg_dir)
+        shutil.move(str(target / "package"), str(pkg_dir))
 
     return names
 
@@ -119,7 +119,7 @@ def check_dist(dist_dir, test_cmd=None):
 
     util.run(test_cmd, cwd=tmp_dir)
 
-    shutil.rmtree(tmp_dir, ignore_errors=True)
+    shutil.rmtree(str(tmp_dir), ignore_errors=True)
 
 
 def extract_package(path):

@@ -87,8 +87,9 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
             if match:
                 entry[ind] = format_pr_entry(repo, match.groups()[0])
 
-    # Remove automated changelog PRs
-    entry = [e for e in entry if PR_PREFIX not in e]
+    # Remove github actions PRs
+    gh_actions = "[@github-actions](https://github.com/github-actions)"
+    entry = [e for e in entry if gh_actions not in entry]
 
     entry = "\n".join(entry).strip()
 
@@ -170,8 +171,8 @@ def insert_entry(changelog, entry, version=None):
 
 def format(changelog):
     """Clean up changelog formatting"""
-    changelog = changelog.replace("\n\n\n", "\n\n")
-    return re.sub(r"\n\n$", r"\n", changelog, re.MULTILINE)
+    changelog = re.sub(r"\n\n+", r"\n\n", changelog, re.MULTILINE)
+    return re.sub(r"\n\n+$", r"\n", changelog, re.MULTILINE)
 
 
 def check_entry(branch, remote, repo, auth, changelog_path, resolve_backports, output):

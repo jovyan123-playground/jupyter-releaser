@@ -70,7 +70,7 @@ IS_PRERELEASE={is_prerelease_str}
         )
 
 
-def check_links(ignore_glob, cache_file, links_expire):
+def check_links(ignore_glob, ignore_links, cache_file, links_expire):
     cache_dir = osp.expanduser(cache_file).replace(os.sep, "/")
     os.makedirs(cache_dir, exist_ok=True)
     cmd = "pytest --check-links --check-links-cache "
@@ -79,7 +79,10 @@ def check_links(ignore_glob, cache_file, links_expire):
     cmd += " -k .md "
 
     for spec in ignore_glob:
-        cmd += f"--ignore-glob {spec}"
+        cmd += f" --ignore-glob {spec}"
+
+    for spec in ignore_links:
+        cmd += f" --check-links-ignore {spec}"
 
     try:
         util.run(cmd)
