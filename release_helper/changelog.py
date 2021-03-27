@@ -170,7 +170,7 @@ def insert_entry(changelog, entry, version=None):
 
 def format(changelog):
     """Clean up changelog formatting"""
-    changelog = changelog.replace("\n\n\n", "\n\n")
+    changelog = re.sub(r"\n\n+", r"\n\n", changelog, re.MULTILINE)
     return re.sub(r"\n\n$", r"\n", changelog, re.MULTILINE)
 
 

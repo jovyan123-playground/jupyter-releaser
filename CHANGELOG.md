@@ -34,7 +34,6 @@
 
 [@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-26..2021-03-26&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Agithub-actions+updated%3A2021-03-26..2021-03-26&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-26..2021-03-26&type=Issues)
 
-
 ## 0.7.2
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.7.1...a5f016cdffc8da13c380a7ad777f331a9fb23019))
