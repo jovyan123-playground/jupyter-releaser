@@ -2,6 +2,12 @@ name: Draft Changelog
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: "The owner/repo GitHub target"
+        required: true
+      branch:
+        description: The branch to target"
+        required: true
       version_spec:
         description: "New Version Spec"
         required: true
@@ -33,6 +39,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version_spec: ${{ github.event.inputs.version_spec }}
+          target: ${{ github.event.inputs.target }}
+          branch: ${{ github.event.inputs.branch }}
       - name: "** Next Step **"
         run: |
           echo "Review PR: ${{ steps.draft-changelog.outputs.pr_url }}"

@@ -103,7 +103,7 @@ branch_options = [
     click.option(
         "--remote", envvar="RH_REMOTE", default="upstream", help="The git remote name"
     ),
-    click.option("--repo", envvar="GITHUB_REPOSITORY", help="The git repo"),
+    click.option("--repo", envvar="RH_REPOSITORY", help="The git repo"),
 ]
 
 auth_options = [

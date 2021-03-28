@@ -61,7 +61,7 @@ def log(output, **kwargs):
 
 
 def get_branch():
-    """Get the appropriat git branch"""
+    """Get the appropriate git branch"""
     if os.environ.get("GITHUB_BASE_REF"):
         # GitHub Action PR Event
         branch = os.environ["GITHUB_BASE_REF"]
