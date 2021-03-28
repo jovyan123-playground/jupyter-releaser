@@ -25,22 +25,9 @@ runs:
     - shell: bash
       id: draft-release
       run: |
-        set -eux
-        pip install -q release-helper
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
         export RH_VERSION_SPEC=${{ inputs.version_spec }}
         export RH_CHANGELOG=${{ inputs.changelog }}
         export RH_POST_VERSION_SPEC=${{ inputs.post_version_spec }}
         export RH_DRY_RUN=${{ inputs.dry_run }}
-        release-helper prep-env
-        release-helper check-changelog
-        # Make sure npm comes before python in case it produces
-        # files for the python package
-        release-helper build-npm
-        release-helper check-npm
-        release-helper build-python
-        release-helper check-python
-        release-helper check-manifest
-        release-helper check-links
-        release-helper tag-release
-        release-helper draft-release
+        bash .github/scripts/draft-release.sh

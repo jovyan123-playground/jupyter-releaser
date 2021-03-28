@@ -29,11 +29,11 @@ def prep_env(
 
     # Get the branch
     branch = branch or util.get_branch()
-    print(f"branch={branch}")
+    util.log(f"branch={branch}")
 
     # Get the repo
     repo = repo or util.get_repo(remote, auth=auth)
-    print(f"repository={repo}")
+    util.log(f"repository={repo}")
 
     # Set up git
     prep_git(branch, remote, repo, username, auth)
@@ -53,12 +53,12 @@ def prep_env(
         msg += " To delete run: `git push --delete upstream {tag_name}`"
         raise ValueError(msg)
 
-    print(f"version={version}")
+    util.log(f"version={version}")
     is_prerelease_str = str(util.is_prerelease(version)).lower()
-    print(f"is_prerelease={is_prerelease_str}")
+    util.log(f"is_prerelease={is_prerelease_str}")
 
     if output:
-        print(f"Writing env variables to {output} file")
+        util.log(f"Writing env variables to {output} file")
         Path(output).write_text(
             f"""
 BRANCH={branch}
@@ -147,7 +147,7 @@ def make_changelog_pr(
     maintainer_can_modify = True
 
     if dry_run:
-        print("Skipping pull request due to dry run")
+        util.log("Skipping pull request due to dry run")
         return
 
     util.run(f"git push {remote} {pr_branch}")
@@ -223,14 +223,14 @@ def draft_release(
         if util.SETUP_PY.exists() and not is_canonical(version):  # pragma: no cover
             raise ValueError(f"\n\nInvalid post version {version}")
 
-        print(f"Bumped version to {post_version}")
+        util.log(f"Bumped version to {post_version}")
         util.run(f'git commit -a -m "Bump to {post_version}"')
 
     if not dry_run:
         util.run(f"git push {remote} HEAD:{branch} --follow-tags --tags")
 
-    print(f"Creating release for {version}")
-    print(f"With assets: {assets}")
+    util.log(f"Creating release for {version}")
+    util.log(f"With assets: {assets}")
     release = gh.create_release(
         f"v{version}",
         branch,
@@ -276,7 +276,7 @@ def extract_release(auth, dist_dir, dry_run, release_url):
 
     # Fetch, validate, and publish assets
     for asset in assets:
-        print(f"Fetching {asset.name}...")
+        util.log(f"Fetching {asset.name}...")
         url = asset.url
         headers = dict(Authorization=f"token {auth}", Accept="application/octet-stream")
         path = dist / asset.name
@@ -291,7 +291,7 @@ def extract_release(auth, dist_dir, dry_run, release_url):
             elif suffix == ".tgz":
                 npm.check_dist(path)
             else:
-                print(f"Nothing to check for {asset.name}")
+                util.log(f"Nothing to check for {asset.name}")
 
     # Skip sha validation for dry runs since the remote tag will not exist
     if dry_run:
@@ -330,7 +330,7 @@ def extract_release(auth, dist_dir, dry_run, release_url):
                 if sha in line:
                     valid = True
                 else:
-                    print("Mismatched sha!")
+                    util.log("Mismatched sha!")
 
         if not valid:  # pragma: no cover
             raise ValueError(f"Invalid file {asset.name}")
@@ -365,7 +365,7 @@ def publish_release(
             util.run(f"{npm_cmd} {name}", cwd=dist_dir)
             found = True
         else:
-            print(f"Nothing to upload for {name}")
+            util.log(f"Nothing to upload for {name}")
 
     if not found:  # pragma: no cover
         raise ValueError("No assets published, refusing to finalize release")
@@ -449,7 +449,7 @@ def forwardport_changelog(
     # Bail if the tag has been merged to the default branch
     tags = util.run(f"git --no-pager tag --merged {default_branch}")
     if tag in tags.splitlines():
-        print(f"Skipping since tag is already merged into {default_branch}")
+        util.log(f"Skipping since tag is already merged into {default_branch}")
         return
 
     # Get the entry for the tag

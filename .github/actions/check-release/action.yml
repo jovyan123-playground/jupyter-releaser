@@ -4,27 +4,23 @@ inputs:
   token:
     description: "GitHub access token"
     required: true
-  version_spec:
-    description: "New Version Specifier"
-    required: true
   changelog:
     description: "Changelog file"
     default: "CHANGELOG.md"
-  dry_run:
-    description: "If set, do not make a PR"
-    default: false
-outputs:
-  pr_url:
-    description: "The URL of the Changelog Pull Request"
-    value: ${{ steps.draft-changelog.outputs.pr_url }}
 runs:
   using: "composite"
   steps:
     - shell: bash
-      id: draft-changelog
+      id: draft-release
       run: |
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
-        export RH_VERSION_SPEC=${{ inputs.version_spec }}
+        export RH_VERSION_SPEC=0.0.1a0
+        export RH_POST_VERSION_SPEC=0.1.0.dev0
         export RH_CHANGELOG=${{ inputs.changelog }}
-        export RH_DRY_RUN=${{ inputs.dry_run }}
+        export RH_DRY_RUN=yes
         bash .github/scripts/draft_changelog.sh
+        bash .github/scripts/draft_release.sh
+    - shell: bash
+      id: publish-release
+        export release_url=${{ steps.draft-release.outputs.release_url }}
+        bash .github/scripts/publish_release.sh ${release_url}

@@ -9,6 +9,7 @@ import os.path as osp
 import re
 import shlex
 import shutil
+import sys
 from glob import glob
 from pathlib import Path
 from subprocess import CalledProcessError
@@ -35,7 +36,7 @@ RELEASE_API_PATTERN = "https://api.github.com/repos/(?P<owner>[^/]+)/(?P<repo>[^
 def run(cmd, **kwargs):
     """Run a command as a subprocess and get the output as a string"""
     if not kwargs.pop("quiet", False):
-        print(f"+ {cmd}")
+        log(f"+ {cmd}")
 
     kwargs.setdefault("stderr", PIPE)
 
@@ -49,9 +50,14 @@ def run(cmd, **kwargs):
     try:
         return check_output(parts, **kwargs).decode("utf-8").strip()
     except CalledProcessError as e:
-        print("output:", e.output.decode("utf-8").strip())
-        print("stderr:", e.stderr.decode("utf-8").strip())
+        log("output:", e.output.decode("utf-8").strip())
+        log("stderr:", e.stderr.decode("utf-8").strip())
         raise e
+
+
+def log(output, **kwargs):
+    """Log an output to stderr"""
+    print(output, file=sys.stderr, **kwargs)
 
 
 def get_branch():
@@ -177,7 +183,7 @@ def release_for_url(gh, url):
 
 def actions_output(name, value):
     "Print the special GitHub Actions `::set-output` line for `name::value`"
-    print(f"\n\nSetting output {name}={value}")
+    log(f"\n\nSetting output {name}={value}")
     if "GITHUB_ACTIONS" in os.environ:
         print(f"::set-output name={name}::{value}")
 

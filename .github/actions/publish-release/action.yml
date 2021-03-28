@@ -23,18 +23,6 @@ runs:
     - shell: bash
       id: publish-release
       run: |
-        set -eux
-        pip install -q release-helper
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
         export RH_DRY_RUN=${{ inputs.dry_run }}
-        export TWINE_USERNAME=${TWINE_USERNAME:-"__token__"}
-
-        if [ ${RH_DRY_RUN} == 'true' ]; then
-          export TWINE_COMMAND=${TWINE_COMMAND:-"twine upload --skip-existing"}
-          export TWINE_REPOSITORY_URL=${TWINE_REPOSITORY_URL:-"https://test.pypi.org/legacy/"}
-          export RH_NPM_COMMAND=${NPM_COMMAND:-"npm publish --dry-run"}
-        fi
-
-        release-helper extract-release ${{ inputs.release_url }}
-        release-helper forwardport-changelog ${{ inputs.release_url }}
-        release-helper publish-release ${{ inputs.release_url }}
+        bash .github/scripts/draft-release.sh ${{ inputs.release_url }}

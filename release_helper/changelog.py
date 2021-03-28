@@ -67,14 +67,14 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
 
     since = tags.splitlines()[0]
     branch = branch.split("/")[-1]
-    print(f"Getting changes to {repo} since {since} on branch {branch}...")
+    util.log(f"Getting changes to {repo} since {since} on branch {branch}...")
 
     md = generate_activity_md(
         repo, since=since, kind="pr", heading_level=2, auth=auth, branch=branch
     )
 
     if not md:
-        print("No PRs found")
+        util.log("No PRs found")
         return f"## {version}\n\nNo merged PRs"
 
     entry = md.replace("[full changelog]", "[Full Changelog]")
@@ -206,7 +206,7 @@ def check_entry(branch, remote, repo, auth, changelog_path, resolve_backports, o
     )
 
     if f"# {version}" not in final_entry:  # pragma: no cover
-        print(final_entry)
+        util.log(final_entry)
         raise ValueError(f"Did not find entry for {version}")
 
     final_prs = re.findall(r"\[#(\d+)\]", final_entry)

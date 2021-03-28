@@ -225,7 +225,7 @@ def check_changelog(
 def build_python(dist_dir):
     """Build Python dist files"""
     if not util.PYPROJECT.exists() and not util.SETUP_PY.exists():
-        print("Skipping build-python since there are no python package files")
+        util.log("Skipping build-python since there are no python package files")
         return
     python.build_dist(dist_dir)
 
@@ -241,7 +241,7 @@ def check_python(dist_dir, test_cmd):
     """Check Python dist files"""
     for dist_file in glob(f"{dist_dir}/*"):
         if Path(dist_file).suffix not in [".gz", ".whl"]:
-            print(f"Skipping non-python dist file {dist_file}")
+            util.log(f"Skipping non-python dist file {dist_file}")
             continue
         python.check_dist(dist_file, test_cmd=test_cmd)
 
@@ -252,7 +252,7 @@ def check_python(dist_dir, test_cmd):
 def build_npm(package, dist_dir):
     """Build npm package"""
     if not osp.exists("./package.json"):
-        print("Skipping check-npm since there is no package.json file")
+        util.log("Skipping check-npm since there is no package.json file")
         return
     npm.build_dist(package, dist_dir)
 
@@ -267,7 +267,7 @@ def build_npm(package, dist_dir):
 def check_npm(dist_dir, test_cmd):
     """Check npm package"""
     if not osp.exists("./package.json"):
-        print("Skipping check-npm since there is no package.json file")
+        util.log("Skipping check-npm since there is no package.json file")
         return
     npm.check_dist(dist_dir, test_cmd=test_cmd)
 
@@ -278,7 +278,7 @@ def check_manifest():
     if util.PYPROJECT.exists() or util.SETUP_PY.exists():
         util.run("check-manifest -v")
     else:
-        print("Skipping check-manifest since there are no python package files")
+        util.log("Skipping check-manifest since there are no python package files")
 
 
 @main.command()
