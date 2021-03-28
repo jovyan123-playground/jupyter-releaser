@@ -18,10 +18,10 @@ runs:
         export RH_POST_VERSION_SPEC=0.1.0.dev0
         export RH_CHANGELOG=${{ inputs.changelog }}
         export RH_DRY_RUN=yes
-        bash .github/scripts/draft_changelog.sh
-        bash .github/scripts/draft_release.sh
+        bash .github/scripts/draft-changelog.sh
+        bash .github/scripts/draft-release.sh
     - shell: bash
       id: publish-release
       run: |
         export release_url=${{ steps.draft-release.outputs.release_url }}
-        bash .github/scripts/publish_release.sh ${release_url}
+        bash .github/scripts/publish-release.sh ${release_url}

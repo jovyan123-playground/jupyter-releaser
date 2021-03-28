@@ -27,4 +27,4 @@ runs:
         export RH_VERSION_SPEC=${{ inputs.version_spec }}
         export RH_CHANGELOG=${{ inputs.changelog }}
         export RH_DRY_RUN=${{ inputs.dry_run }}
-        bash .github/scripts/draft_changelog.sh
+        bash .github/scripts/draft-changelog.sh
