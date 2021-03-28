@@ -20,25 +20,11 @@ from release_helper import python
 from release_helper import util
 
 
-def prep_env(
-    version_spec, version_cmd, branch, remote, repo, auth, dist_dir, username, output
-):
-    """Prep git and env variables and bump version"""
-    # Clear the dist directory
-    shutil.rmtree(dist_dir, ignore_errors=True)
+CHECKOUT_NAME = "release_helper_checkout"
 
-    # Get the branch
-    branch = branch or util.get_branch()
-    util.log(f"branch={branch}")
 
-    # Get the repo
-    repo = repo or util.get_repo(remote, auth=auth)
-    util.log(f"repository={repo}")
-
-    # Set up git
-    prep_git(branch, remote, repo, username, auth)
-
-    # Bump the version
+def bump_version(version_spec, version_cmd):
+    """Bump the version and verify new version"""
     util.bump_version(version_spec, version_cmd=version_cmd)
 
     version = util.get_version()
@@ -50,24 +36,10 @@ def prep_env(
     tag_name = f"v{version}"
     if tag_name in util.run("git --no-pager tag").splitlines():
         msg = f"Tag {tag_name} already exists!"
-        msg += " To delete run: `git push --delete upstream {tag_name}`"
+        msg += " To delete run: `git push --delete origin {tag_name}`"
         raise ValueError(msg)
 
-    util.log(f"version={version}")
-    is_prerelease_str = str(util.is_prerelease(version)).lower()
-    util.log(f"is_prerelease={is_prerelease_str}")
-
-    if output:
-        util.log(f"Writing env variables to {output} file")
-        Path(output).write_text(
-            f"""
-BRANCH={branch}
-VERSION={version}
-REPOSITORY={repo}
-IS_PRERELEASE={is_prerelease_str}
-""".strip(),
-            encoding="utf-8",
-        )
+    return version
 
 
 def check_links(ignore_glob, ignore_links, cache_file, links_expire):
@@ -90,9 +62,9 @@ def check_links(ignore_glob, ignore_links, cache_file, links_expire):
         util.run(cmd + " --lf")
 
 
-def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
+def draft_changelog(version_spec, branch, repo, auth, dry_run):
     """Create a changelog entry PR"""
-    repo = repo or util.get_repo(remote, auth=auth)
+    repo = repo or util.get_repo()
     branch = branch or util.get_branch()
     version = util.get_version()
 
@@ -115,15 +87,11 @@ def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
     body += f"\non Branch: {branch}"
     body += f"\nwith Version Spec: {version_spec}"
 
-    make_changelog_pr(
-        auth, branch, remote, repo, title, commit_message, body, dry_run=dry_run
-    )
+    make_changelog_pr(auth, branch, repo, title, commit_message, body, dry_run=dry_run)
 
 
-def make_changelog_pr(
-    auth, branch, remote, repo, title, commit_message, body, dry_run=False
-):
-    repo = repo or util.get_repo(remote, auth=auth)
+def make_changelog_pr(auth, branch, repo, title, commit_message, body, dry_run=False):
+    repo = repo or util.get_repo()
 
     # Make a new branch with a uuid suffix
     pr_branch = f"changelog-{uuid.uuid1().hex}"
@@ -131,8 +99,8 @@ def make_changelog_pr(
     if not dry_run:
         util.run("git --no-pager diff")
         util.run("git stash")
-        util.run(f"git fetch {remote} {branch}")
-        util.run(f"git checkout -b {pr_branch} {remote}/{branch}")
+        util.run(f"git fetch origin {branch}")
+        util.run(f"git checkout -b {pr_branch} origin/{branch}")
         util.run("git stash apply")
 
     # Add a commit with the message
@@ -150,7 +118,7 @@ def make_changelog_pr(
         util.log("Skipping pull request due to dry run")
         return
 
-    util.run(f"git push {remote} {pr_branch}")
+    util.run(f"git push origin {pr_branch}")
 
     #  title, head, base, body, maintainer_can_modify, draft, issue
     pull = gh.pulls.create(title, head, base, body, maintainer_can_modify, False, None)
@@ -158,7 +126,7 @@ def make_changelog_pr(
     util.actions_output("pr_url", pull.html_url)
 
 
-def tag_release(branch, remote, repo, dist_dir, no_git_tag_workspace):
+def tag_release(branch, repo, dist_dir, no_git_tag_workspace):
     """Create release commit and tag"""
     # Get the new version
     version = util.get_version()
@@ -180,7 +148,6 @@ def tag_release(branch, remote, repo, dist_dir, no_git_tag_workspace):
 
 def draft_release(
     branch,
-    remote,
     repo,
     auth,
     changelog_path,
@@ -192,7 +159,7 @@ def draft_release(
 ):
     """Publish Draft GitHub release and handle post version bump"""
     branch = branch or util.get_branch()
-    repo = repo or util.get_repo(remote, auth=auth)
+    repo = repo or util.get_repo()
 
     assets = assets or glob(f"{dist_dir}/*")
 
@@ -218,16 +185,13 @@ def draft_release(
 
     # Bump to post version if given
     if post_version_spec:
-        util.bump_version(post_version_spec, version_cmd)
-        post_version = util.get_version()
-        if util.SETUP_PY.exists() and not is_canonical(version):  # pragma: no cover
-            raise ValueError(f"\n\nInvalid post version {version}")
+        post_version = bump_version(post_version_spec, version_cmd)
 
         util.log(f"Bumped version to {post_version}")
         util.run(f'git commit -a -m "Bump to {post_version}"')
 
     if not dry_run:
-        util.run(f"git push {remote} HEAD:{branch} --follow-tags --tags")
+        util.run(f"git push origin HEAD:{branch} --follow-tags --tags")
 
     util.log(f"Creating release for {version}")
     util.log(f"With assets: {assets}")
@@ -388,7 +352,7 @@ def publish_release(
     util.actions_output("release_url", release.html_url)
 
 
-def prep_git(branch, remote, repo, username, auth):
+def prep_git(branch, repo, auth, username):
     """Set up git"""
     is_action = bool(os.environ.get("GITHUB_ACTIONS"))
     if is_action:
@@ -399,36 +363,39 @@ def prep_git(branch, remote, repo, username, auth):
         )
         util.run('git config --global user.name "GitHub Action"')
 
-        remotes = util.run("git remote").splitlines()
-        if remote not in remotes:
-            if auth:
-                url = f"http://{username}:{auth}@github.com/{repo}.git"
-            else:
-                url = f"http://github.com/{repo}.git"
-            util.run(f"git remote add {remote} {url}")
+    # Set up the repository
+    if osp.exists(CHECKOUT_NAME):
+        shutil.rmtree(repo, ignore_errors=True)
+
+    util.run(f"git init {CHECKOUT_NAME}")
+    os.chdir(repo)
+
+    if auth:
+        url = f"http://{username}:{auth}@github.com/{repo}.git"
+    else:
+        url = f"http://github.com/{repo}.git"
+    util.run(f"git remote add origin {url}")
+
+    if not branch:
+        # Get the default remote branch
+        info = util.run("git remote show origin")
+        for line in info:
+            if line.startswith("HEAD branch:"):
+                branch = line.strip().split()[-1]
+                break
+
+    util.run(f"git fetch --tags origin {branch}")
 
     # Make sure we have *all* tags
-    util.run(f"git fetch {remote} --tags")
-
-    if branch is None:
-        return
-
-    # Check out the remote branch so we can push to it
-    util.run(f"git fetch {remote} {branch} --tags")
-
-    branches = util.run("git branch").replace("* ", "").splitlines()
-    if branch in branches:
-        util.run(f"git checkout {branch}")
-    else:
-        util.run(f"git checkout -B {branch} {remote}/{branch}")
+    util.run("git fetch origin --tags")
 
 
 def forwardport_changelog(
-    auth, branch, remote, repo, username, changelog_path, dry_run, release_url
+    auth, branch, repo, username, changelog_path, dry_run, release_url
 ):
     """Forwardport Changelog Entries to the Default Branch"""
-    # Set up the git repo
-    prep_git(branch, remote, repo, username, auth)
+    # Set up the git repo with default branch
+    prep_git(None, repo, auth, username)
 
     match = parse_release_url(release_url)
     gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
@@ -437,14 +404,14 @@ def forwardport_changelog(
 
     # Find the default branch
     default_branch = ""
-    for line in util.run(f"git remote show {remote}").splitlines():
+    for line in util.run("git remote show origin").splitlines():
         if "HEAD branch" in line:
             default_branch = line.strip().split()[-1]
             default_branch = default_branch.split("/")[-1]
             break
 
     # Check out the default branch
-    util.run(f"git checkout -B {default_branch} {remote}/{default_branch}")
+    util.run(f"git checkout -B {default_branch} origin/{default_branch}")
 
     # Bail if the tag has been merged to the default branch
     tags = util.run(f"git --no-pager tag --merged {default_branch}")
@@ -470,7 +437,7 @@ def forwardport_changelog(
         raise ValueError("No anchor for previous entry")
 
     # Check out the default branch again
-    util.run(f"git checkout -B {default_branch} {remote}/{default_branch}")
+    util.run(f"git checkout -B {default_branch} origin/{default_branch}")
 
     default_entry = changelog.extract_current(changelog_path)
 
@@ -500,5 +467,5 @@ def forwardport_changelog(
     body = title
 
     pr = make_changelog_pr(
-        auth, default_branch, remote, repo, title, commit_message, body, dry_run=dry_run
+        auth, default_branch, repo, title, commit_message, body, dry_run=dry_run
     )

@@ -18,3 +18,4 @@ release-helper publish-release ${release_url}
 
 if [ ${RH_DRY_RUN} == 'true']; then
     release-helper delete-release ${release_url}
+fi

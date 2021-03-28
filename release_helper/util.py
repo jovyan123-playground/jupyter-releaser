@@ -74,9 +74,9 @@ def get_branch():
     return branch
 
 
-def get_repo(remote, auth=None):
+def get_repo():
     """Get the remote repo owner and name"""
-    url = run(f"git remote get-url {remote}")
+    url = run("git remote get-url origin")
     url = normalize_path(url)
     parts = url.split("/")[-2:]
     if ":" in parts[0]:
@@ -162,6 +162,8 @@ def bump_version(version_spec, version_cmd=""):
 
     # Bump the version
     run(f"{version_cmd} {version_spec}")
+
+    return get_version()
 
 
 def is_prerelease(version):

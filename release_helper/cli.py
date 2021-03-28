@@ -24,6 +24,22 @@ class ReleaseHelperGroup(click.Group):
         if not cmd_name in self.commands:
             super().invoke(ctx)
 
+        if cmd_name == "list-envvars":
+            envvars = dict()
+            for cmd_name in self.commands:
+                for param in self.commands[cmd_name].params:
+                    if isinstance(param, click.Option):
+                        if param.envvar:
+                            envvars[param.name] = param.envvar
+
+            for key in sorted(envvars):
+                print(f"{key.replace('_', '-')}: {envvars[key]}")
+
+            return
+
+        if cmd_name != "prep-git":
+            os.chdir(lib.CHECKOUT_NAME)
+
         # Read in the config
         config = util.read_config()
         hooks = config.get("hooks", {})
@@ -76,8 +92,7 @@ class ReleaseHelperGroup(click.Group):
 
 
 @click.group(cls=ReleaseHelperGroup)
-@click.pass_context
-def main(ctx):
+def main():
     """Release helper scripts"""
     pass
 
@@ -100,9 +115,6 @@ version_cmd_options = [
 
 branch_options = [
     click.option("--branch", envvar="RH_BRANCH", help="The target branch"),
-    click.option(
-        "--remote", envvar="RH_REMOTE", default="upstream", help="The git remote name"
-    ),
     click.option("--repo", envvar="RH_REPOSITORY", help="The git repo"),
 ]
 
@@ -165,35 +177,34 @@ def add_options(options):
 
 
 @main.command()
-@add_options(version_spec_options)
-@add_options(version_cmd_options)
+def list_envvars():
+    """List the environment variables"""
+    # This is implemented in ReleaseHelperGroup.invoke
+    pass
+
+
+@main.command()
 @add_options(branch_options)
 @add_options(auth_options)
-@add_options(dist_dir_options)
 @add_options(username_options)
-@click.option("--output", envvar="GITHUB_ENV", help="Output file for env variables")
-def prep_env(
-    version_spec, version_cmd, branch, remote, repo, auth, dist_dir, username, output
-):
+def prep_git(branch, repo, auth, username):
     """Prep git and env variables and bump version"""
-    lib.prep_env(
-        version_spec,
-        version_cmd,
-        branch,
-        remote,
-        repo,
-        auth,
-        dist_dir,
-        username,
-        output,
-    )
+    lib.prep_git(branch, repo, auth, username)
+
+
+@main.command()
+@add_options(version_spec_options)
+@add_options(version_cmd_options)
+def bump_version(version_spec, version_cmd):
+    """Prep git and env variables and bump version"""
+    lib.bump_version(version_spec, version_cmd)
 
 
 @main.command()
 @add_options(changelog_options)
-def build_changelog(branch, remote, repo, auth, changelog_path, resolve_backports):
+def build_changelog(branch, repo, auth, changelog_path, resolve_backports):
     """Build changelog entry"""
-    changelog.build_entry(branch, remote, repo, auth, changelog_path, resolve_backports)
+    changelog.build_entry(branch, repo, auth, changelog_path, resolve_backports)
 
 
 @main.command()
@@ -201,9 +212,9 @@ def build_changelog(branch, remote, repo, auth, changelog_path, resolve_backport
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(dry_run_options)
-def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
+def draft_changelog(version_spec, branch, repo, auth, dry_run):
     """Create a changelog entry PR"""
-    lib.draft_changelog(version_spec, branch, remote, repo, auth, dry_run)
+    lib.draft_changelog(version_spec, branch, repo, auth, dry_run)
 
 
 @main.command()
@@ -211,13 +222,9 @@ def draft_changelog(version_spec, branch, remote, repo, auth, dry_run):
 @click.option(
     "--output", envvar="RH_CHANGELOG_OUTPUT", help="The output file for changelog entry"
 )
-def check_changelog(
-    branch, remote, repo, auth, changelog_path, resolve_backports, output
-):
+def check_changelog(branch, repo, auth, changelog_path, resolve_backports, output):
     """Check changelog entry"""
-    changelog.check_entry(
-        branch, remote, repo, auth, changelog_path, resolve_backports, output
-    )
+    changelog.check_entry(branch, repo, auth, changelog_path, resolve_backports, output)
 
 
 @main.command()
@@ -319,9 +326,9 @@ def check_links(ignore_glob, ignore_links, cache_file, links_expire):
     is_flag=True,
     help="Whether to skip tagging npm workspace packages",
 )
-def tag_release(branch, remote, repo, dist_dir, no_git_tag_workspace):
+def tag_release(branch, repo, dist_dir, no_git_tag_workspace):
     """Create release commit and tag"""
-    lib.tag_release(branch, remote, repo, dist_dir, no_git_tag_workspace)
+    lib.tag_release(branch, repo, dist_dir, no_git_tag_workspace)
 
 
 @main.command()
@@ -339,7 +346,6 @@ def tag_release(branch, remote, repo, dist_dir, no_git_tag_workspace):
 @click.argument("assets", nargs=-1)
 def draft_release(
     branch,
-    remote,
     repo,
     auth,
     changelog_path,
@@ -349,17 +355,15 @@ def draft_release(
     post_version_spec,
     assets,
 ):
-    """Publish Draft GitHub release and handle post version bump"""
+    """Publish Draft GitHub release"""
     lib.draft_release(
         branch,
-        remote,
         repo,
         auth,
         changelog_path,
         version_cmd,
         dist_dir,
         dry_run,
-        post_version_spec,
         assets,
     )
 
@@ -417,11 +421,11 @@ def publish_release(
 @add_options(dry_run_options)
 @click.argument("release_url")
 def forwardport_changelog(
-    auth, branch, remote, repo, username, changelog_path, dry_run, release_url
+    auth, branch, repo, username, changelog_path, dry_run, release_url
 ):
     """Forwardport Changelog Entries to the Default Branch"""
     lib.forwardport_changelog(
-        auth, branch, remote, repo, username, changelog_path, dry_run, release_url
+        auth, branch, repo, username, changelog_path, dry_run, release_url
     )
 
 

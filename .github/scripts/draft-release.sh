@@ -1,7 +1,8 @@
 set -eux
 pip install -q release-helper
 
-release-helper prep-env
+release-helper prep-git
+release-helper bump-version
 release-helper check-changelog
 # Make sure npm comes before python in case it produces
 # files for the python package
