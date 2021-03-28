@@ -22,5 +22,6 @@ runs:
         bash .github/scripts/draft_release.sh
     - shell: bash
       id: publish-release
+      run: |
         export release_url=${{ steps.draft-release.outputs.release_url }}
         bash .github/scripts/publish_release.sh ${release_url}
