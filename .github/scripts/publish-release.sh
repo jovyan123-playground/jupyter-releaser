@@ -2,7 +2,7 @@
 set -eux
 pip install -q release-helper
 
-local release_url=$1
+release_url=$1
 
 export TWINE_USERNAME=${TWINE_USERNAME:-"__token__"}
 
