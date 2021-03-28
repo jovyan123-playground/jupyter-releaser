@@ -31,4 +31,7 @@ runs:
       id: publish-release
       run: |
         export release_url=${{ steps.draft-release.outputs.release_url }}
+        export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
+        export RH_REPOSITORY=${GITHUB_REPOSITORY}
+        export RH_DRY_RUN=true
         bash .github/scripts/publish-release.sh ${release_url}
