@@ -55,7 +55,7 @@ long_description_content_type = text/markdown
 license = BSD 3-Clause License
 author = foo
 author_email = foo@foo.com
-url = http://foo.com
+url = https://foo.com
 
 [options]
 zip_safe = False

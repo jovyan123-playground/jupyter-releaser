@@ -91,7 +91,9 @@ def test_prep_env_full(py_package, tmp_path, mocker, runner):
             ),
             call('git config --global user.name "GitHub Action"'),
             call("git remote"),
-            call("git remote add upstream http://snuffy:abc123@github.com/baz/bar.git"),
+            call(
+                "git remote add upstream https://snuffy:abc123@github.com/baz/bar.git"
+            ),
             call("git fetch upstream --tags"),
             call("git fetch upstream foo --tags"),
             call("git branch"),
