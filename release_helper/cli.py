@@ -37,8 +37,12 @@ class ReleaseHelperGroup(click.Group):
 
             return
 
+        orig_dir = os.getcwd()
+
         if cmd_name != "prep-git":
-            os.chdir(lib.CHECKOUT_NAME)
+            if not osp.exists(util.CHECKOUT_NAME):
+                raise ValueError("Please run prep-git first")
+            os.chdir(util.CHECKOUT_NAME)
 
         # Read in the config
         config = util.read_config()
@@ -85,6 +89,8 @@ class ReleaseHelperGroup(click.Group):
 
         if os.environ.get("GITHUB_ACTIONS"):
             print("::endgroup::")
+
+        os.chdir(orig_dir)
 
     def list_commands(self, ctx):
         """List commands in insertion order"""
@@ -187,9 +193,10 @@ def list_envvars():
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(username_options)
-def prep_git(branch, repo, auth, username):
+@click.option("--url", help="A custom url for the git source")
+def prep_git(branch, repo, auth, username, url):
     """Prep git and env variables and bump version"""
-    lib.prep_git(branch, repo, auth, username)
+    lib.prep_git(branch, repo, auth, username, url)
 
 
 @main.command()

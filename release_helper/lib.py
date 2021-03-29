@@ -20,9 +20,6 @@ from release_helper import python
 from release_helper import util
 
 
-CHECKOUT_NAME = "release_helper_checkout"
-
-
 def bump_version(version_spec, version_cmd):
     """Bump the version and verify new version"""
     util.bump_version(version_spec, version_cmd=version_cmd)
@@ -352,7 +349,7 @@ def publish_release(
     util.actions_output("release_url", release.html_url)
 
 
-def prep_git(branch, repo, auth, username):
+def prep_git(branch, repo, auth, username, url):
     """Set up git"""
     is_action = bool(os.environ.get("GITHUB_ACTIONS"))
     if is_action:
@@ -364,30 +361,36 @@ def prep_git(branch, repo, auth, username):
         util.run('git config --global user.name "GitHub Action"')
 
     # Set up the repository
-    if osp.exists(CHECKOUT_NAME):
-        shutil.rmtree(repo, ignore_errors=True)
+    if osp.exists(osp.join(util.CHECKOUT_NAME, ".git")):
+        shutil.rmtree(util.CHECKOUT_NAME, ignore_errors=True)
 
-    util.run(f"git init {CHECKOUT_NAME}")
-    os.chdir(repo)
+    util.run(f"git init {util.CHECKOUT_NAME}")
+    orig_dir = os.getcwd()
+    os.chdir(util.CHECKOUT_NAME)
 
-    if auth:
-        url = f"https://{username}:{auth}@github.com/{repo}.git"
-    else:
-        url = f"https://github.com/{repo}.git"
+    if not url:
+        if auth:
+            url = f"https://{username}:{auth}@github.com/{repo}.git"
+        else:
+            url = f"https://github.com/{repo}.git"
     util.run(f"git remote add origin {url}")
 
     if not branch:
         # Get the default remote branch
         info = util.run("git remote show origin")
-        for line in info:
-            if line.startswith("HEAD branch:"):
+        for line in info.splitlines():
+            if line.strip().startswith("HEAD branch:"):
                 branch = line.strip().split()[-1]
                 break
 
-    util.run(f"git fetch --tags origin {branch}")
+    util.run(f"git fetch origin {branch}")
 
     # Make sure we have *all* tags
     util.run("git fetch origin --tags")
+
+    util.run(f"git checkout {branch}")
+
+    os.chdir(orig_dir)
 
 
 def forwardport_changelog(

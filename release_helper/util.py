@@ -27,6 +27,8 @@ RELEASE_HELPER_CONFIG = Path(".release-helper.toml")
 BUF_SIZE = 65536
 TBUMP_CMD = "tbump --non-interactive --only-patch"
 
+CHECKOUT_NAME = ".release_helper_checkout"
+
 RELEASE_HTML_PATTERN = (
     "https://github.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/releases/tag/(?P<tag>.*)"
 )
@@ -50,8 +52,8 @@ def run(cmd, **kwargs):
     try:
         return check_output(parts, **kwargs).decode("utf-8").strip()
     except CalledProcessError as e:
-        log("output:", e.output.decode("utf-8").strip())
-        log("stderr:", e.stderr.decode("utf-8").strip())
+        log("output: " + e.output.decode("utf-8").strip())
+        log("stderr: " + e.stderr.decode("utf-8").strip())
         raise e
 
 

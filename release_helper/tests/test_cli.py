@@ -36,77 +36,76 @@ from release_helper.util import normalize_path
 from release_helper.util import run
 
 
-def test_prep_env_simple(py_package, runner):
+def test_prep_git_simple(py_package, runner):
     """Standard local run with no env variables."""
-    result = runner(["prep-env", "--version-spec", "1.0.1"], env=dict(GITHUB_ACTION=""))
-    assert "branch=bar" in result.output
-    assert "version=1.0.1" in result.output
-    assert "is_prerelease=false" in result.output
+    result = runner(["prep-git", "--url", py_package], env=dict(GITHUB_ACTION=""))
+    os.chdir(util.CHECKOUT_NAME)
+    assert util.get_branch() == "bar", util.get_branch()
 
 
-def test_prep_env_pr(py_package, runner):
-    """With GITHUB_BASE_REF (Pull Request)"""
-    env = dict(GITHUB_BASE_REF="foo", RH_VERSION_SPEC="1.0.1", GITHUB_ACTION="")
-    result = runner(["prep-env"], env=env)
-    assert "branch=foo" in result.output
+def test_prep_git_pr(py_package, runner):
+    """With RH_BRANCH"""
+    env = dict(RH_BRANCH="foo", GITHUB_ACTION="")
+    result = runner(["prep-git", "--url", py_package], env=env)
+    os.chdir(util.CHECKOUT_NAME)
+    assert util.get_branch() == "foo", util.get_branch()
 
 
-def test_prep_env_bad_version(py_package, runner):
-    with pytest.raises(AssertionError):
-        runner(["prep-env", "--version-spec", "a1.0.1"], env=dict(GITHUB_ACTION=""))
-
-
-def test_prep_env_tag_exists(py_package, runner):
-    run("git tag v1.0.1")
-    with pytest.raises(AssertionError):
-        runner(["prep-env", "--version-spec", "1.0.1"], env=dict(GITHUB_ACTION=""))
-
-
-def test_prep_env_full(py_package, tmp_path, mocker, runner):
+def test_prep_git_full(py_package, tmp_path, mocker, runner):
     """Full GitHub Actions simulation (Push)"""
-    version_spec = "1.0.1a1"
-
-    env_file = tmp_path / "github.env"
 
     env = dict(
-        GITHUB_REF="refs/heads/foo",
-        GITHUB_WORKFLOW="check-release",
+        RH_BRANCH="foo",
         GITHUB_ACTIONS="true",
-        GITHUB_REPOSITORY="baz/bar",
-        RH_VERSION_SPEC=version_spec,
-        GITHUB_ENV=str(env_file),
+        RH_REPOSITORY="baz/bar",
         GITHUB_ACTOR="snuffy",
         GITHUB_ACCESS_TOKEN="abc123",
     )
 
-    # Fake out the version and source repo responses
+    # Fake out the runner
     mock_run = mocker.patch("release_helper.util.run")
-    mock_run.return_value = version_spec
+    os.mkdir(util.CHECKOUT_NAME)
 
-    runner(["prep-env"], env=env)
+    runner(["prep-git"], env=env)
     mock_run.assert_has_calls(
         [
             call(
                 'git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"'
             ),
             call('git config --global user.name "GitHub Action"'),
-            call("git remote"),
-            call(
-                "git remote add upstream https://snuffy:abc123@github.com/baz/bar.git"
-            ),
-            call("git fetch upstream --tags"),
-            call("git fetch upstream foo --tags"),
-            call("git branch"),
-            call("git checkout -B foo upstream/foo"),
-            call("tbump --non-interactive --only-patch 1.0.1a1"),
-            call("python setup.py --version"),
+            call("git init .release_helper_checkout"),
+            call("git remote add origin https://snuffy:abc123@github.com/baz/bar.git"),
+            call("git fetch origin foo"),
+            call("git fetch origin --tags"),
+            call("git checkout foo"),
         ]
     )
-    text = env_file.read_text(encoding="utf-8")
-    assert "BRANCH=foo" in text
-    assert f"VERSION={version_spec}" in text
-    assert "IS_PRERELEASE=true" in text
-    assert "REPOSITORY=baz/bar" in text
+
+
+def test_bump_version(npm_package, runner):
+    runner(["prep-git", "--url", npm_package])
+    runner(["bump-version", "--version-spec", "1.0.1-rc0"])
+    os.chdir(util.CHECKOUT_NAME)
+    version = util.get_version()
+    assert version == "1.0.1-rc0"
+
+
+def test_bump_version_bad_version(py_package, runner):
+    runner(["prep-git", "--url", py_package])
+    with pytest.raises(AssertionError):
+        runner(["bump-version", "--version-spec", "a1.0.1"], env=dict(GITHUB_ACTION=""))
+
+
+def test_bump_version_tag_exists(py_package, runner):
+    runner(["prep-git", "--url", py_package])
+    run("git tag v1.0.1", cwd=util.CHECKOUT_NAME)
+    with pytest.raises(AssertionError):
+        runner(["bump-version", "--version-spec", "1.0.1"], env=dict(GITHUB_ACTION=""))
+
+
+def test_list_envvars(runner):
+    result = runner(["list-envvars"])
+    assert "foo: bar" in result.output, result.output
 
 
 def test_build_changelog(py_package, mocker, runner):
