@@ -387,7 +387,7 @@ def test_extract_dist_py(py_package, runner, mocker, open_mock, tmp_path, git_pr
     runner(["tag-release"])
 
     os.makedirs("staging")
-    shutil.move("dist", "staging")
+    shutil.move(f"{util.CHECKOUT_NAME}/dist", "staging")
 
     def helper(path, **kwargs):
         return MockRequestResponse(f"staging/dist/{path}")
