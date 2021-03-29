@@ -108,9 +108,9 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
     return output
 
 
-def build_entry(branch, remote, repo, auth, changelog_path, resolve_backports):
+def build_entry(branch, repo, auth, changelog_path, resolve_backports):
     """Build a python version entry"""
-    repo = repo or util.get_repo(remote, auth=auth)
+    repo = repo or util.get_repo()
     branch = branch or util.get_branch()
 
     # Get the new version
@@ -128,7 +128,7 @@ def build_entry(branch, remote, repo, auth, changelog_path, resolve_backports):
     # Get changelog entry
 
     entry = get_version_entry(
-        f"{remote}/{branch}",
+        f"origin/{branch}",
         repo,
         version,
         auth=auth,
@@ -175,7 +175,7 @@ def format(changelog):
     return re.sub(r"\n\n+$", r"\n", changelog, re.MULTILINE)
 
 
-def check_entry(branch, remote, repo, auth, changelog_path, resolve_backports, output):
+def check_entry(branch, repo, auth, changelog_path, resolve_backports, output):
     """Check changelog entry"""
     branch = branch or util.get_branch()
 
@@ -196,9 +196,9 @@ def check_entry(branch, remote, repo, auth, changelog_path, resolve_backports, o
 
     final_entry = changelog[start + len(START_MARKER) : end]
 
-    repo = repo or util.get_repo(remote, auth=auth)
+    repo = repo or util.get_repo()
     raw_entry = get_version_entry(
-        f"{remote}/{branch}",
+        f"origin/{branch}",
         repo,
         version,
         auth=auth,

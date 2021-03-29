@@ -129,12 +129,13 @@ REPO_DATA = dict(
 
 
 def mock_changelog_entry(package_path, runner, mocker, version_spec=VERSION_SPEC):
-    runner(["prep-env", "--version-spec", version_spec])
-    changelog = package_path / "CHANGELOG.md"
+    runner(["bump-version", "--version-spec", VERSION_SPEC])
+    changelog_file = "CHANGELOG.md"
+    changelog = Path(util.CHECKOUT_NAME) / changelog_file
     mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
     mocked_gen.return_value = CHANGELOG_ENTRY
-    runner(["build-changelog", "--changelog-path", changelog])
-    return changelog
+    runner(["build-changelog", "--changelog-path", changelog_file])
+    return changelog_file
 
 
 def create_npm_package(git_repo):
@@ -145,7 +146,7 @@ def create_npm_package(git_repo):
     run('git commit -m "initial npm package"')
 
     run("git checkout foo")
-    run("git pull upstream bar")
+    run("git pull origin bar")
     run("git checkout bar")
     return git_repo
 
@@ -181,7 +182,7 @@ def create_python_package(git_repo):
     run('git commit -m "initial python package"')
 
     run("git checkout foo")
-    run("git pull upstream bar")
+    run("git pull origin bar")
     run("git checkout bar")
 
     return git_repo

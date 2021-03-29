@@ -21,7 +21,7 @@ def test_get_branch(git_repo):
 
 def test_get_repo(git_repo, mocker):
     repo = f"{git_repo.parent.name}/{git_repo.name}"
-    assert util.get_repo("upstream") == repo
+    assert util.get_repo() == repo
 
 
 def test_get_version_python(py_package):

@@ -17,6 +17,8 @@ from release_helper import util
 class ReleaseHelperGroup(click.Group):
     """Click group tailored to release-helper"""
 
+    _needs_checkout_dir = dict()
+
     def invoke(self, ctx):
         """Handle release-helper config while invoking a command"""
         # Get the command name and make sure it is valid
@@ -39,7 +41,7 @@ class ReleaseHelperGroup(click.Group):
 
         orig_dir = os.getcwd()
 
-        if cmd_name != "prep-git":
+        if cmd_name.replace("-", "_") in self._needs_checkout_dir:
             if not osp.exists(util.CHECKOUT_NAME):
                 raise ValueError("Please run prep-git first")
             os.chdir(util.CHECKOUT_NAME)
@@ -182,6 +184,16 @@ def add_options(options):
     return _add_options
 
 
+def use_checkout_dir():
+    """Use the checkout dir created by prep-git"""
+
+    def inner(func):
+        ReleaseHelperGroup._needs_checkout_dir[func.__name__] = True
+        return func
+
+    return inner
+
+
 @main.command()
 def list_envvars():
     """List the environment variables"""
@@ -202,6 +214,7 @@ def prep_git(branch, repo, auth, username, url):
 @main.command()
 @add_options(version_spec_options)
 @add_options(version_cmd_options)
+@use_checkout_dir()
 def bump_version(version_spec, version_cmd):
     """Prep git and env variables and bump version"""
     lib.bump_version(version_spec, version_cmd)
@@ -209,6 +222,7 @@ def bump_version(version_spec, version_cmd):
 
 @main.command()
 @add_options(changelog_options)
+@use_checkout_dir()
 def build_changelog(branch, repo, auth, changelog_path, resolve_backports):
     """Build changelog entry"""
     changelog.build_entry(branch, repo, auth, changelog_path, resolve_backports)
@@ -219,6 +233,7 @@ def build_changelog(branch, repo, auth, changelog_path, resolve_backports):
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(dry_run_options)
+@use_checkout_dir()
 def draft_changelog(version_spec, branch, repo, auth, dry_run):
     """Create a changelog entry PR"""
     lib.draft_changelog(version_spec, branch, repo, auth, dry_run)
@@ -229,6 +244,7 @@ def draft_changelog(version_spec, branch, repo, auth, dry_run):
 @click.option(
     "--output", envvar="RH_CHANGELOG_OUTPUT", help="The output file for changelog entry"
 )
+@use_checkout_dir()
 def check_changelog(branch, repo, auth, changelog_path, resolve_backports, output):
     """Check changelog entry"""
     changelog.check_entry(branch, repo, auth, changelog_path, resolve_backports, output)
@@ -236,6 +252,7 @@ def check_changelog(branch, repo, auth, changelog_path, resolve_backports, outpu
 
 @main.command()
 @add_options(dist_dir_options)
+@use_checkout_dir()
 def build_python(dist_dir):
     """Build Python dist files"""
     if not util.PYPROJECT.exists() and not util.SETUP_PY.exists():
@@ -251,6 +268,7 @@ def build_python(dist_dir):
     envvar="RH_PY_TEST_COMMAND",
     help="The command to run in the test venvs",
 )
+@use_checkout_dir()
 def check_python(dist_dir, test_cmd):
     """Check Python dist files"""
     for dist_file in glob(f"{dist_dir}/*"):
@@ -263,6 +281,7 @@ def check_python(dist_dir, test_cmd):
 @main.command()
 @add_options(dist_dir_options)
 @click.argument("package", default=".")
+@use_checkout_dir()
 def build_npm(package, dist_dir):
     """Build npm package"""
     if not osp.exists("./package.json"):
@@ -278,6 +297,7 @@ def build_npm(package, dist_dir):
     envvar="RH_NPM_TEST_COMMAND",
     help="The command to run in isolated install.",
 )
+@use_checkout_dir()
 def check_npm(dist_dir, test_cmd):
     """Check npm package"""
     if not osp.exists("./package.json"):
@@ -287,6 +307,7 @@ def check_npm(dist_dir, test_cmd):
 
 
 @main.command()
+@use_checkout_dir()
 def check_manifest():
     """Check the project manifest"""
     if util.PYPROJECT.exists() or util.SETUP_PY.exists():
@@ -320,6 +341,7 @@ def check_manifest():
     envvar="RH_LINKS_EXPIRE",
     help="Duration in seconds for links to be cached (default one week)",
 )
+@use_checkout_dir()
 def check_links(ignore_glob, ignore_links, cache_file, links_expire):
     """Check Markdown file links"""
     lib.check_links(ignore_glob, ignore_links, cache_file, links_expire)
@@ -333,6 +355,7 @@ def check_links(ignore_glob, ignore_links, cache_file, links_expire):
     is_flag=True,
     help="Whether to skip tagging npm workspace packages",
 )
+@use_checkout_dir()
 def tag_release(branch, repo, dist_dir, no_git_tag_workspace):
     """Create release commit and tag"""
     lib.tag_release(branch, repo, dist_dir, no_git_tag_workspace)
@@ -351,6 +374,7 @@ def tag_release(branch, repo, dist_dir, no_git_tag_workspace):
     help="The post release version (usually dev)",
 )
 @click.argument("assets", nargs=-1)
+@use_checkout_dir()
 def draft_release(
     branch,
     repo,
@@ -371,6 +395,7 @@ def draft_release(
         version_cmd,
         dist_dir,
         dry_run,
+        post_version_spec,
         assets,
     )
 
@@ -378,6 +403,7 @@ def draft_release(
 @main.command()
 @add_options(auth_options)
 @click.argument("release-url", nargs=1)
+@use_checkout_dir()
 def delete_release(auth, release_url):
     """Delete a draft GitHub release by url to the release page"""
     lib.delete_release(auth, release_url)

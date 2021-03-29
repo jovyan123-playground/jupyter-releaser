@@ -188,7 +188,9 @@ def draft_release(
         util.run(f'git commit -a -m "Bump to {post_version}"')
 
     if not dry_run:
-        util.run(f"git push origin HEAD:{branch} --follow-tags --tags")
+        remote_url = util.run("git config --get remote.origin.url")
+        if not os.path.exists(remote_url):
+            util.run(f"git push origin HEAD:{branch} --follow-tags --tags")
 
     util.log(f"Creating release for {version}")
     util.log(f"With assets: {assets}")
@@ -361,12 +363,13 @@ def prep_git(branch, repo, auth, username, url):
         util.run('git config --global user.name "GitHub Action"')
 
     # Set up the repository
-    if osp.exists(osp.join(util.CHECKOUT_NAME, ".git")):
-        shutil.rmtree(util.CHECKOUT_NAME, ignore_errors=True)
+    checkout_dir = os.environ.get("RH_CHECKOUT_DIR", util.CHECKOUT_NAME)
+    if osp.exists(osp.join(checkout_dir, ".git")):
+        shutil.rmtree(checkout_dir, ignore_errors=True)
 
-    util.run(f"git init {util.CHECKOUT_NAME}")
+    util.run(f"git init {checkout_dir}")
     orig_dir = os.getcwd()
-    os.chdir(util.CHECKOUT_NAME)
+    os.chdir(checkout_dir)
 
     if not url:
         if auth:

@@ -42,7 +42,7 @@ def git_repo(tmp_path):
 
     run("git checkout -b foo")
     gitignore = tmp_path / ".gitignore"
-    gitignore.write_text("dist/*\nbuild/*\n", encoding="utf-8")
+    gitignore.write_text(f"dist/*\nbuild/*\n{util.CHECKOUT_NAME}\n", encoding="utf-8")
 
     changelog = tmp_path / "CHANGELOG.md"
     changelog.write_text(testutil.CHANGELOG_TEMPLATE, encoding="utf-8")
@@ -53,11 +53,11 @@ def git_repo(tmp_path):
     run("git add .")
     run('git commit -m "foo"')
     run("git tag v0.0.1")
-    run(f"git remote add upstream {util.normalize_path(tmp_path)}")
-    run("git push upstream foo")
-    run("git remote set-head upstream foo")
+    run(f"git remote add origin {util.normalize_path(tmp_path)}")
+    run("git push origin foo")
+    run("git remote set-head origin foo")
     run("git checkout -b bar foo")
-    run("git fetch upstream")
+    run("git fetch origin")
     yield tmp_path
     os.chdir(prev_dir)
 
@@ -99,15 +99,17 @@ def workspace_package(npm_package):
             sub_data["dependencies"] = dict(foo="*")
             pkg_json.write_text(json.dumps(sub_data), encoding="utf-8")
     os.chdir(prev_dir)
+    util.run("git add .")
+    util.run('git commit -a -m "Add workspaces"')
     return npm_package
 
 
 @fixture
-def py_dist(py_package, runner, mocker, build_mock):
+def py_dist(py_package, runner, mocker, build_mock, git_prep):
     changelog_entry = testutil.mock_changelog_entry(py_package, runner, mocker)
 
     # Create the dist files
-    util.run("python -m build .")
+    util.run("python -m build .", cwd=util.CHECKOUT_NAME)
 
     # Finalize the release
     runner(["tag-release"])
@@ -116,7 +118,7 @@ def py_dist(py_package, runner, mocker, build_mock):
 
 
 @fixture
-def npm_dist(workspace_package, runner, mocker):
+def npm_dist(workspace_package, runner, mocker, git_prep):
     changelog_entry = testutil.mock_changelog_entry(workspace_package, runner, mocker)
 
     # Create the dist files
@@ -140,6 +142,11 @@ def runner():
     return run
 
 
+@fixture()
+def git_prep(runner, git_repo):
+    runner(["prep-git", "--url", git_repo])
+
+
 @fixture
 def open_mock(mocker):
     open_mock = mocker.patch.object(OpenerDirector, "open", autospec=True)
@@ -153,9 +160,10 @@ def build_mock(mocker):
 
     def wrapped(cmd, **kwargs):
         if cmd == "python -m build .":
-            os.makedirs("dist", exist_ok=True)
-            Path("dist/foo-0.0.2a0.tar.gz").write_text("hello", encoding="utf-8")
-            Path("dist/foo-0.0.2a0-py3-none-any.whl").write_text(
+            dist_dir = Path(f"{util.CHECKOUT_NAME}/dist")
+            os.makedirs(dist_dir, exist_ok=True)
+            Path(f"{dist_dir}/foo-0.0.2a0.tar.gz").write_text("hello", encoding="utf-8")
+            Path(f"{dist_dir}/foo-0.0.2a0-py3-none-any.whl").write_text(
                 "hello", encoding="utf-8"
             )
             return ""
