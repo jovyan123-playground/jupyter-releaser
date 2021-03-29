@@ -296,6 +296,9 @@ def extract_release(auth, dist_dir, dry_run, release_url):
                     util.log("Mismatched sha!")
 
         if not valid:  # pragma: no cover
+            import pdb
+
+            pdb.set_trace()
             raise ValueError(f"Invalid file {asset.name}")
 
 
@@ -397,11 +400,11 @@ def prep_git(branch, repo, auth, username, url):
 
 
 def forwardport_changelog(
-    auth, branch, repo, username, changelog_path, dry_run, release_url
+    auth, branch, repo, username, changelog_path, dry_run, git_url, release_url
 ):
     """Forwardport Changelog Entries to the Default Branch"""
     # Set up the git repo with default branch
-    prep_git(None, repo, auth, username)
+    prep_git(None, repo, auth, username, git_url)
 
     match = parse_release_url(release_url)
     gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)

@@ -144,7 +144,7 @@ def runner():
 
 @fixture()
 def git_prep(runner, git_repo):
-    runner(["prep-git", "--url", git_repo])
+    runner(["prep-git", "--git-url", git_repo])
 
 
 @fixture

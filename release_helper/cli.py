@@ -149,6 +149,12 @@ dry_run_options = [
     )
 ]
 
+
+git_url_options = [
+    click.option("--git-url", help="A custom url for the git repository")
+]
+
+
 changelog_path_options = [
     click.option(
         "--changelog-path",
@@ -205,10 +211,10 @@ def list_envvars():
 @add_options(branch_options)
 @add_options(auth_options)
 @add_options(username_options)
-@click.option("--url", help="A custom url for the git source")
-def prep_git(branch, repo, auth, username, url):
+@add_options(git_url_options)
+def prep_git(branch, repo, auth, username, git_url):
     """Prep git and env variables and bump version"""
-    lib.prep_git(branch, repo, auth, username, url)
+    lib.prep_git(branch, repo, auth, username, git_url)
 
 
 @main.command()
@@ -452,13 +458,14 @@ def publish_release(
 @add_options(username_options)
 @add_options(changelog_path_options)
 @add_options(dry_run_options)
+@add_options(git_url_options)
 @click.argument("release_url")
 def forwardport_changelog(
-    auth, branch, repo, username, changelog_path, dry_run, release_url
+    auth, branch, repo, username, changelog_path, dry_run, git_url, release_url
 ):
     """Forwardport Changelog Entries to the Default Branch"""
     lib.forwardport_changelog(
-        auth, branch, repo, username, changelog_path, dry_run, release_url
+        auth, branch, repo, username, changelog_path, dry_run, git_url, release_url
     )
 
 
