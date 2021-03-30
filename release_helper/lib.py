@@ -382,16 +382,7 @@ def prep_git(branch, repo, auth, username, url):
     util.run(f"git remote add origin {url}")
 
     if not branch:
-        if osp.exists(url):
-            # Get the default local branch
-            branch = util.run("git symbolic-ref --short HEAD")
-        else:
-            # Get the default remote branch
-            info = util.run("git remote show origin")
-            for line in info.splitlines():
-                if line.strip().startswith("HEAD branch:"):
-                    branch = line.strip().split()[-1]
-                    break
+        branch = util.run("git symbolic-ref --short HEAD")
 
     util.run(f"git fetch origin {branch}")
 
