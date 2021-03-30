@@ -30,7 +30,9 @@ def mock_env(mocker):
 
     mocker.patch.dict(os.environ, env, clear=True)
 
-    if not run("git config --global user.name"):
+    try:
+        run("git config --global user.name")
+    except Exception:
         run("git config --global user.name snuffy")
         run("git config --global user.email snuffy@sesame.com")
 
