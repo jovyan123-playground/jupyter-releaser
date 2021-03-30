@@ -82,7 +82,7 @@ jobs:
       - name: Run the tests on Windows and macOS
         if: ${{ matrix.os != 'ubuntu' }}
         run: |
-          pytest -vv
+          pytest -vv -s
       - name: Coverage
         run: |
           codecov
