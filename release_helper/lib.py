@@ -383,11 +383,8 @@ def prep_git(branch, repo, auth, username, url):
 
     if not branch:
         # Get the default remote branch
-        info = util.run("git remote show origin")
-        for line in info.splitlines():
-            if line.strip().startswith("HEAD branch:"):
-                branch = line.strip().split()[-1]
-                break
+        ref = util.run("git symbolic-ref refs/remotes/origin/HEAD")
+        branch = ref.split("/")[-1]
 
     util.run(f"git fetch origin {branch}")
 
