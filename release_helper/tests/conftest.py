@@ -144,7 +144,10 @@ def runner():
 
     def run(*args, **kwargs):
         result = cli_runner.invoke(cli.main, *args, **kwargs)
-        assert result.exit_code == 0, traceback.print_exception(*result.exc_info)
+        if result.exit_code != 0:
+            print("Captured stderr\n", result.stderr, "\n\n")
+            print("Catpured stdout\n", result.stdout, "\n\n")
+            traceback.print_exception(*result.exc_info)
         return result
 
     return run

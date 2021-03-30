@@ -379,6 +379,10 @@ def prep_git(branch, repo, auth, username, url):
             url = f"https://{username}:{auth}@github.com/{repo}.git"
         else:
             url = f"https://github.com/{repo}.git"
+
+    if osp.exists(url):
+        url = util.normalize_path(url)
+
     util.run(f"git remote add origin {url}")
 
     if not branch:

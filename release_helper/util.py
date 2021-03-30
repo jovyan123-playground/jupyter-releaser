@@ -37,10 +37,11 @@ RELEASE_API_PATTERN = "https://api.github.com/repos/(?P<owner>[^/]+)/(?P<repo>[^
 
 def run(cmd, **kwargs):
     """Run a command as a subprocess and get the output as a string"""
-    if not kwargs.pop("quiet", False):
+    quiet = kwargs.pop("quiet", False)
+    if not quiet:
         log(f"+ {cmd}")
-
-    kwargs.setdefault("stderr", PIPE)
+    else:
+        kwargs.setdefault("stderr", PIPE)
 
     parts = shlex.split(cmd)
     if "/" not in parts[0]:
@@ -52,8 +53,8 @@ def run(cmd, **kwargs):
     try:
         return check_output(parts, **kwargs).decode("utf-8").strip()
     except CalledProcessError as e:
-        print("output: ", e.output.decode("utf-8").strip())
-        print("stderr: ", e.stderr.decode("utf-8").strip())
+        if quiet:
+            print(e.stderr.decode("utf-8").strip(), file=sys.stderr)
         raise e
 
 
