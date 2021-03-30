@@ -18,7 +18,7 @@ from release_helper.util import run
 
 
 @fixture(autouse=True)
-def mock_env_vars(mocker):
+def mock_env(mocker):
     """Clear unwanted environment variables"""
     # Anything that starts with RH_ or GITHUB_
     prefixes = ["GITHUB_", "RH_"]
@@ -29,6 +29,11 @@ def mock_env_vars(mocker):
                 del env[key]
 
     mocker.patch.dict(os.environ, env, clear=True)
+
+    if not run("git config --global user.name"):
+        run("git config --global user.name snuffy")
+        run("git config --global user.email snuffy@sesame.com")
+
     yield
 
 
