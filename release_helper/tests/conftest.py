@@ -2,6 +2,7 @@
 # Distributed under the terms of the Modified BSD License.
 import json
 import os
+import os.path as osp
 import traceback
 from pathlib import Path
 from urllib.request import OpenerDirector
@@ -160,7 +161,10 @@ def build_mock(mocker):
 
     def wrapped(cmd, **kwargs):
         if cmd == "python -m build .":
-            dist_dir = Path(f"{util.CHECKOUT_NAME}/dist")
+            if osp.exists(util.CHECKOUT_NAME):
+                dist_dir = Path(f"{util.CHECKOUT_NAME}/dist")
+            else:
+                dist_dir = Path("dist")
             os.makedirs(dist_dir, exist_ok=True)
             Path(f"{dist_dir}/foo-0.0.2a0.tar.gz").write_text("hello", encoding="utf-8")
             Path(f"{dist_dir}/foo-0.0.2a0-py3-none-any.whl").write_text(

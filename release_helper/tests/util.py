@@ -129,7 +129,7 @@ REPO_DATA = dict(
 
 
 def mock_changelog_entry(package_path, runner, mocker, version_spec=VERSION_SPEC):
-    runner(["bump-version", "--version-spec", VERSION_SPEC])
+    runner(["bump-version", "--version-spec", version_spec])
     changelog_file = "CHANGELOG.md"
     changelog = Path(util.CHECKOUT_NAME) / changelog_file
     mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")

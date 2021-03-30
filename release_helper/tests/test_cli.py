@@ -587,7 +587,7 @@ def test_forwardport_changelog_no_new(npm_package, runner, mocker, open_mock, gi
     url = os.getcwd()
     runner(["forwardport-changelog", HTML_URL, "--git-url", url])
 
-    open_mock.assert_called_once()
+    assert len(open_mock.mock_calls) == 1
 
     expected = """
 <!-- <START NEW CHANGELOG ENTRY> -->
@@ -620,7 +620,7 @@ def test_forwardport_changelog_has_new(
     # Run the forwardport workflow against default branch
     os.chdir(util.CHECKOUT_NAME)
     url = os.getcwd()
-    runner(["forwardport-changelog", HTML_URL, "--git-url", url])
+    runner(["forwardport-changelog", HTML_URL, "--git-url", url, "--branch", current])
 
     assert len(open_mock.call_args) == 2
 

@@ -398,34 +398,26 @@ def prep_git(branch, repo, auth, username, url):
 
     os.chdir(orig_dir)
 
+    return branch
+
 
 def forwardport_changelog(
     auth, branch, repo, username, changelog_path, dry_run, git_url, release_url
 ):
     """Forwardport Changelog Entries to the Default Branch"""
-    # Set up the git repo with default branch
-    prep_git(None, repo, auth, username, git_url)
+    # Set up the git repo with the branch
+    branch = prep_git(branch, repo, auth, username, git_url)
+    os.chdir(util.CHECKOUT_NAME)
 
     match = parse_release_url(release_url)
     gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
     release = util.release_for_url(gh, release_url)
     tag = release.tag_name
 
-    # Find the default branch
-    default_branch = ""
-    for line in util.run("git remote show origin").splitlines():
-        if "HEAD branch" in line:
-            default_branch = line.strip().split()[-1]
-            default_branch = default_branch.split("/")[-1]
-            break
-
-    # Check out the default branch
-    util.run(f"git checkout -B {default_branch} origin/{default_branch}")
-
-    # Bail if the tag has been merged to the default branch
-    tags = util.run(f"git --no-pager tag --merged {default_branch}")
+    # Bail if the tag has been merged to the branch
+    tags = util.run(f"git --no-pager tag --merged {branch}")
     if tag in tags.splitlines():
-        util.log(f"Skipping since tag is already merged into {default_branch}")
+        util.log(f"Skipping since tag is already merged into {branch}")
         return
 
     # Get the entry for the tag
@@ -445,8 +437,8 @@ def forwardport_changelog(
     if not prev_header:
         raise ValueError("No anchor for previous entry")
 
-    # Check out the default branch again
-    util.run(f"git checkout -B {default_branch} origin/{default_branch}")
+    # Check out the branch again
+    util.run(f"git checkout -B {branch} origin/{branch}")
 
     default_entry = changelog.extract_current(changelog_path)
 
@@ -454,7 +446,7 @@ def forwardport_changelog(
     default_log = Path(changelog_path).read_text(encoding="utf-8")
     if not prev_header in default_log:
         raise ValueError(
-            f'Could not find previous header "{prev_header}" in {changelog_path} on branch {default_branch}'
+            f'Could not find previous header "{prev_header}" in {changelog_path} on branch {branch}'
         )
 
     # If the previous header is the current entry in the default branch, we need to move the change markers
@@ -476,5 +468,5 @@ def forwardport_changelog(
     body = title
 
     pr = make_changelog_pr(
-        auth, default_branch, repo, title, commit_message, body, dry_run=dry_run
+        auth, branch, repo, title, commit_message, body, dry_run=dry_run
     )

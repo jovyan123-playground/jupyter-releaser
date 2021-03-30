@@ -152,7 +152,7 @@ def get_package_versions(version):
         packages = data["workspaces"].get("packages", [])
         for pattern in packages:
             for path in glob(pattern, recursive=True):
-                text = Path(path / "package.json").read_text()
+                text = Path(path).joinpath("package.json").read_text()
                 data = json.loads(text)
                 message += f'\n{data["name"]}: {data["version"]}'
     return message
