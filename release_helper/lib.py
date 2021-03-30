@@ -380,9 +380,12 @@ def prep_git(branch, repo, auth, username, url):
         else:
             url = f"https://github.com/{repo}.git"
     util.run(f"git remote add origin {url}")
+    util.run("git remote set-head origin --auto")
 
     if not branch:
-        branch = util.run("git symbolic-ref --short HEAD")
+        # Get the default branch
+        branch = util.run("git symbolic-ref refs/remotes/origin/HEAD")
+        branch = branch.split("/")[-1]
 
     util.run(f"git fetch origin {branch}")
 
