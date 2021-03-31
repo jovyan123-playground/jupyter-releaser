@@ -608,22 +608,31 @@ def test_forwardport_changelog_has_new(
     # Create a branch with a changelog entry
     util.run("git checkout -b backport_branch", cwd=util.CHECKOUT_NAME)
     util.run("git push origin backport_branch", cwd=util.CHECKOUT_NAME)
+    util.run(f"git checkout {current}")
     mock_changelog_entry(npm_package, runner, mocker)
-    util.run('git commit -a -m "Add changelog entry"', cwd=util.CHECKOUT_NAME)
+    util.run(
+        f'git commit -a -m "Add changelog entry {VERSION_SPEC}"', cwd=util.CHECKOUT_NAME
+    )
     util.run(f"git tag v{VERSION_SPEC}", cwd=util.CHECKOUT_NAME)
+    util.run(f"git checkout {current}", cwd=util.CHECKOUT_NAME)
+    util.run("git push origin backport_branch --tags", cwd=util.CHECKOUT_NAME)
 
     # Add a new changelog entry in main branch
+    util.run("git checkout backport_branch", cwd=str(npm_package))
     util.run(f"git checkout {current}", cwd=util.CHECKOUT_NAME)
     mock_changelog_entry(npm_package, runner, mocker, version_spec="2.0.0")
-    util.run('git commit -a -m "Add changelog entry"', cwd=util.CHECKOUT_NAME)
+    util.run('git commit -a -m "Add changelog entry v2.0.0"', cwd=util.CHECKOUT_NAME)
     util.run("git tag v2.0.0", cwd=util.CHECKOUT_NAME)
+    util.run("git checkout backport_branch", cwd=npm_package)
+    util.run(f"git push origin {current} --tags", cwd=util.CHECKOUT_NAME)
 
     # Run the forwardport workflow against default branch
-    os.chdir(util.CHECKOUT_NAME)
-    url = os.getcwd()
+    url = osp.abspath(npm_package)
+    os.chdir(npm_package)
     runner(["forwardport-changelog", HTML_URL, "--git-url", url, "--branch", current])
 
     assert len(open_mock.call_args) == 2
+    util.run(f"git checkout {current}", cwd=npm_package)
 
     expected = """
 <!-- <START NEW CHANGELOG ENTRY> -->
