@@ -51,7 +51,7 @@ jobs:
         run: |
           echo "Verify the final release"
           echo ${{ steps.publish-release.outputs.release_url }}
-          if [ -n "${{ steps.publish-release.outputs.pr_url }}" ]; then
+          if [ ! -z "${{ steps.publish-release.outputs.pr_url }}" ]; then
              echo "Merge the forwardport PR"
              echo ${{ steps.publish-release.outputs.pr_url }}
           fi

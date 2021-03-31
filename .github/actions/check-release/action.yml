@@ -13,16 +13,19 @@ runs:
     - shell: bash
       id: draft-release
       run: |
+        set -eux
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
         export RH_REPOSITORY=${GITHUB_REPOSITORY}
         export RH_VERSION_SPEC=0.0.1a0
         export RH_POST_VERSION_SPEC=0.1.0.dev0
         export RH_CHANGELOG=${{ inputs.changelog }}
         export RH_DRY_RUN=true
-        if [ -n ${GITHUB_BASE_REF} ]; then
+        if [ ! -z ${GITHUB_BASE_REF} ]; then
+          echo "Using GITHUB_BASE_REF: ${GITHUB_BASE_REF}"
           export RH_BRANCH=${GITHUB_BASE_REF}
         else
           # e.g refs/head/foo or refs/tag/bar
+          echo "Using GITHUB_REF: ${GITHUB_REF}"
           export RH_BRANCH=$(echo ${GITHUB_REF} | cut -d'/' -f 3)
         fi
         bash .github/scripts/draft-changelog.sh
@@ -30,6 +33,7 @@ runs:
     - shell: bash
       id: publish-release
       run: |
+        set -eux
         export release_url=${{ steps.draft-release.outputs.release_url }}
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
         export RH_REPOSITORY=${GITHUB_REPOSITORY}

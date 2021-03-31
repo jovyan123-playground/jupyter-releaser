@@ -54,7 +54,10 @@ def run(cmd, **kwargs):
         return check_output(parts, **kwargs).decode("utf-8").strip()
     except CalledProcessError as e:
         if quiet:
-            print(e.stderr.decode("utf-8").strip(), file=sys.stderr)
+            print(
+                "stderr:\n", e.stderr.decode("utf-8").strip(), "\n\n", file=sys.stderr
+            )
+        print("stdout:\n", e.output.decode("utf-8").strip(), "\n\n", file=sys.stderr)
         raise e
 
 
