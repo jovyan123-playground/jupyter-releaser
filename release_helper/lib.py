@@ -413,7 +413,8 @@ def forwardport_changelog(
     tag = release.tag_name
 
     repo = f'{match["owner"]}/{match["repo"]}'
-    branch = prep_git(branch, repo, auth, username, git_url)
+    # We want to target the main branch
+    branch = prep_git(None, repo, auth, username, git_url)
 
     # Bail if the tag has been merged to the branch
     tags = util.run(f"git --no-pager tag --merged {branch}")
