@@ -20,7 +20,7 @@ runs:
         export RH_POST_VERSION_SPEC=0.1.0.dev0
         export RH_CHANGELOG=${{ inputs.changelog }}
         export RH_DRY_RUN=true
-        if [ -n ${GITHUB_BASE_REF} ]; then
+        if [ ! -z ${GITHUB_BASE_REF} ]; then
           echo "Using GITHUB_BASE_REF: ${GITHUB_BASE_REF}"
           export RH_BRANCH=${GITHUB_BASE_REF}
         else
