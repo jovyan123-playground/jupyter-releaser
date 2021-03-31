@@ -4,10 +4,11 @@
 
 ## 0.9.0
 
-([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.8.1...c87b3aeded89f2a9420e2ccf685aa49f9b9f1a05))
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.8.1...bc7d600b5dbc88e31896a702e7bc17c32fbc5cbb))
 
 ### Merged PRs
 
+- Print output [#131](https://github.com/jovyan123-playground/release-helper-playground/pull/131) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 - handle repo [#129](https://github.com/jovyan123-playground/release-helper-playground/pull/129) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 - add check_release action and refactor actions [#127](https://github.com/jovyan123-playground/release-helper-playground/pull/127) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 - ignore link patterns [#126](https://github.com/jovyan123-playground/release-helper-playground/pull/126) ([@jovyan123-playground](https://github.com/jovyan123-playground))
