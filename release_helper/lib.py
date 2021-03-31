@@ -368,12 +368,14 @@ def prep_git(branch, repo, auth, username, url):
 
     # Set up the repository
     checkout_dir = os.environ.get("RH_CHECKOUT_DIR", util.CHECKOUT_NAME)
+    checkout_exists = False
     if osp.exists(osp.join(checkout_dir, ".git")):
         print("Git checkout already exists", file=sys.stderr)
-        os.chdir(util.CHECKOUT_NAME)
-        return util.get_default_branch()
+        checkout_exists = True
 
-    util.run(f"git init {checkout_dir}")
+    if not checkout_exists:
+        util.run(f"git init {checkout_dir}")
+
     orig_dir = os.getcwd()
     os.chdir(checkout_dir)
 
@@ -386,7 +388,8 @@ def prep_git(branch, repo, auth, username, url):
     if osp.exists(url):
         url = util.normalize_path(url)
 
-    util.run(f"git remote add origin {url}")
+    if not checkout_exists:
+        util.run(f"git remote add origin {url}")
 
     branch = branch or util.get_default_branch()
 
@@ -415,6 +418,7 @@ def forwardport_changelog(
     repo = f'{match["owner"]}/{match["repo"]}'
     # We want to target the main branch
     branch = prep_git(None, repo, auth, username, git_url)
+    os.chdir(util.CHECKOUT_NAME)
 
     # Bail if the tag has been merged to the branch
     tags = util.run(f"git --no-pager tag --merged {branch}")
