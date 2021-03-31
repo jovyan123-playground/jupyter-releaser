@@ -7,6 +7,7 @@ import shutil
 import sys
 from glob import glob
 from pathlib import Path
+from subprocess import CalledProcessError
 from unittest.mock import call
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -36,87 +37,113 @@ from release_helper.util import normalize_path
 from release_helper.util import run
 
 
-def test_prep_env_simple(py_package, runner):
+def test_prep_git_simple(py_package, runner):
     """Standard local run with no env variables."""
-    result = runner(["prep-env", "--version-spec", "1.0.1"], env=dict(GITHUB_ACTION=""))
-    assert "branch=bar" in result.output
-    assert "version=1.0.1" in result.output
-    assert "is_prerelease=false" in result.output
+    result = runner(["prep-git", "--git-url", py_package], env=dict(GITHUB_ACTION=""))
+    os.chdir(util.CHECKOUT_NAME)
+    assert util.get_branch() == "bar", util.get_branch()
 
 
-def test_prep_env_pr(py_package, runner):
-    """With GITHUB_BASE_REF (Pull Request)"""
-    env = dict(GITHUB_BASE_REF="foo", RH_VERSION_SPEC="1.0.1", GITHUB_ACTION="")
-    result = runner(["prep-env"], env=env)
-    assert "branch=foo" in result.output
+def test_prep_git_pr(py_package, runner):
+    """With RH_BRANCH"""
+    env = dict(RH_BRANCH="foo", GITHUB_ACTION="")
+    result = runner(["prep-git", "--git-url", py_package], env=env)
+    os.chdir(util.CHECKOUT_NAME)
+    assert util.get_branch() == "foo", util.get_branch()
 
 
-def test_prep_env_bad_version(py_package, runner):
-    with pytest.raises(AssertionError):
-        runner(["prep-env", "--version-spec", "a1.0.1"], env=dict(GITHUB_ACTION=""))
-
-
-def test_prep_env_tag_exists(py_package, runner):
-    run("git tag v1.0.1")
-    with pytest.raises(AssertionError):
-        runner(["prep-env", "--version-spec", "1.0.1"], env=dict(GITHUB_ACTION=""))
-
-
-def test_prep_env_full(py_package, tmp_path, mocker, runner):
+def test_prep_git_full(py_package, tmp_path, mocker, runner):
     """Full GitHub Actions simulation (Push)"""
-    version_spec = "1.0.1a1"
-
-    env_file = tmp_path / "github.env"
 
     env = dict(
-        GITHUB_REF="refs/heads/foo",
-        GITHUB_WORKFLOW="check-release",
+        RH_BRANCH="foo",
         GITHUB_ACTIONS="true",
-        GITHUB_REPOSITORY="baz/bar",
-        RH_VERSION_SPEC=version_spec,
-        GITHUB_ENV=str(env_file),
+        RH_REPOSITORY="baz/bar",
         GITHUB_ACTOR="snuffy",
         GITHUB_ACCESS_TOKEN="abc123",
     )
 
-    # Fake out the version and source repo responses
+    # Fake out the runner
     mock_run = mocker.patch("release_helper.util.run")
-    mock_run.return_value = version_spec
+    os.mkdir(util.CHECKOUT_NAME)
 
-    runner(["prep-env"], env=env)
+    runner(["prep-git"], env=env)
     mock_run.assert_has_calls(
         [
             call(
                 'git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"'
             ),
             call('git config --global user.name "GitHub Action"'),
-            call("git remote"),
-            call("git remote add upstream http://snuffy:abc123@github.com/baz/bar.git"),
-            call("git fetch upstream --tags"),
-            call("git fetch upstream foo --tags"),
-            call("git branch"),
-            call("git checkout -B foo upstream/foo"),
-            call("tbump --non-interactive --only-patch 1.0.1a1"),
-            call("python setup.py --version"),
+            call("git init .release_helper_checkout"),
+            call("git remote add origin https://snuffy:abc123@github.com/baz/bar.git"),
+            call("git fetch origin foo"),
+            call("git fetch origin --tags"),
+            call("git checkout foo"),
         ]
     )
-    text = env_file.read_text(encoding="utf-8")
-    assert "BRANCH=foo" in text
-    assert f"VERSION={version_spec}" in text
-    assert "IS_PRERELEASE=true" in text
-    assert "REPOSITORY=baz/bar" in text
+
+
+def test_bump_version(npm_package, runner):
+    runner(["prep-git", "--git-url", npm_package])
+    runner(["bump-version", "--version-spec", "1.0.1-rc0"])
+    os.chdir(util.CHECKOUT_NAME)
+    version = util.get_version()
+    assert version == "1.0.1-rc0"
+
+
+def test_bump_version_bad_version(py_package, runner):
+    runner(["prep-git", "--git-url", py_package])
+    with pytest.raises(CalledProcessError):
+        runner(["bump-version", "--version-spec", "a1.0.1"], env=dict(GITHUB_ACTION=""))
+
+
+def test_bump_version_tag_exists(py_package, runner):
+    runner(["prep-git", "--git-url", py_package])
+    run("git tag v1.0.1", cwd=util.CHECKOUT_NAME)
+    with pytest.raises(ValueError):
+        runner(["bump-version", "--version-spec", "1.0.1"], env=dict(GITHUB_ACTION=""))
+
+
+def test_list_envvars(runner):
+    result = runner(["list-envvars"])
+    assert (
+        result.output.strip()
+        == """
+auth: GITHUB_ACCESS_TOKEN
+branch: RH_BRANCH
+cache-file: RH_CACHE_FILE
+changelog-path: RH_CHANGELOG
+dist-dir: RH_DIST_DIR
+dry-run: RH_DRY_RUN
+links-expire: RH_LINKS_EXPIRE
+npm-cmd: RH_NPM_COMMAND
+npm-token: NPM_TOKEN
+output: RH_CHANGELOG_OUTPUT
+post-version-spec: RH_POST_VERSION_SPEC
+repo: RH_REPOSITORY
+resolve-backports: RH_RESOLVE_BACKPORTS
+test-cmd: RH_NPM_TEST_COMMAND
+twine-cmd: TWINE_COMMAND
+username: GITHUB_ACTOR
+version-cmd: RH_VERSION_COMMAND
+version-spec: RH_VERSION_SPEC
+""".strip()
+    )
 
 
 def test_build_changelog(py_package, mocker, runner):
     run("pre-commit run -a")
 
-    changelog_path = py_package / "CHANGELOG.md"
+    changelog_path = "CHANGELOG.md"
 
-    runner(["prep-env", "--version-spec", VERSION_SPEC])
+    runner(["prep-git", "--git-url", py_package])
+    runner(["bump-version", "--version-spec", VERSION_SPEC])
 
     mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
     mocked_gen.return_value = CHANGELOG_ENTRY
     runner(["build-changelog", "--changelog-path", changelog_path])
+
+    changelog_path = Path(util.CHECKOUT_NAME) / "CHANGELOG.md"
     text = changelog_path.read_text(encoding="utf-8")
     assert changelog.START_MARKER in text
     assert changelog.END_MARKER in text
@@ -129,22 +156,26 @@ def test_build_changelog(py_package, mocker, runner):
 
 
 def test_build_changelog_existing(py_package, mocker, runner):
-    changelog_path = py_package / "CHANGELOG.md"
+    changelog_file = "CHANGELOG.md"
+    changelog_path = Path(util.CHECKOUT_NAME) / changelog_file
 
-    runner(["prep-env", "--version-spec", VERSION_SPEC])
+    runner(["prep-git", "--git-url", py_package])
+    runner(["bump-version", "--version-spec", VERSION_SPEC])
 
     mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
     mocked_gen.return_value = CHANGELOG_ENTRY
-    runner(["build-changelog", "--changelog-path", changelog_path])
+    runner(["build-changelog", "--changelog-path", changelog_file])
+
     text = changelog_path.read_text(encoding="utf-8")
     text = text.replace("defining contributions", "Definining contributions")
     changelog_path.write_text(text, encoding="utf-8")
 
     # Commit the change
-    run('git commit -a -m "commit changelog"')
+    run('git commit -a -m "commit changelog"', cwd=util.CHECKOUT_NAME)
 
     mocked_gen.return_value = CHANGELOG_ENTRY
-    runner(["build-changelog", "--changelog-path", changelog_path])
+    runner(["build-changelog", "--changelog-path", changelog_file])
+
     text = changelog_path.read_text(encoding="utf-8")
     assert "Definining contributions" in text, text
     assert not "defining contributions" in text, text
@@ -152,16 +183,19 @@ def test_build_changelog_existing(py_package, mocker, runner):
     assert len(re.findall(changelog.START_MARKER, text)) == 1
     assert len(re.findall(changelog.END_MARKER, text)) == 1
 
-    run("pre-commit run -a")
+    run("pre-commit run -a", cwd=util.CHECKOUT_NAME)
 
 
 def test_build_changelog_backport(py_package, mocker, runner, open_mock):
-    changelog_path = py_package / "CHANGELOG.md"
+    changelog_file = "CHANGELOG.md"
+    changelog_path = Path(util.CHECKOUT_NAME) / changelog_file
 
     data = dict(title="foo", url="bar", user=dict(login="snuffy", html_url="baz"))
     open_mock.return_value = MockHTTPResponse(data)
 
-    runner(["prep-env", "--version-spec", VERSION_SPEC])
+    runner(["prep-git", "--git-url", py_package])
+    runner(["bump-version", "--version-spec", VERSION_SPEC])
+
     entry = CHANGELOG_ENTRY.replace("consideRatio", "meeseeksmachine")
     entry = entry.replace(
         "Support git references etc.", "Backport PR #50 (original title"
@@ -169,7 +203,7 @@ def test_build_changelog_backport(py_package, mocker, runner, open_mock):
 
     mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
     mocked_gen.return_value = entry
-    runner(["build-changelog", "--changelog-path", changelog_path])
+    runner(["build-changelog", "--changelog-path", changelog_file])
     text = changelog_path.read_text(encoding="utf-8")
     assert changelog.START_MARKER in text
     assert changelog.END_MARKER in text
@@ -182,40 +216,42 @@ def test_build_changelog_backport(py_package, mocker, runner, open_mock):
     run("pre-commit run -a")
 
 
-def test_draft_changelog_full(py_package, mocker, runner, open_mock):
+def test_draft_changelog_full(py_package, mocker, runner, open_mock, git_prep):
     mock_changelog_entry(py_package, runner, mocker)
     runner(["draft-changelog", "--version-spec", VERSION_SPEC])
     open_mock.assert_called_once()
 
 
-def test_draft_changelog_dry_run(npm_package, mocker, runner):
+def test_draft_changelog_dry_run(npm_package, mocker, runner, git_prep):
     mock_changelog_entry(npm_package, runner, mocker)
     runner(["draft-changelog", "--dry-run", "--version-spec", VERSION_SPEC])
 
 
-def test_draft_changelog_lerna(workspace_package, mocker, runner, open_mock):
+def test_draft_changelog_lerna(workspace_package, mocker, runner, open_mock, git_prep):
     mock_changelog_entry(workspace_package, runner, mocker)
     runner(["draft-changelog", "--version-spec", VERSION_SPEC])
     open_mock.assert_called_once()
 
 
 def test_check_links(py_package, runner):
-    readme = py_package / "README.md"
+    readme = Path("README.md")
     text = readme.read_text(encoding="utf-8")
     text += "\nhttps://apod.nasa.gov/apod/astropix.html"
     readme.write_text(text, encoding="utf-8")
+    util.run("git commit -a -m 'update readme'")
 
+    runner(["prep-git", "--git-url", py_package])
     runner(["check-links"])
 
-    foo = py_package / "FOO.md"
+    foo = Path(util.CHECKOUT_NAME) / "FOO.md"
     foo.write_text("http://127.0.0.1:5555")
 
     runner(["check-links", "--ignore-glob", "FOO.md"])
 
 
-def test_check_changelog(py_package, tmp_path, mocker, runner):
+def test_check_changelog(py_package, tmp_path, mocker, runner, git_prep):
     changelog_entry = mock_changelog_entry(py_package, runner, mocker)
-    output = tmp_path / "output.md"
+    output = "output.md"
 
     # prep the release
     bump_version(VERSION_SPEC)
@@ -224,58 +260,60 @@ def test_check_changelog(py_package, tmp_path, mocker, runner):
         ["check-changelog", "--changelog-path", changelog_entry, "--output", output],
     )
 
+    output = Path(util.CHECKOUT_NAME) / output
     assert PR_ENTRY in output.read_text(encoding="utf-8")
+    changelog_entry = Path(util.CHECKOUT_NAME) / changelog_entry
     text = changelog_entry.read_text(encoding="utf-8")
     assert f"{changelog.START_MARKER}\n\n## {VERSION_SPEC}" in text
     assert changelog.END_MARKER in text
 
 
-def test_build_python(py_package, runner, build_mock):
+def test_build_python(py_package, runner, build_mock, git_prep):
     runner(["build-python"])
 
 
-def test_build_python_setup(py_package, runner):
-    py_package.joinpath("pyproject.toml").unlink()
+def test_build_python_setup(py_package, runner, git_prep):
+    Path(util.CHECKOUT_NAME).joinpath("pyproject.toml").unlink()
     runner(["build-python"])
 
 
-def test_build_python_npm(npm_package, runner, build_mock):
+def test_build_python_npm(npm_package, runner, build_mock, git_prep):
     runner(["build-python"])
 
 
-def test_check_python(py_package, runner, build_mock):
+def test_check_python(py_package, runner, build_mock, git_prep):
     runner(["build-python"])
     runner(["check-python"])
 
 
-def test_handle_npm(npm_package, runner):
+def test_handle_npm(npm_package, runner, git_prep):
     runner(["build-npm"])
     runner(["check-npm"])
 
 
-def test_handle_npm_lerna(workspace_package, runner):
+def test_handle_npm_lerna(workspace_package, runner, git_prep):
     runner(["build-npm"])
     runner(["check-npm"])
 
 
-def test_check_manifest(py_package, runner):
+def test_check_manifest(py_package, runner, git_prep):
     runner(["check-manifest"])
 
 
-def test_check_manifest_npm(npm_package, runner):
+def test_check_manifest_npm(npm_package, runner, git_prep):
     runner(["check-manifest"])
 
 
-def test_tag_release(py_package, runner, build_mock):
-    # Prep the env
-    runner(["prep-env", "--version-spec", VERSION_SPEC])
+def test_tag_release(py_package, runner, build_mock, git_prep):
+    # Bump the version
+    runner(["bump-version", "--version-spec", VERSION_SPEC])
     # Create the dist files
-    util.run("python -m build .")
+    util.run("python -m build .", cwd=util.CHECKOUT_NAME)
     # Tag the release
     runner(["tag-release"])
 
 
-def test_draft_release_dry_run(py_dist, mocker, runner, open_mock):
+def test_draft_release_dry_run(py_dist, mocker, runner, open_mock, git_prep):
     open_mock.side_effect = [
         MockHTTPResponse([REPO_DATA]),
         MockHTTPResponse(),
@@ -288,7 +326,7 @@ def test_draft_release_dry_run(py_dist, mocker, runner, open_mock):
     assert len(open_mock.call_args) == 2
 
 
-def test_draft_release_final(npm_dist, runner, mocker, open_mock):
+def test_draft_release_final(npm_dist, runner, mocker, open_mock, git_prep):
     open_mock.side_effect = [
         MockHTTPResponse([REPO_DATA]),
         MockHTTPResponse(),
@@ -304,7 +342,7 @@ def test_draft_release_final(npm_dist, runner, mocker, open_mock):
     assert len(open_mock.call_args) == 2
 
 
-def test_delete_release(npm_dist, runner, mocker, open_mock):
+def test_delete_release(npm_dist, runner, mocker, open_mock, git_prep):
     # Publish the release
     # Mimic being on GitHub actions so we get the magic output
     os.environ["GITHUB_ACTIONS"] = "true"
@@ -340,36 +378,37 @@ def test_delete_release(npm_dist, runner, mocker, open_mock):
     os.name == "nt" and sys.version_info.major == 3 and sys.version_info.minor < 8,
     reason="See https://bugs.python.org/issue26660",
 )
-def test_extract_dist_py(py_package, runner, mocker, open_mock, tmp_path):
+def test_extract_dist_py(py_package, runner, mocker, open_mock, tmp_path, git_prep):
     changelog_entry = mock_changelog_entry(py_package, runner, mocker)
 
     # Create the dist files
-    run("python -m build .")
+    run("python -m build .", cwd=util.CHECKOUT_NAME)
 
     # Finalize the release
     runner(["tag-release"])
 
     os.makedirs("staging")
-    shutil.move("dist", "staging")
+    shutil.move(f"{util.CHECKOUT_NAME}/dist", "staging")
 
     def helper(path, **kwargs):
         return MockRequestResponse(f"staging/dist/{path}")
 
     get_mock = mocker.patch("requests.get", side_effect=helper)
 
-    tag_name = "bar"
+    tag_name = f"v{VERSION_SPEC}"
 
     dist_names = [osp.basename(f) for f in glob("staging/dist/*.*")]
     releases = [
         dict(
             tag_name=tag_name,
-            target_commitish="main",
+            target_commitish=util.get_branch(),
             assets=[dict(name=dist_name, url=dist_name) for dist_name in dist_names],
         )
     ]
-    sha = run("git rev-parse HEAD")
+    sha = run("git rev-parse HEAD", cwd=util.CHECKOUT_NAME)
+
     tags = [dict(ref=f"refs/tags/{tag_name}", object=dict(sha=sha))]
-    url = normalize_path(os.getcwd())
+    url = normalize_path(osp.join(os.getcwd(), util.CHECKOUT_NAME))
     open_mock.side_effect = [
         MockHTTPResponse(releases),
         MockHTTPResponse(tags),
@@ -388,7 +427,7 @@ def test_extract_dist_py(py_package, runner, mocker, open_mock, tmp_path):
 def test_extract_dist_npm(npm_dist, runner, mocker, open_mock, tmp_path):
 
     os.makedirs("staging")
-    shutil.move("dist", "staging")
+    shutil.move(f"{util.CHECKOUT_NAME}/dist", "staging")
 
     def helper(path, **kwargs):
         return MockRequestResponse(f"staging/dist/{path}")
@@ -396,8 +435,8 @@ def test_extract_dist_npm(npm_dist, runner, mocker, open_mock, tmp_path):
     get_mock = mocker.patch("requests.get", side_effect=helper)
 
     dist_names = [osp.basename(f) for f in glob("staging/dist/*.tgz")]
-    url = normalize_path(os.getcwd())
-    tag_name = "bar"
+    url = normalize_path(osp.join(os.getcwd(), util.CHECKOUT_NAME))
+    tag_name = f"v{VERSION_SPEC}"
     releases = [
         dict(
             tag_name=tag_name,
@@ -405,7 +444,7 @@ def test_extract_dist_npm(npm_dist, runner, mocker, open_mock, tmp_path):
             assets=[dict(name=dist_name, url=dist_name) for dist_name in dist_names],
         )
     ]
-    sha = run("git rev-parse HEAD")
+    sha = run("git rev-parse HEAD", cwd=util.CHECKOUT_NAME)
     tags = [dict(ref=f"refs/tags/{tag_name}", object=dict(sha=sha))]
     open_mock.side_effect = [
         MockHTTPResponse(releases),
@@ -433,13 +472,15 @@ def test_publish_release_py(py_dist, runner, mocker, open_mock):
 
     mock_run = mocker.patch("release_helper.util.run", wraps=wrapped)
 
-    runner(["publish-release", HTML_URL])
+    dist_dir = py_dist / util.CHECKOUT_NAME / "dist"
+    runner(["publish-release", HTML_URL, "--dist-dir", dist_dir])
     assert len(open_mock.call_args) == 2
     assert called == 2, called
 
 
 def test_publish_release_npm(npm_dist, runner, mocker, open_mock):
     open_mock.side_effect = [MockHTTPResponse([REPO_DATA]), MockHTTPResponse()]
+    dist_dir = npm_dist / util.CHECKOUT_NAME / "dist"
     runner(
         [
             "publish-release",
@@ -448,13 +489,15 @@ def test_publish_release_npm(npm_dist, runner, mocker, open_mock):
             "abc",
             "--npm_cmd",
             "npm publish --dry-run",
+            "--dist-dir",
+            dist_dir,
         ]
     )
     assert len(open_mock.call_args) == 2
 
 
-def test_config_file(py_package, runner, mocker):
-    config = util.RELEASE_HELPER_CONFIG
+def test_config_file(py_package, runner, mocker, git_prep):
+    config = Path(util.CHECKOUT_NAME) / util.RELEASE_HELPER_CONFIG
     config.write_text(TOML_CONFIG, encoding="utf-8")
 
     orig_run = util.run
@@ -478,8 +521,8 @@ def test_config_file(py_package, runner, mocker):
     assert called
 
 
-def test_config_file_env_override(py_package, runner, mocker):
-    config = util.RELEASE_HELPER_CONFIG
+def test_config_file_env_override(py_package, runner, mocker, git_prep):
+    config = Path(util.CHECKOUT_NAME) / util.RELEASE_HELPER_CONFIG
     config.write_text(TOML_CONFIG, encoding="utf-8")
 
     orig_run = util.run
@@ -504,8 +547,8 @@ def test_config_file_env_override(py_package, runner, mocker):
     assert called
 
 
-def test_config_file_cli_override(py_package, runner, mocker):
-    config = util.RELEASE_HELPER_CONFIG
+def test_config_file_cli_override(py_package, runner, mocker, git_prep):
+    config = Path(util.CHECKOUT_NAME) / util.RELEASE_HELPER_CONFIG
     config.write_text(TOML_CONFIG, encoding="utf-8")
 
     orig_run = util.run
@@ -529,21 +572,23 @@ def test_config_file_cli_override(py_package, runner, mocker):
     assert called
 
 
-def test_forwardport_changelog_no_new(npm_package, runner, mocker, open_mock):
+def test_forwardport_changelog_no_new(npm_package, runner, mocker, open_mock, git_prep):
 
     open_mock.side_effect = [MockHTTPResponse([REPO_DATA]), MockHTTPResponse()]
 
     # Create a branch with a changelog entry
-    util.run("git checkout -b backport_branch")
-    util.run("git push upstream backport_branch")
+    util.run("git checkout -b backport_branch", cwd=util.CHECKOUT_NAME)
+    util.run("git push origin backport_branch", cwd=util.CHECKOUT_NAME)
     mock_changelog_entry(npm_package, runner, mocker)
-    util.run('git commit -a -m "Add changelog entry"')
-    util.run(f"git tag v{VERSION_SPEC}")
+    util.run('git commit -a -m "Add changelog entry"', cwd=util.CHECKOUT_NAME)
+    util.run(f"git tag v{VERSION_SPEC}", cwd=util.CHECKOUT_NAME)
 
     # Run the forwardport workflow against default branch
-    runner(["forwardport-changelog", HTML_URL])
+    os.chdir(util.CHECKOUT_NAME)
+    url = os.getcwd()
+    runner(["forwardport-changelog", HTML_URL, "--git-url", url])
 
-    open_mock.assert_called_once()
+    assert len(open_mock.mock_calls) == 1
 
     expected = """
 <!-- <START NEW CHANGELOG ENTRY> -->
@@ -553,28 +598,41 @@ def test_forwardport_changelog_no_new(npm_package, runner, mocker, open_mock):
     assert expected in Path("CHANGELOG.md").read_text(encoding="utf-8")
 
 
-def test_forwardport_changelog_has_new(npm_package, runner, mocker, open_mock):
+def test_forwardport_changelog_has_new(
+    npm_package, runner, mocker, open_mock, git_prep
+):
 
     open_mock.side_effect = [MockHTTPResponse([REPO_DATA]), MockHTTPResponse()]
     current = util.run("git branch --show-current")
 
     # Create a branch with a changelog entry
-    util.run("git checkout -b backport_branch")
-    util.run("git push upstream backport_branch")
+    util.run("git checkout -b backport_branch", cwd=util.CHECKOUT_NAME)
+    util.run("git push origin backport_branch", cwd=util.CHECKOUT_NAME)
+    util.run(f"git checkout {current}")
     mock_changelog_entry(npm_package, runner, mocker)
-    util.run('git commit -a -m "Add changelog entry"')
-    util.run(f"git tag v{VERSION_SPEC}")
+    util.run(
+        f'git commit -a -m "Add changelog entry {VERSION_SPEC}"', cwd=util.CHECKOUT_NAME
+    )
+    util.run(f"git tag v{VERSION_SPEC}", cwd=util.CHECKOUT_NAME)
+    util.run(f"git checkout {current}", cwd=util.CHECKOUT_NAME)
+    util.run("git push origin backport_branch --tags", cwd=util.CHECKOUT_NAME)
 
     # Add a new changelog entry in main branch
-    util.run(f"git checkout {current}")
+    util.run("git checkout backport_branch", cwd=str(npm_package))
+    util.run(f"git checkout {current}", cwd=util.CHECKOUT_NAME)
     mock_changelog_entry(npm_package, runner, mocker, version_spec="2.0.0")
-    util.run('git commit -a -m "Add changelog entry"')
-    util.run("git tag v2.0.0")
+    util.run('git commit -a -m "Add changelog entry v2.0.0"', cwd=util.CHECKOUT_NAME)
+    util.run("git tag v2.0.0", cwd=util.CHECKOUT_NAME)
+    util.run("git checkout backport_branch", cwd=npm_package)
+    util.run(f"git push origin {current} --tags", cwd=util.CHECKOUT_NAME)
 
     # Run the forwardport workflow against default branch
-    runner(["forwardport-changelog", HTML_URL])
+    url = osp.abspath(npm_package)
+    os.chdir(npm_package)
+    runner(["forwardport-changelog", HTML_URL, "--git-url", url, "--branch", current])
 
     assert len(open_mock.call_args) == 2
+    util.run(f"git checkout {current}", cwd=npm_package)
 
     expected = """
 <!-- <START NEW CHANGELOG ENTRY> -->

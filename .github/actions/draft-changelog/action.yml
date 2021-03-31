@@ -7,6 +7,11 @@ inputs:
   version_spec:
     description: "New Version Specifier"
     required: true
+  target:
+    description: "The owner/repo GitHub target"
+    required: true
+  branch:
+    description: The branch to target"
   changelog:
     description: "Changelog file"
     default: "CHANGELOG.md"
@@ -23,13 +28,12 @@ runs:
     - shell: bash
       id: draft-changelog
       run: |
-        set -eux
-        pip install -q release-helper
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
+        export RH_REPOSITORY=${{ inputs.target }}
+        if [ -n ${{ inputs.branch }}]; then
+          export RH_BRANCH=${{ inputs.branch }}
+        fi
         export RH_VERSION_SPEC=${{ inputs.version_spec }}
         export RH_CHANGELOG=${{ inputs.changelog }}
         export RH_DRY_RUN=${{ inputs.dry_run }}
-        release-helper prep-env
-        release-helper build-changelog
-        release-helper draft-changelog
-        cat ${RH_CHANGELOG}
+        bash .github/scripts/draft-changelog.sh

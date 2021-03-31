@@ -2,6 +2,12 @@ name: Draft Release
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: "The owner/repo GitHub target"
+        required: true
+      branch:
+        description: The branch to target"
+        required: true
       version_spec:
         description: "New Version Specifier"
         required: true
@@ -49,6 +55,8 @@ jobs:
         uses: ./.github/actions/draft-release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          target: ${{ github.event.inputs.target }}
+          branch: ${{ github.event.inputs.branch }}
           version_spec: ${{ github.event.inputs.version_spec }}
           post_version_spec: ${{ github.event.inputs.post_version_spec }}
       - name: "** Next Step **"

@@ -67,14 +67,14 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
 
     since = tags.splitlines()[0]
     branch = branch.split("/")[-1]
-    print(f"Getting changes to {repo} since {since} on branch {branch}...")
+    util.log(f"Getting changes to {repo} since {since} on branch {branch}...")
 
     md = generate_activity_md(
         repo, since=since, kind="pr", heading_level=2, auth=auth, branch=branch
     )
 
     if not md:
-        print("No PRs found")
+        util.log("No PRs found")
         return f"## {version}\n\nNo merged PRs"
 
     entry = md.replace("[full changelog]", "[Full Changelog]")
@@ -108,9 +108,9 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
     return output
 
 
-def build_entry(branch, remote, repo, auth, changelog_path, resolve_backports):
+def build_entry(branch, repo, auth, changelog_path, resolve_backports):
     """Build a python version entry"""
-    repo = repo or util.get_repo(remote, auth=auth)
+    repo = repo or util.get_repo()
     branch = branch or util.get_branch()
 
     # Get the new version
@@ -128,7 +128,7 @@ def build_entry(branch, remote, repo, auth, changelog_path, resolve_backports):
     # Get changelog entry
 
     entry = get_version_entry(
-        f"{remote}/{branch}",
+        f"origin/{branch}",
         repo,
         version,
         auth=auth,
@@ -175,7 +175,7 @@ def format(changelog):
     return re.sub(r"\n\n+$", r"\n", changelog, re.MULTILINE)
 
 
-def check_entry(branch, remote, repo, auth, changelog_path, resolve_backports, output):
+def check_entry(branch, repo, auth, changelog_path, resolve_backports, output):
     """Check changelog entry"""
     branch = branch or util.get_branch()
 
@@ -196,9 +196,9 @@ def check_entry(branch, remote, repo, auth, changelog_path, resolve_backports, o
 
     final_entry = changelog[start + len(START_MARKER) : end]
 
-    repo = repo or util.get_repo(remote, auth=auth)
+    repo = repo or util.get_repo()
     raw_entry = get_version_entry(
-        f"{remote}/{branch}",
+        f"origin/{branch}",
         repo,
         version,
         auth=auth,
@@ -206,7 +206,7 @@ def check_entry(branch, remote, repo, auth, changelog_path, resolve_backports, o
     )
 
     if f"# {version}" not in final_entry:  # pragma: no cover
-        print(final_entry)
+        util.log(final_entry)
         raise ValueError(f"Did not find entry for {version}")
 
     final_prs = re.findall(r"\[#(\d+)\]", final_entry)

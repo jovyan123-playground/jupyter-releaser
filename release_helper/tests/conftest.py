@@ -2,6 +2,7 @@
 # Distributed under the terms of the Modified BSD License.
 import json
 import os
+import os.path as osp
 import traceback
 from pathlib import Path
 from urllib.request import OpenerDirector
@@ -17,7 +18,7 @@ from release_helper.util import run
 
 
 @fixture(autouse=True)
-def mock_env_vars(mocker):
+def mock_env(mocker):
     """Clear unwanted environment variables"""
     # Anything that starts with RH_ or GITHUB_
     prefixes = ["GITHUB_", "RH_"]
@@ -28,6 +29,13 @@ def mock_env_vars(mocker):
                 del env[key]
 
     mocker.patch.dict(os.environ, env, clear=True)
+
+    try:
+        run("git config --global user.name")
+    except Exception:
+        run("git config --global user.name snuffy")
+        run("git config --global user.email snuffy@sesame.com")
+
     yield
 
 
@@ -42,7 +50,7 @@ def git_repo(tmp_path):
 
     run("git checkout -b foo")
     gitignore = tmp_path / ".gitignore"
-    gitignore.write_text("dist/*\nbuild/*\n", encoding="utf-8")
+    gitignore.write_text(f"dist/*\nbuild/*\n{util.CHECKOUT_NAME}\n", encoding="utf-8")
 
     changelog = tmp_path / "CHANGELOG.md"
     changelog.write_text(testutil.CHANGELOG_TEMPLATE, encoding="utf-8")
@@ -53,11 +61,11 @@ def git_repo(tmp_path):
     run("git add .")
     run('git commit -m "foo"')
     run("git tag v0.0.1")
-    run(f"git remote add upstream {util.normalize_path(tmp_path)}")
-    run("git push upstream foo")
-    run("git remote set-head upstream foo")
+    run(f"git remote add origin {util.normalize_path(tmp_path)}")
+    run("git push origin foo")
+    run("git remote set-head origin foo")
     run("git checkout -b bar foo")
-    run("git fetch upstream")
+    run("git fetch origin")
     yield tmp_path
     os.chdir(prev_dir)
 
@@ -99,15 +107,17 @@ def workspace_package(npm_package):
             sub_data["dependencies"] = dict(foo="*")
             pkg_json.write_text(json.dumps(sub_data), encoding="utf-8")
     os.chdir(prev_dir)
+    util.run("git add .")
+    util.run('git commit -a -m "Add workspaces"')
     return npm_package
 
 
 @fixture
-def py_dist(py_package, runner, mocker, build_mock):
+def py_dist(py_package, runner, mocker, build_mock, git_prep):
     changelog_entry = testutil.mock_changelog_entry(py_package, runner, mocker)
 
     # Create the dist files
-    util.run("python -m build .")
+    util.run("python -m build .", cwd=util.CHECKOUT_NAME)
 
     # Finalize the release
     runner(["tag-release"])
@@ -116,7 +126,7 @@ def py_dist(py_package, runner, mocker, build_mock):
 
 
 @fixture
-def npm_dist(workspace_package, runner, mocker):
+def npm_dist(workspace_package, runner, mocker, git_prep):
     changelog_entry = testutil.mock_changelog_entry(workspace_package, runner, mocker)
 
     # Create the dist files
@@ -134,10 +144,20 @@ def runner():
 
     def run(*args, **kwargs):
         result = cli_runner.invoke(cli.main, *args, **kwargs)
-        assert result.exit_code == 0, traceback.print_exception(*result.exc_info)
+        if result.exit_code != 0:
+            if result.stderr_bytes:
+                print("Captured stderr\n", result.stderr, "\n\n")
+            print("Catpured stdout\n", result.stdout, "\n\n")
+            raise result.exception
+
         return result
 
     return run
+
+
+@fixture()
+def git_prep(runner, git_repo):
+    runner(["prep-git", "--git-url", git_repo])
 
 
 @fixture
@@ -153,9 +173,13 @@ def build_mock(mocker):
 
     def wrapped(cmd, **kwargs):
         if cmd == "python -m build .":
-            os.makedirs("dist", exist_ok=True)
-            Path("dist/foo-0.0.2a0.tar.gz").write_text("hello", encoding="utf-8")
-            Path("dist/foo-0.0.2a0-py3-none-any.whl").write_text(
+            if osp.exists(util.CHECKOUT_NAME):
+                dist_dir = Path(f"{util.CHECKOUT_NAME}/dist")
+            else:
+                dist_dir = Path("dist")
+            os.makedirs(dist_dir, exist_ok=True)
+            Path(f"{dist_dir}/foo-0.0.2a0.tar.gz").write_text("hello", encoding="utf-8")
+            Path(f"{dist_dir}/foo-0.0.2a0-py3-none-any.whl").write_text(
                 "hello", encoding="utf-8"
             )
             return ""

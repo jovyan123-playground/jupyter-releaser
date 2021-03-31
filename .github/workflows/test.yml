@@ -52,6 +52,7 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: "12.x"
+      - run: git --version
       - name: Upgrade packaging dependencies
         run: |
           pip install --upgrade pip setuptools wheel --user
@@ -81,7 +82,7 @@ jobs:
       - name: Run the tests on Windows and macOS
         if: ${{ matrix.os != 'ubuntu' }}
         run: |
-          pytest -vv
+          pytest -vv -s
       - name: Coverage
         run: |
           codecov

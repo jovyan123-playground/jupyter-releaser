@@ -21,7 +21,7 @@ def test_get_branch(git_repo):
 
 def test_get_repo(git_repo, mocker):
     repo = f"{git_repo.parent.name}/{git_repo.name}"
-    assert util.get_repo("upstream") == repo
+    assert util.get_repo() == repo
 
 
 def test_get_version_python(py_package):
@@ -82,7 +82,6 @@ def test_create_release_commit(py_package, build_mock):
     shas = util.create_release_commit(version)
     assert util.normalize_path("dist/foo-0.0.2a0.tar.gz") in shas
     assert util.normalize_path("dist/foo-0.0.2a0-py3-none-any.whl") in shas
-    shutil.rmtree(py_package / "dist", ignore_errors=True)
 
 
 def test_create_release_commit_hybrid(py_package, build_mock):

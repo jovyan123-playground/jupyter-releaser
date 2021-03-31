@@ -59,7 +59,7 @@ def build_dist(package, dist_dir):
         for (name, data) in sorted(all_data.items()):
             i += 1
             path = data["__path__"]
-            print(f'({i}/{len(all_data)}) Packing {data["name"]}...')
+            util.log(f'({i}/{len(all_data)}) Packing {data["name"]}...')
             tarball = path / util.run("npm pack", cwd=path, quiet=True)
             shutil.move(str(tarball), str(dest))
 
@@ -68,7 +68,7 @@ def extract_dist(dist_dir, target):
     """Extract dist files from a dist_dir into a target dir"""
     names = []
     paths = sorted(glob(f"{dist_dir}/*.tgz"))
-    print(f"Extracting {len(paths)} packages...")
+    util.log(f"Extracting {len(paths)} packages...")
 
     for package in paths:
         path = Path(package)
@@ -78,7 +78,7 @@ def extract_dist(dist_dir, target):
 
         # Skip if it is a private package
         if data.get("private", False):  # pragma: no cover
-            print(f"Skipping private package {name}")
+            util.log(f"Skipping private package {name}")
             continue
 
         names.append(name)
@@ -152,7 +152,7 @@ def get_package_versions(version):
         packages = data["workspaces"].get("packages", [])
         for pattern in packages:
             for path in glob(pattern, recursive=True):
-                text = Path(path / "package.json").read_text()
+                text = Path(path).joinpath("package.json").read_text()
                 data = json.loads(text)
                 message += f'\n{data["name"]}: {data["version"]}'
     return message
@@ -175,6 +175,6 @@ def tag_workspace_packages():
             sub_data = json.loads(sub_package_json.read_text(encoding="utf-8"))
             tag_name = f"{sub_data['name']}@{sub_data['version']}"
             if tag_name in tags:
-                print(f"Skipping existing tag {tag_name}")
+                util.log(f"Skipping existing tag {tag_name}")
             else:
                 util.run(f"git tag {tag_name}")

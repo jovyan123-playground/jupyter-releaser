@@ -9,6 +9,7 @@ import os.path as osp
 import re
 import shlex
 import shutil
+import sys
 from glob import glob
 from pathlib import Path
 from subprocess import CalledProcessError
@@ -26,6 +27,8 @@ RELEASE_HELPER_CONFIG = Path(".release-helper.toml")
 BUF_SIZE = 65536
 TBUMP_CMD = "tbump --non-interactive --only-patch"
 
+CHECKOUT_NAME = ".release_helper_checkout"
+
 RELEASE_HTML_PATTERN = (
     "https://github.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/releases/tag/(?P<tag>.*)"
 )
@@ -34,10 +37,11 @@ RELEASE_API_PATTERN = "https://api.github.com/repos/(?P<owner>[^/]+)/(?P<repo>[^
 
 def run(cmd, **kwargs):
     """Run a command as a subprocess and get the output as a string"""
-    if not kwargs.pop("quiet", False):
-        print(f"+ {cmd}")
-
-    kwargs.setdefault("stderr", PIPE)
+    quiet = kwargs.pop("quiet", False)
+    if not quiet:
+        log(f"+ {cmd}")
+    else:
+        kwargs.setdefault("stderr", PIPE)
 
     parts = shlex.split(cmd)
     if "/" not in parts[0]:
@@ -49,13 +53,18 @@ def run(cmd, **kwargs):
     try:
         return check_output(parts, **kwargs).decode("utf-8").strip()
     except CalledProcessError as e:
-        print("output:", e.output.decode("utf-8").strip())
-        print("stderr:", e.stderr.decode("utf-8").strip())
+        if quiet:
+            print(e.stderr.decode("utf-8").strip(), file=sys.stderr)
         raise e
 
 
+def log(output, **kwargs):
+    """Log an output to stderr"""
+    print(output, file=sys.stderr, **kwargs)
+
+
 def get_branch():
-    """Get the appropriat git branch"""
+    """Get the appropriate git branch"""
     if os.environ.get("GITHUB_BASE_REF"):
         # GitHub Action PR Event
         branch = os.environ["GITHUB_BASE_REF"]
@@ -68,9 +77,17 @@ def get_branch():
     return branch
 
 
-def get_repo(remote, auth=None):
+def get_default_branch():
+    """Get the default remote branch"""
+    info = run("git remote show origin")
+    for line in info.splitlines():
+        if line.strip().startswith("HEAD branch:"):
+            return line.strip().split()[-1]
+
+
+def get_repo():
     """Get the remote repo owner and name"""
-    url = run(f"git remote get-url {remote}")
+    url = run("git remote get-url origin")
     url = normalize_path(url)
     parts = url.split("/")[-2:]
     if ":" in parts[0]:
@@ -157,6 +174,8 @@ def bump_version(version_spec, version_cmd=""):
     # Bump the version
     run(f"{version_cmd} {version_spec}")
 
+    return get_version()
+
 
 def is_prerelease(version):
     """Test whether a version is a prerelease version"""
@@ -177,7 +196,7 @@ def release_for_url(gh, url):
 
 def actions_output(name, value):
     "Print the special GitHub Actions `::set-output` line for `name::value`"
-    print(f"\n\nSetting output {name}={value}")
+    log(f"\n\nSetting output {name}={value}")
     if "GITHUB_ACTIONS" in os.environ:
         print(f"::set-output name={name}::{value}")
 
