@@ -9,7 +9,6 @@
 ### Merged PRs
 
 - handle repo [#129](https://github.com/jovyan123-playground/release-helper-playground/pull/129) ([@jovyan123-playground](https://github.com/jovyan123-playground))
-- Automated Changelog Entry for 0.9.0 on main [#128](https://github.com/jovyan123-playground/release-helper-playground/pull/128) ([@github-actions](https://github.com/github-actions))
 - add check_release action and refactor actions [#127](https://github.com/jovyan123-playground/release-helper-playground/pull/127) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 - ignore link patterns [#126](https://github.com/jovyan123-playground/release-helper-playground/pull/126) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 
