@@ -13,6 +13,7 @@ runs:
     - shell: bash
       id: draft-release
       run: |
+        set -eux
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
         export RH_REPOSITORY=${GITHUB_REPOSITORY}
         export RH_VERSION_SPEC=0.0.1a0
@@ -30,6 +31,7 @@ runs:
     - shell: bash
       id: publish-release
       run: |
+        set -eux
         export release_url=${{ steps.draft-release.outputs.release_url }}
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
         export RH_REPOSITORY=${GITHUB_REPOSITORY}
