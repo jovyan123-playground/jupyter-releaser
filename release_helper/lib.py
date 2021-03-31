@@ -4,6 +4,7 @@ import os
 import os.path as osp
 import re
 import shutil
+import sys
 import uuid
 from datetime import datetime
 from glob import glob
@@ -368,7 +369,8 @@ def prep_git(branch, repo, auth, username, url):
     # Set up the repository
     checkout_dir = os.environ.get("RH_CHECKOUT_DIR", util.CHECKOUT_NAME)
     if osp.exists(osp.join(checkout_dir, ".git")):
-        shutil.rmtree(checkout_dir, ignore_errors=True)
+        print("Git checkout already exists", file=sys.stderr)
+        return
 
     util.run(f"git init {checkout_dir}")
     orig_dir = os.getcwd()
