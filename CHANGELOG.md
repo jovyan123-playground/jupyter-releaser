@@ -2,6 +2,23 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.9.0
+
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.8.1...5d826d560b75013c8261136a158f1fd8ce66c37b))
+
+### Merged PRs
+
+- add check_release action and refactor actions [#127](https://github.com/jovyan123-playground/release-helper-playground/pull/127) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- ignore link patterns [#126](https://github.com/jovyan123-playground/release-helper-playground/pull/126) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-26&to=2021-03-31&type=c))
+
+[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-26..2021-03-31&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-26..2021-03-31&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.8.1
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.8.0...15839e702c267f72849111bef86bc9a197fdc0ad))
@@ -16,7 +33,7 @@
 
 [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-26..2021-03-26&type=Issues)
 
-<!-- <END NEW CHANGELOG ENTRY> -->
+
 
 ## 0.8.0
 
