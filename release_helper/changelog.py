@@ -89,7 +89,7 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
 
     # Remove github actions PRs
     gh_actions = "[@github-actions](https://github.com/github-actions)"
-    entry = [e for e in entry if gh_actions not in entry]
+    entry = [e for e in entry if gh_actions not in e]
 
     entry = "\n".join(entry).strip()
 
