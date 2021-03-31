@@ -7,6 +7,7 @@ import shutil
 import sys
 from glob import glob
 from pathlib import Path
+from subprocess import CalledProcessError
 from unittest.mock import call
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -92,14 +93,14 @@ def test_bump_version(npm_package, runner):
 
 def test_bump_version_bad_version(py_package, runner):
     runner(["prep-git", "--git-url", py_package])
-    with pytest.raises(AssertionError):
+    with pytest.raises(CalledProcessError):
         runner(["bump-version", "--version-spec", "a1.0.1"], env=dict(GITHUB_ACTION=""))
 
 
 def test_bump_version_tag_exists(py_package, runner):
     runner(["prep-git", "--git-url", py_package])
     run("git tag v1.0.1", cwd=util.CHECKOUT_NAME)
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         runner(["bump-version", "--version-spec", "1.0.1"], env=dict(GITHUB_ACTION=""))
 
 
