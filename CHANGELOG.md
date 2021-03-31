@@ -33,8 +33,6 @@
 
 [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-26..2021-03-26&type=Issues)
 
-
-
 ## 0.8.0
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.7.0...17f5a17370c089418e7e0438dc821758f0df1813))
