@@ -21,9 +21,11 @@ runs:
         export RH_CHANGELOG=${{ inputs.changelog }}
         export RH_DRY_RUN=true
         if [ -n ${GITHUB_BASE_REF} ]; then
+          echo "Using GITHUB_BASE_REF: ${GITHUB_BASE_REF}"
           export RH_BRANCH=${GITHUB_BASE_REF}
         else
           # e.g refs/head/foo or refs/tag/bar
+          echo "Using GITHUB_REF: ${GITHUB_REF}"
           export RH_BRANCH=$(echo ${GITHUB_REF} | cut -d'/' -f 3)
         fi
         bash .github/scripts/draft-changelog.sh
