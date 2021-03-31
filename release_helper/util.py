@@ -77,6 +77,14 @@ def get_branch():
     return branch
 
 
+def get_default_branch():
+    """Get the default remote branch"""
+    info = run("git remote show origin")
+    for line in info.splitlines():
+        if line.strip().startswith("HEAD branch:"):
+            return line.strip().split()[-1]
+
+
 def get_repo():
     """Get the remote repo owner and name"""
     url = run("git remote get-url origin")

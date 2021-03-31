@@ -370,7 +370,8 @@ def prep_git(branch, repo, auth, username, url):
     checkout_dir = os.environ.get("RH_CHECKOUT_DIR", util.CHECKOUT_NAME)
     if osp.exists(osp.join(checkout_dir, ".git")):
         print("Git checkout already exists", file=sys.stderr)
-        return
+        os.chdir(util.CHECKOUT_NAME)
+        return util.get_default_branch()
 
     util.run(f"git init {checkout_dir}")
     orig_dir = os.getcwd()
@@ -387,13 +388,7 @@ def prep_git(branch, repo, auth, username, url):
 
     util.run(f"git remote add origin {url}")
 
-    if not branch:
-        # Get the default remote branch
-        info = util.run("git remote show origin")
-        for line in info.splitlines():
-            if line.strip().startswith("HEAD branch:"):
-                branch = line.strip().split()[-1]
-                break
+    branch = branch or util.get_default_branch()
 
     util.run(f"git fetch origin {branch}")
 
