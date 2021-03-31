@@ -407,12 +407,13 @@ def forwardport_changelog(
 ):
     """Forwardport Changelog Entries to the Default Branch"""
     # Set up the git repo with the branch
-    branch = prep_git(branch, repo, auth, username, git_url)
-
     match = parse_release_url(release_url)
     gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
     release = util.release_for_url(gh, release_url)
     tag = release.tag_name
+
+    repo = f'{match["owner"]}/{match["repo"]}'
+    branch = prep_git(branch, repo, auth, username, git_url)
 
     # Bail if the tag has been merged to the branch
     tags = util.run(f"git --no-pager tag --merged {branch}")
