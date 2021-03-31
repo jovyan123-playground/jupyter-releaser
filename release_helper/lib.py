@@ -408,7 +408,6 @@ def forwardport_changelog(
     """Forwardport Changelog Entries to the Default Branch"""
     # Set up the git repo with the branch
     branch = prep_git(branch, repo, auth, username, git_url)
-    os.chdir(util.CHECKOUT_NAME)
 
     match = parse_release_url(release_url)
     gh = GhApi(owner=match["owner"], repo=match["repo"], token=auth)
