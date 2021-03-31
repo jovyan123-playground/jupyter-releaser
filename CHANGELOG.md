@@ -4,10 +4,12 @@
 
 ## 0.9.0
 
-([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.8.1...5d826d560b75013c8261136a158f1fd8ce66c37b))
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.8.1...c87b3aeded89f2a9420e2ccf685aa49f9b9f1a05))
 
 ### Merged PRs
 
+- handle repo [#129](https://github.com/jovyan123-playground/release-helper-playground/pull/129) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Automated Changelog Entry for 0.9.0 on main [#128](https://github.com/jovyan123-playground/release-helper-playground/pull/128) ([@github-actions](https://github.com/github-actions))
 - add check_release action and refactor actions [#127](https://github.com/jovyan123-playground/release-helper-playground/pull/127) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 - ignore link patterns [#126](https://github.com/jovyan123-playground/release-helper-playground/pull/126) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 
@@ -15,7 +17,7 @@
 
 ([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-26&to=2021-03-31&type=c))
 
-[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-26..2021-03-31&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-26..2021-03-31&type=Issues)
+[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-26..2021-03-31&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Agithub-actions+updated%3A2021-03-26..2021-03-31&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-26..2021-03-31&type=Issues)
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
