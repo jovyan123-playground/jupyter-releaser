@@ -9,17 +9,21 @@ inputs:
     required: true
   branch:
     description: The branch to target"
+    required: true
   version_spec:
     description: "New Version Specifier"
     required: true
   post_version_spec:
     description: "Post Version Specifier"
+    required: false
   changelog:
     description: "Changelog file"
     default: "CHANGELOG.md"
+    required: false
   dry_run:
     description: "If set, do not push permanent changes"
-    default: false
+    default: "false"
+    required: false
 outputs:
   release_url:
     description: "The html URL of the draft GitHub release"
@@ -32,7 +36,7 @@ runs:
       run: |
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
         export RH_REPOSITORY=${{ inputs.target }}
-        if [ ! -z ${{ inputs.branch }}]; then
+        if [ ! -z ${{ inputs.branch }} ]; then
           export RH_BRANCH=${{ inputs.branch }}
         fi
         export RH_VERSION_SPEC=${{ inputs.version_spec }}

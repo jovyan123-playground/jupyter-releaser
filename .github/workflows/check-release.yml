@@ -1,7 +1,7 @@
 name: Check Release
 on:
   push:
-    branches: "*"
+    branches: ["*"]
 jobs:
   check_release:
     runs-on: ubuntu-latest

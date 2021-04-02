@@ -12,12 +12,15 @@ inputs:
     required: true
   branch:
     description: The branch to target"
+    required: false
   changelog:
     description: "Changelog file"
     default: "CHANGELOG.md"
+    required: false
   dry_run:
     description: "If set, do not make a PR"
-    default: false
+    default: "false"
+    required: false
 outputs:
   pr_url:
     description: "The URL of the Changelog Pull Request"
@@ -30,7 +33,7 @@ runs:
       run: |
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
         export RH_REPOSITORY=${{ inputs.target }}
-        if [ ! -z ${{ inputs.branch }}]; then
+        if [ ! -z ${{ inputs.branch }} ]; then
           export RH_BRANCH=${{ inputs.branch }}
         fi
         export RH_VERSION_SPEC=${{ inputs.version_spec }}
