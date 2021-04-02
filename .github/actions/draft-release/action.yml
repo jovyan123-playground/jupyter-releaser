@@ -34,6 +34,9 @@ runs:
     - shell: bash
       id: draft-release
       run: |
+        set -eux
+
+        # Set up env variables
         export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
         export RH_REPOSITORY=${{ inputs.target }}
         if [ ! -z ${{ inputs.branch }} ]; then
@@ -43,4 +46,18 @@ runs:
         export RH_CHANGELOG=${{ inputs.changelog }}
         export RH_POST_VERSION_SPEC=${{ inputs.post_version_spec }}
         export RH_DRY_RUN=${{ inputs.dry_run }}
-        bash .github/scripts/draft-release.sh
+
+        # Draft Release
+        release-helper prep-git
+        release-helper bump-version
+        release-helper check-changelog
+        # Make sure npm comes before python in case it produces
+        # files for the python package
+        release-helper build-npm
+        release-helper check-npm
+        release-helper build-python
+        release-helper check-python
+        release-helper check-manifest
+        release-helper check-links
+        release-helper tag-release
+        release-helper draft-release
