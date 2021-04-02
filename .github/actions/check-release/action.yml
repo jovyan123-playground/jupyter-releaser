@@ -7,6 +7,7 @@ inputs:
   changelog:
     description: "Changelog file"
     default: "CHANGELOG.md"
+    required: false
 runs:
   using: "composite"
   steps:
@@ -20,9 +21,9 @@ runs:
         export RH_POST_VERSION_SPEC=0.1.0.dev0
         export RH_CHANGELOG=${{ inputs.changelog }}
         export RH_DRY_RUN=true
-        if [ ! -z ${GITHUB_BASE_REF} ]; then
-          echo "Using GITHUB_BASE_REF: ${GITHUB_BASE_REF}"
-          export RH_BRANCH=${GITHUB_BASE_REF}
+        if [ ! -z ${GITHUB_HEAD_REF} ]; then
+          echo "Using GITHUB_HEAD_REF: ${GITHUB_HEAD_REF}"
+          export RH_BRANCH=${GITHUB_HEAD_REF}
         else
           # e.g refs/head/foo or refs/tag/bar
           echo "Using GITHUB_REF: ${GITHUB_REF}"
