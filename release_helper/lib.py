@@ -401,6 +401,9 @@ def prep_git(branch, repo, auth, username, url):
 
     util.run(f"git checkout {branch}")
 
+    # Install the package
+    util.run("pip install .")
+
     os.chdir(orig_dir)
 
     return branch
