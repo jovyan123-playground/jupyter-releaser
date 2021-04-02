@@ -43,8 +43,7 @@ def bump_version(version_spec, version_cmd):
 def check_links(ignore_glob, ignore_links, cache_file, links_expire):
     cache_dir = osp.expanduser(cache_file).replace(os.sep, "/")
     os.makedirs(cache_dir, exist_ok=True)
-    cmd = "pytest --check-links --check-links-cache "
-    cmd += f"--pyargs {util.get_name()} "
+    cmd = "pytest --noconftest --check-links --check-links-cache "
     cmd += f"--check-links-cache-expire-after {links_expire} "
     cmd += f"--check-links-cache-name {cache_dir}/check-release-links "
     cmd += " -k .md "
@@ -400,9 +399,6 @@ def prep_git(branch, repo, auth, username, url):
     util.run("git fetch origin --tags")
 
     util.run(f"git checkout {branch}")
-
-    # Install the package with test deps
-    util.run('pip install ".[test]"')
 
     os.chdir(orig_dir)
 

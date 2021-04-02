@@ -109,16 +109,6 @@ def get_version():
         raise ValueError("No version identifier could be found!")
 
 
-def get_name():
-    """Get the current package name"""
-    if SETUP_PY.exists():
-        return run("python setup.py --name")
-    elif PACKAGE_JSON.exists():
-        return json.loads(PACKAGE_JSON.read_text(encoding="utf-8"))["name"]
-    else:  # pragma: no cover
-        raise ValueError("No package name identifier could be found!")
-
-
 def normalize_path(path):
     """Normalize a path to use backslashes"""
     return str(path).replace(os.sep, "/")
