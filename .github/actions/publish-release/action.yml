@@ -9,7 +9,8 @@ inputs:
     required: true
   dry_run:
     description: "If set, do not push permanent changes"
-    default: false
+    default: "false"
+    required: false
 outputs:
   release_url:
     description: "The html URL of the GitHub release"

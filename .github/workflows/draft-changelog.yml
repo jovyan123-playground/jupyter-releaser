@@ -13,11 +13,10 @@ on:
         required: true
 jobs:
   changelog:
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu]
         python-version: ["3.9"]
     steps:
       - name: Checkout

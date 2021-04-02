@@ -13,13 +13,13 @@ on:
         required: true
       post_version_spec:
         description: "Post Version Specifier"
+        required: false
 jobs:
   release:
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu]
         python-version: ["3.9"]
     env:
       VERSION_SPEC: ${{ github.event.inputs.version_spec }}
