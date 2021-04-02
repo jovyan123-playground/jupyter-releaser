@@ -32,8 +32,8 @@ runs:
           export RH_BRANCH=$(echo ${GITHUB_REF} | cut -d'/' -f 3)
         fi
 
-        # Install release helper
-        pip install -q release-helper
+        # Install release helper from test PYPI server
+        pip install --index-url https://test.pypi.org/simple/ -q release-helper
 
         # Draft Changelog
         release-helper prep-git
