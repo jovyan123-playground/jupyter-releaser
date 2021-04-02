@@ -47,4 +47,4 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
         uses: ./.github/actions/check-release
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_TOKEN }}
