@@ -46,6 +46,7 @@ runs:
         release-helper prep-git
         release-helper bump-version
         release-helper check-changelog
+        release-helper check-links
         # Make sure npm comes before python in case it produces
         # files for the python package
         release-helper build-npm
@@ -53,7 +54,6 @@ runs:
         release-helper build-python
         release-helper check-python
         release-helper check-manifest
-        release-helper check-links
         release-helper tag-release
         release-helper draft-release
 
