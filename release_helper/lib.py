@@ -44,7 +44,7 @@ def check_links(ignore_glob, ignore_links, cache_file, links_expire):
     cache_dir = osp.expanduser(cache_file).replace(os.sep, "/")
     os.makedirs(cache_dir, exist_ok=True)
     cmd = "pytest --check-links --check-links-cache "
-    cmd += f"--pyargs {util.get_name()}"
+    cmd += f"--pyargs {util.get_name()} "
     cmd += f"--check-links-cache-expire-after {links_expire} "
     cmd += f"--check-links-cache-name {cache_dir}/check-release-links "
     cmd += " -k .md "
