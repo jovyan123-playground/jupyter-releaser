@@ -408,7 +408,8 @@ def prep_git(branch, repo, auth, username, url):
     util.run(f"git checkout {branch}")
 
     # Install the package with test deps
-    util.run('pip install ".[test]"')
+    if util.SETUP_PY.exists():
+        util.run('pip install ".[test]"')
 
     os.chdir(orig_dir)
 
