@@ -47,8 +47,11 @@ def check_links(ignore_glob, ignore_links, cache_file, links_expire):
     cmd = "pytest --noconftest --check-links --check-links-cache "
     cmd += f"--check-links-cache-expire-after {links_expire} "
     cmd += f"--check-links-cache-name {cache_dir}/check-release-links "
+
+    ignored = []
     for spec in ignore_glob:
         cmd += f" --ignore-glob {spec}"
+        ignored.extend(glob(spec, recursive=True))
 
     for spec in ignore_links:
         cmd += f" --check-links-ignore {spec}"
@@ -58,7 +61,9 @@ def check_links(ignore_glob, ignore_links, cache_file, links_expire):
     # Gather all of the markdown, RST, and ipynb files
     files = []
     for ext in [".md", ".rst", ".ipynb"]:
-        files.extend(glob(f"**/*{ext}", recursive=True))
+        matched = glob(f"**/*{ext}", recursive=True)
+        files.extend(m for m in matched if not m in ignored)
+
     cmd += " " + " ".join(files)
 
     try:
