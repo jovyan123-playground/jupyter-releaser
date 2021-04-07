@@ -6,7 +6,7 @@ from pathlib import Path
 from ghapi.core import GhApi
 from github_activity import generate_activity_md
 
-from release_helper import util
+from jupyter_releaser import util
 
 START_MARKER = "<!-- <START NEW CHANGELOG ENTRY> -->"
 END_MARKER = "<!-- <END NEW CHANGELOG ENTRY> -->"

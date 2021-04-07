@@ -44,10 +44,10 @@ runs:
         export RH_DRY_RUN=${{ inputs.dry_run }}
 
         # Draft Changelog
-        pip install -q release-helper
+        pip install -q jupyter-releaser
 
-        release-helper prep-git
-        release-helper bump-version
-        release-helper build-changelog
-        release-helper draft-changelog
+        jupyter-releaser prep-git
+        jupyter-releaser bump-version
+        jupyter-releaser build-changelog
+        jupyter-releaser draft-changelog
         cat ${RH_CHANGELOG}

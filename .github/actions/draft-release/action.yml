@@ -48,16 +48,16 @@ runs:
         export RH_DRY_RUN=${{ inputs.dry_run }}
 
         # Draft Release
-        release-helper prep-git
-        release-helper bump-version
-        release-helper check-changelog
-        #release-helper check-links
+        jupyter-releaser prep-git
+        jupyter-releaser bump-version
+        jupyter-releaser check-changelog
+        #jupyter-releaser check-links
         # Make sure npm comes before python in case it produces
         # files for the python package
-        release-helper build-npm
-        release-helper check-npm
-        release-helper build-python
-        release-helper check-python
-        release-helper check-manifest
-        release-helper tag-release
-        release-helper draft-release
+        jupyter-releaser build-npm
+        jupyter-releaser check-npm
+        jupyter-releaser build-python
+        jupyter-releaser check-python
+        jupyter-releaser check-manifest
+        jupyter-releaser tag-release
+        jupyter-releaser draft-release

@@ -10,11 +10,11 @@ from urllib.request import OpenerDirector
 from click.testing import CliRunner
 from pytest import fixture
 
-from release_helper import changelog
-from release_helper import cli
-from release_helper import util
-from release_helper.tests import util as testutil
-from release_helper.util import run
+from jupyter_releaser import changelog
+from jupyter_releaser import cli
+from jupyter_releaser import util
+from jupyter_releaser.tests import util as testutil
+from jupyter_releaser.util import run
 
 
 @fixture(autouse=True)
@@ -185,4 +185,4 @@ def build_mock(mocker):
             return ""
         return orig_run(cmd, **kwargs)
 
-    mock_run = mocker.patch("release_helper.util.run", wraps=wrapped)
+    mock_run = mocker.patch("jupyter_releaser.util.run", wraps=wrapped)

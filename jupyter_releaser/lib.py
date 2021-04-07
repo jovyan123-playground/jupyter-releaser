@@ -15,10 +15,10 @@ import requests
 from ghapi.core import GhApi
 from pep440 import is_canonical
 
-from release_helper import changelog
-from release_helper import npm
-from release_helper import python
-from release_helper import util
+from jupyter_releaser import changelog
+from jupyter_releaser import npm
+from jupyter_releaser import python
+from jupyter_releaser import util
 
 
 def bump_version(version_spec, version_cmd):
@@ -41,18 +41,25 @@ def bump_version(version_spec, version_cmd):
 
 
 def check_links(ignore_glob, ignore_links, cache_file, links_expire):
+    """Check URLs for HTML-containing files."""
     cache_dir = osp.expanduser(cache_file).replace(os.sep, "/")
     os.makedirs(cache_dir, exist_ok=True)
     cmd = "pytest --noconftest --check-links --check-links-cache "
     cmd += f"--check-links-cache-expire-after {links_expire} "
     cmd += f"--check-links-cache-name {cache_dir}/check-release-links "
-    cmd += " -k .md "
-
     for spec in ignore_glob:
         cmd += f" --ignore-glob {spec}"
 
     for spec in ignore_links:
         cmd += f" --check-links-ignore {spec}"
+
+    cmd += " --ignore node_modules"
+
+    # Gather all of the markdown, RST, and ipynb files
+    files = []
+    for ext in [".md", ".rst", ".ipynb"]:
+        files.extend(glob(f"**/*{ext}", recursive=True))
+    cmd += " " + " ".join(files)
 
     try:
         util.run(cmd)

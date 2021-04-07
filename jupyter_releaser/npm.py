@@ -9,7 +9,7 @@ from glob import glob
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from release_helper import util
+from jupyter_releaser import util
 
 PACKAGE_JSON = util.PACKAGE_JSON
 
