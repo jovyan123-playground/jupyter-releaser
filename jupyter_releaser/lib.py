@@ -191,7 +191,7 @@ def draft_release(
             continue
         created = release.created_at
         d_created = datetime.strptime(created, r"%Y-%m-%dT%H:%M:%SZ")
-        delta = d_created - datetime.utcnow()
+        delta = datetime.utcnow() - d_created
         if delta.days > 0:
             gh.repos.delete_release(release.id)
 
