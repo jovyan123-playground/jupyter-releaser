@@ -186,14 +186,15 @@ def draft_release(
     gh = GhApi(owner=owner, repo=repo_name, token=auth)
 
     # Remove draft releases over a day old
-    for release in gh.repos.list_releases():
-        if release.draft == "false":
-            continue
-        created = release.created_at
-        d_created = datetime.strptime(created, r"%Y-%m-%dT%H:%M:%SZ")
-        delta = datetime.utcnow() - d_created
-        if delta.days > 0:
-            gh.repos.delete_release(release.id)
+    if bool(os.environ.get("GITHUB_ACTIONS")):
+        for release in gh.repos.list_releases():
+            if release.draft == "false":
+                continue
+            created = release.created_at
+            d_created = datetime.strptime(created, r"%Y-%m-%dT%H:%M:%SZ")
+            delta = datetime.utcnow() - d_created
+            if delta.days > 0:
+                gh.repos.delete_release(release.id)
 
     # Create a draft release
     prerelease = util.is_prerelease(version)
