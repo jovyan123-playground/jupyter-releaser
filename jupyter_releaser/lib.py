@@ -93,9 +93,14 @@ def draft_changelog(version_spec, branch, repo, auth, dry_run):
     if util.PACKAGE_JSON.exists():
         body += npm.get_package_versions(version)
 
-    body += '\n\nAfter merging this PR run the "Draft Release" Workflow'
-    body += f"\non Branch: {branch}"
-    body += f"\nwith Version Spec: {version_spec}"
+    body += '\n\nAfter merging this PR run the "Draft Release" Workflow with the following inputs'
+    body += f"""
+| Input  | Value |
+| ------------- | ------------- |
+| Target | {repo}  |
+| Branch  | {branch}  |
+| Version Spec | {version_spec} |
+"""
 
     make_changelog_pr(auth, branch, repo, title, commit_message, body, dry_run=dry_run)
 
