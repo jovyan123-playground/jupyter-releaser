@@ -369,6 +369,8 @@ def publish_release(
 
 def prep_git(branch, repo, auth, username, url):
     """Set up git"""
+    repo = repo or util.get_repo()
+
     is_action = bool(os.environ.get("GITHUB_ACTIONS"))
     if is_action:
         # Use email address for the GitHub Actions bot
