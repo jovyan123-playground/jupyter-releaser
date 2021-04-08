@@ -333,6 +333,8 @@ def publish_release(
     auth, dist_dir, npm_token, npm_cmd, twine_cmd, dry_run, release_url
 ):
     """Publish release asset(s) and finalize GitHub release"""
+    util.log(f"Publishing {release_url} in with dry run: {dry_run}")
+
     match = parse_release_url(release_url)
 
     if npm_token:
