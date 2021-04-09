@@ -188,7 +188,7 @@ def draft_release(
     # Remove draft releases over a day old
     if bool(os.environ.get("GITHUB_ACTIONS")):
         for release in gh.repos.list_releases():
-            if release.draft == "false":
+            if str(release.draft).lower() == "false":
                 continue
             created = release.created_at
             d_created = datetime.strptime(created, r"%Y-%m-%dT%H:%M:%SZ")
