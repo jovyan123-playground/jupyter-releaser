@@ -85,4 +85,5 @@ runs:
         export release_url=${{ steps.publish-release.outputs.release_url }}
 
         # Delete Draft Release
+        sleep 3
         jupyter-releaser delete-release ${release_url}
