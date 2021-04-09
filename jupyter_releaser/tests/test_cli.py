@@ -39,14 +39,14 @@ from jupyter_releaser.util import run
 
 def test_prep_git_simple(py_package, runner):
     """Standard local run with no env variables."""
-    result = runner(["prep-git", "--git-url", py_package], env=dict(GITHUB_ACTION=""))
+    result = runner(["prep-git", "--git-url", py_package], env=dict(GITHUB_ACTIONS=""))
     os.chdir(util.CHECKOUT_NAME)
     assert util.get_branch() == "bar", util.get_branch()
 
 
 def test_prep_git_pr(py_package, runner):
     """With RH_BRANCH"""
-    env = dict(RH_BRANCH="foo", GITHUB_ACTION="")
+    env = dict(RH_BRANCH="foo", GITHUB_ACTIONS="")
     result = runner(["prep-git", "--git-url", py_package], env=env)
     os.chdir(util.CHECKOUT_NAME)
     assert util.get_branch() == "foo", util.get_branch()
@@ -94,14 +94,16 @@ def test_bump_version(npm_package, runner):
 def test_bump_version_bad_version(py_package, runner):
     runner(["prep-git", "--git-url", py_package])
     with pytest.raises(CalledProcessError):
-        runner(["bump-version", "--version-spec", "a1.0.1"], env=dict(GITHUB_ACTION=""))
+        runner(
+            ["bump-version", "--version-spec", "a1.0.1"], env=dict(GITHUB_ACTIONS="")
+        )
 
 
 def test_bump_version_tag_exists(py_package, runner):
     runner(["prep-git", "--git-url", py_package])
     run("git tag v1.0.1", cwd=util.CHECKOUT_NAME)
     with pytest.raises(ValueError):
-        runner(["bump-version", "--version-spec", "1.0.1"], env=dict(GITHUB_ACTION=""))
+        runner(["bump-version", "--version-spec", "1.0.1"], env=dict(GITHUB_ACTIONS=""))
 
 
 def test_list_envvars(runner):
@@ -190,7 +192,7 @@ def test_build_changelog_backport(py_package, mocker, runner, open_mock):
     changelog_file = "CHANGELOG.md"
     changelog_path = Path(util.CHECKOUT_NAME) / changelog_file
 
-    data = dict(title="foo", url="bar", user=dict(login="snuffy", html_url="baz"))
+    data = dict(title="foo", html_url="bar", user=dict(login="snuffy", html_url="baz"))
     open_mock.return_value = MockHTTPResponse(data)
 
     runner(["prep-git", "--git-url", py_package])
@@ -314,13 +316,6 @@ def test_tag_release(py_package, runner, build_mock, git_prep):
 
 
 def test_draft_release_dry_run(py_dist, mocker, runner, open_mock, git_prep):
-    open_mock.side_effect = [
-        MockHTTPResponse([REPO_DATA]),
-        MockHTTPResponse(),
-        MockHTTPResponse(),
-        MockHTTPResponse(),
-    ]
-
     # Publish the release - dry run
     runner(["draft-release", "--dry-run", "--post-version-spec", "1.1.0.dev0"])
     assert len(open_mock.call_args) == 2
@@ -338,6 +333,7 @@ def test_draft_release_final(npm_dist, runner, mocker, open_mock, git_prep):
     ]
 
     # Publish the release
+    os.environ["GITHUB_ACTIONS"] = "true"
     runner(["draft-release"])
     assert len(open_mock.call_args) == 2
 
