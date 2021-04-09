@@ -22,12 +22,12 @@ PYPROJECT = Path("pyproject.toml")
 SETUP_PY = Path("setup.py")
 SETUP_CFG = Path("setup.cfg")
 PACKAGE_JSON = Path("package.json")
-RELEASE_HELPER_CONFIG = Path(".release-helper.toml")
+jupyter_releaser_CONFIG = Path(".jupyter-releaser.toml")
 
 BUF_SIZE = 65536
 TBUMP_CMD = "tbump --non-interactive --only-patch"
 
-CHECKOUT_NAME = ".release_helper_checkout"
+CHECKOUT_NAME = ".jupyter_releaser_checkout"
 
 RELEASE_HTML_PATTERN = (
     "https://github.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/releases/tag/(?P<tag>.*)"
@@ -205,19 +205,19 @@ def actions_output(name, value):
 
 
 def read_config():
-    """Read the release-helper config data"""
-    if RELEASE_HELPER_CONFIG.exists():
-        return toml.loads(RELEASE_HELPER_CONFIG.read_text(encoding="utf-8"))
+    """Read the jupyter-releaser config data"""
+    if jupyter_releaser_CONFIG.exists():
+        return toml.loads(jupyter_releaser_CONFIG.read_text(encoding="utf-8"))
 
     if PYPROJECT.exists():
         data = toml.loads(PYPROJECT.read_text(encoding="utf-8"))
-        config = data.get("tool", {}).get("release-helper")
+        config = data.get("tool", {}).get("jupyter-releaser")
         if config:
             return config
 
     if PACKAGE_JSON.exists():
         data = json.loads(PACKAGE_JSON.read_text(encoding="utf-8"))
-        if "release-helper" in data:
-            return data["release-helper"]
+        if "jupyter-releaser" in data:
+            return data["jupyter-releaser"]
 
     return {}

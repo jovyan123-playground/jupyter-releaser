@@ -1,4 +1,4 @@
-# Release Helper
+# Jupyter Releaser
 
 ## Motivation
 
@@ -72,14 +72,14 @@ To install the latest release locally, make sure you have
 [pip installed](https://pip.readthedocs.io/en/stable/installing/) and run:
 
 ```bash
-    pip install git+https://github.com/jupyter-server/release-helper
+    pip install git+https://github.com/jupyter-server/jupyter-releaser
 ```
 
 ## Library Usage
 
 ```bash
-    release-helper --help
-    release-helper build-python --help
+    jupyter-releaser --help
+    jupyter-releaser build-python --help
 ```
 
 ## Configuration
@@ -87,7 +87,7 @@ To install the latest release locally, make sure you have
 All of the commands support CLI and Environment Variable Overrides.
 The environment variables are defined by the `envvar` parameters in the
 command options in `cli.py`. The environment variables unique to
-`release-helper` are prefixed with `RH_`.
+`jupyter-releaser` are prefixed with `RH_`.
 
 The default values can also be overriden using a config file.
 Options can be overridden using the `options` section.
@@ -96,15 +96,15 @@ commands in a `hooks` section. Hooks can be a shell command to run or
 a list of shell commands, and are specified to run `before-` or `after-`
 a command.
 
-This is where `release-helper` looks for configuration (first one found is used):
+This is where `jupyter-releaser` looks for configuration (first one found is used):
 
 ```code
-    .release-helper.toml
-    pyproject.toml (in the tools.release-helper section )
-    package.json (in the release-helper property)
+    .jupyter-releaser.toml
+    pyproject.toml (in the tools.jupyter-releaser section )
+    package.json (in the jupyter-releaser property)
 ```
 
-Example `.release-helper.toml`:
+Example `.jupyter-releaser.toml`:
 
 ```toml
 [options]
@@ -117,10 +117,10 @@ before-tag-version = "npm run pre:tag:script"
 Example `pyproject.toml` section:
 
 ```toml
-[tools.release-helper.options]
+[tools.jupyter-releaser.options]
 dist_dir = mydist
 
-[tools.release-helper.hooks]
+[tools.jupyter-releaser.hooks]
 after-build-python = ["python scripts/cleanup.py", "python scripts/send_email.py"]
 ```
 
@@ -129,7 +129,7 @@ Example `package.json`:
 ```json
 {
   "name": "my-package",
-  "release-helper": {
+  "jupyter-releaser": {
     "options": {
       "dist_dir": "mydist"
     },
@@ -153,7 +153,7 @@ Example `package.json`:
   - See documentation on `setup.cfg` [metadata](https://setuptools.readthedocs.io/en/latest/userguide/declarative_config.html)
 
 - [ ] Add workflows for `check_release`, `draft_changelog`, and `draft_release` in the source repository - see the workflows in this [repo](./.github/workflows)
-- [ ] Change the action calls from the local `./.github/actions/<foo>` to `jupyter-server/release-helper.github/actions/<foo>/@<version_or_branch>`
+- [ ] Change the action calls from the local `./.github/actions/<foo>` to `jupyter-server/jupyter-releaser.github/actions/<foo>/@<version_or_branch>`
 - [ ] Try out the `Draft Changelog` and `Draft Release` process on a fork first so you don't accidentally push tags and GitHub releases to the source repository.
 - [ ] Optionally add workflow for `cancel` to cancel previous workflow runs when a new one is started - see [cancel.yml](./.github/workflows/cancel.yml)
 - [ ] Make a new branch or repository on your personal fork that has a `publish-release` [workflow](./.github/workflows/publish-release.yml)

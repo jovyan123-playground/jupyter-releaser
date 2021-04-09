@@ -32,30 +32,30 @@ runs:
           export RH_BRANCH=$(echo ${GITHUB_REF} | cut -d'/' -f 3)
         fi
 
-        # Install release helper from test PYPI server
-        pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple -q release-helper==0.9.0
+        # Install Jupyter Releaser from test PYPI server
+        pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple -q jupyter-releaser==0.10.0.dev0
 
         # Draft Changelog
-        release-helper prep-git
-        release-helper bump-version
-        release-helper build-changelog
-        release-helper draft-changelog
+        jupyter-releaser prep-git
+        jupyter-releaser bump-version
+        jupyter-releaser build-changelog
+        jupyter-releaser draft-changelog
         cat ${RH_CHANGELOG}
 
         # Draft Release
-        release-helper prep-git
-        release-helper bump-version
-        release-helper check-changelog
-        #release-helper check-links
+        jupyter-releaser prep-git
+        jupyter-releaser bump-version
+        jupyter-releaser check-changelog
+        #jupyter-releaser check-links
         # Make sure npm comes before python in case it produces
         # files for the python package
-        release-helper build-npm
-        release-helper check-npm
-        release-helper build-python
-        release-helper check-python
-        release-helper check-manifest
-        release-helper tag-release
-        release-helper draft-release
+        jupyter-releaser build-npm
+        jupyter-releaser check-npm
+        jupyter-releaser build-python
+        jupyter-releaser check-python
+        jupyter-releaser check-manifest
+        jupyter-releaser tag-release
+        jupyter-releaser draft-release
 
     - shell: bash
       id: publish-release
@@ -73,9 +73,17 @@ runs:
         export RH_NPM_COMMAND=${NPM_COMMAND:-"npm publish --dry-run"}
 
         # Publish Release
-        release-helper extract-release ${release_url}
-        release-helper forwardport-changelog ${release_url}
-        release-helper publish-release ${release_url}
+        jupyter-releaser extract-release ${release_url}
+        jupyter-releaser forwardport-changelog ${release_url}
+        jupyter-releaser publish-release ${release_url}
+
+    - shell: bash
+      run: |
+        set -eux
+
+        # Set up env variables
+        export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
+        export release_url=${{ steps.publish-release.outputs.release_url }}
 
         # Delete Draft Release
-        release-helper delete-release ${release_url}
+        jupyter-releaser delete-release ${release_url}

@@ -7,10 +7,10 @@ from pathlib import Path
 
 import toml
 
-from release_helper import changelog
-from release_helper import util
-from release_helper.tests import util as testutil
-from release_helper.util import run
+from jupyter_releaser import changelog
+from jupyter_releaser import util
+from jupyter_releaser.tests import util as testutil
+from jupyter_releaser.util import run
 
 
 def test_get_branch(git_repo):
@@ -49,7 +49,7 @@ def test_format_pr_entry(mocker, open_mock):
 def test_get_changelog_version_entry(py_package, mocker):
     version = util.get_version()
 
-    mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
+    mocked_gen = mocker.patch("jupyter_releaser.changelog.generate_activity_md")
     mocked_gen.return_value = testutil.CHANGELOG_ENTRY
     resp = changelog.get_version_entry("foo", "bar/baz", version)
     mocked_gen.assert_called_with(
@@ -111,7 +111,7 @@ def test_bump_version(py_package):
 
 def test_get_config_python(py_package):
     text = util.PYPROJECT.read_text(encoding="utf-8")
-    text = testutil.TOML_CONFIG.replace("\n[", "\n[tool.release-helper.")
+    text = testutil.TOML_CONFIG.replace("\n[", "\n[tool.jupyter-releaser.")
     util.PYPROJECT.write_text(text, encoding="utf-8")
     config = util.read_config()
     assert config["hooks"]["before-build-python"] == "python setup.py --version"
@@ -121,7 +121,7 @@ def test_get_config_python(py_package):
 def test_get_config_npm(npm_package):
     package_json = util.PACKAGE_JSON
     data = json.loads(package_json.read_text(encoding="utf-8"))
-    data["release-helper"] = toml.loads(testutil.TOML_CONFIG)
+    data["jupyter-releaser"] = toml.loads(testutil.TOML_CONFIG)
     package_json.write_text(json.dumps(data))
     config = util.read_config()
     assert config["hooks"]["after-build-python"] == [
@@ -132,7 +132,7 @@ def test_get_config_npm(npm_package):
 
 
 def test_get_config_file(git_repo):
-    config = util.RELEASE_HELPER_CONFIG
+    config = util.jupyter_releaser_CONFIG
     config.write_text(testutil.TOML_CONFIG, encoding="utf-8")
     config = util.read_config()
     assert config["hooks"]["before-build-python"] == "python setup.py --version"

@@ -32,7 +32,7 @@ runs:
         export release_url=${{ inputs.release_url }}
 
         # Publish release
-        pip install -q release-helper
+        pip install -q jupyter-releaser
 
         export TWINE_USERNAME=${TWINE_USERNAME:-"__token__"}
 
@@ -42,6 +42,6 @@ runs:
             export RH_NPM_COMMAND=${NPM_COMMAND:-"npm publish --dry-run"}
         fi
 
-        release-helper extract-release ${release_url}
-        release-helper forwardport-changelog ${release_url}
-        release-helper publish-release ${release_url}
+        jupyter-releaser extract-release ${release_url}
+        jupyter-releaser forwardport-changelog ${release_url}
+        jupyter-releaser publish-release ${release_url}

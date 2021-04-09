@@ -1,4 +1,4 @@
-# Contributing to Release Helper
+# Contributing to Jupyter Releaser
 
 ## General Jupyter contributor guidelines
 
@@ -18,8 +18,8 @@ Use the following steps:
 
 ```bash
 python -m pip install --upgrade setuptools pip
-git clone https://github.com/jupyter-server/release-helper
-cd release-helper
+git clone https://github.com/jupyter-server/jupyter-releaser
+cd jupyter-releaser
 pip install -e .[test]
 ```
 
@@ -38,11 +38,11 @@ You can also invoke the pre-commit hook manually at any time with
 pre-commit run
 ```
 
-Once you have done this, you can launch the master branch of release helper
+Once you have done this, you can launch the master branch of Jupyter Releaser
 from any directory in your system with::
 
 ```bash
-release-helper --help
+jupyter-releaser --help
 ```
 
 ## Running Tests

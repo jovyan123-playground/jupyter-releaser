@@ -15,10 +15,10 @@ import requests
 from ghapi.core import GhApi
 from pep440 import is_canonical
 
-from release_helper import changelog
-from release_helper import npm
-from release_helper import python
-from release_helper import util
+from jupyter_releaser import changelog
+from jupyter_releaser import npm
+from jupyter_releaser import python
+from jupyter_releaser import util
 
 
 def bump_version(version_spec, version_cmd):
@@ -41,18 +41,30 @@ def bump_version(version_spec, version_cmd):
 
 
 def check_links(ignore_glob, ignore_links, cache_file, links_expire):
+    """Check URLs for HTML-containing files."""
     cache_dir = osp.expanduser(cache_file).replace(os.sep, "/")
     os.makedirs(cache_dir, exist_ok=True)
     cmd = "pytest --noconftest --check-links --check-links-cache "
     cmd += f"--check-links-cache-expire-after {links_expire} "
     cmd += f"--check-links-cache-name {cache_dir}/check-release-links "
-    cmd += " -k .md "
 
+    ignored = []
     for spec in ignore_glob:
         cmd += f" --ignore-glob {spec}"
+        ignored.extend(glob(spec, recursive=True))
 
     for spec in ignore_links:
         cmd += f" --check-links-ignore {spec}"
+
+    cmd += " --ignore node_modules"
+
+    # Gather all of the markdown, RST, and ipynb files
+    files = []
+    for ext in [".md", ".rst", ".ipynb"]:
+        matched = glob(f"**/*{ext}", recursive=True)
+        files.extend(m for m in matched if not m in ignored)
+
+    cmd += " " + " ".join(files)
 
     try:
         util.run(cmd)
@@ -81,9 +93,14 @@ def draft_changelog(version_spec, branch, repo, auth, dry_run):
     if util.PACKAGE_JSON.exists():
         body += npm.get_package_versions(version)
 
-    body += '\n\nAfter merging this PR run the "Draft Release" Workflow'
-    body += f"\non Branch: {branch}"
-    body += f"\nwith Version Spec: {version_spec}"
+    body += '\n\nAfter merging this PR run the "Draft Release" Workflow with the following inputs'
+    body += f"""
+| Input  | Value |
+| ------------- | ------------- |
+| Target | {repo}  |
+| Branch  | {branch}  |
+| Version Spec | {version_spec} |
+"""
 
     make_changelog_pr(auth, branch, repo, title, commit_message, body, dry_run=dry_run)
 
@@ -169,14 +186,15 @@ def draft_release(
     gh = GhApi(owner=owner, repo=repo_name, token=auth)
 
     # Remove draft releases over a day old
-    for release in gh.repos.list_releases():
-        if release.draft == "false":
-            continue
-        created = release.created_at
-        d_created = datetime.strptime(created, r"%Y-%m-%dT%H:%M:%SZ")
-        delta = d_created - datetime.utcnow()
-        if delta.days > 0:
-            gh.repos.delete_release(release.id)
+    if bool(os.environ.get("GITHUB_ACTIONS")):
+        for release in gh.repos.list_releases():
+            if str(release.draft).lower() == "false":
+                continue
+            created = release.created_at
+            d_created = datetime.strptime(created, r"%Y-%m-%dT%H:%M:%SZ")
+            delta = datetime.utcnow() - d_created
+            if delta.days > 0:
+                gh.repos.delete_release(release.id)
 
     # Create a draft release
     prerelease = util.is_prerelease(version)
@@ -316,6 +334,8 @@ def publish_release(
     auth, dist_dir, npm_token, npm_cmd, twine_cmd, dry_run, release_url
 ):
     """Publish release asset(s) and finalize GitHub release"""
+    util.log(f"Publishing {release_url} in with dry run: {dry_run}")
+
     match = parse_release_url(release_url)
 
     if npm_token:
@@ -357,6 +377,8 @@ def publish_release(
 
 def prep_git(branch, repo, auth, username, url):
     """Set up git"""
+    repo = repo or util.get_repo()
+
     is_action = bool(os.environ.get("GITHUB_ACTIONS"))
     if is_action:
         # Use email address for the GitHub Actions bot
@@ -401,7 +423,8 @@ def prep_git(branch, repo, auth, username, url):
     util.run(f"git checkout {branch}")
 
     # Install the package with test deps
-    util.run('pip install ".[test]"')
+    if util.SETUP_PY.exists():
+        util.run('pip install ".[test]"')
 
     os.chdir(orig_dir)
 

@@ -17,4 +17,4 @@ message_template = "Bump to {new_version}"
 tag_template = "v{new_version}"
 
 [[tool.tbump.file]]
-src = "release_helper/__init__.py"
+src = "jupyter_releaser/__init__.py"

@@ -7,20 +7,20 @@ from pathlib import Path
 
 import click
 
-from release_helper import changelog
-from release_helper import lib
-from release_helper import npm
-from release_helper import python
-from release_helper import util
+from jupyter_releaser import changelog
+from jupyter_releaser import lib
+from jupyter_releaser import npm
+from jupyter_releaser import python
+from jupyter_releaser import util
 
 
 class ReleaseHelperGroup(click.Group):
-    """Click group tailored to release-helper"""
+    """Click group tailored to jupyter-releaser"""
 
     _needs_checkout_dir = dict()
 
     def invoke(self, ctx):
-        """Handle release-helper config while invoking a command"""
+        """Handle jupyter-releaser config while invoking a command"""
         # Get the command name and make sure it is valid
         cmd_name = ctx.protected_args[0]
         if not cmd_name in self.commands:
@@ -101,7 +101,7 @@ class ReleaseHelperGroup(click.Group):
 
 @click.group(cls=ReleaseHelperGroup)
 def main():
-    """Release helper scripts"""
+    """Jupyter Releaser scripts"""
     pass
 
 
@@ -349,7 +349,7 @@ def check_manifest():
 )
 @use_checkout_dir()
 def check_links(ignore_glob, ignore_links, cache_file, links_expire):
-    """Check Markdown file links"""
+    """Check URLs for HTML-containing files."""
     lib.check_links(ignore_glob, ignore_links, cache_file, links_expire)
 
 

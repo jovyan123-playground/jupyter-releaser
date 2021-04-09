@@ -16,37 +16,37 @@ from unittest.mock import PropertyMock
 import pytest
 from pytest import fixture
 
-from release_helper import changelog
-from release_helper import cli
-from release_helper import npm
-from release_helper import python
-from release_helper import util
-from release_helper.tests.util import CHANGELOG_ENTRY
-from release_helper.tests.util import create_npm_package
-from release_helper.tests.util import create_python_package
-from release_helper.tests.util import HTML_URL
-from release_helper.tests.util import mock_changelog_entry
-from release_helper.tests.util import MockHTTPResponse
-from release_helper.tests.util import MockRequestResponse
-from release_helper.tests.util import PR_ENTRY
-from release_helper.tests.util import REPO_DATA
-from release_helper.tests.util import TOML_CONFIG
-from release_helper.tests.util import VERSION_SPEC
-from release_helper.util import bump_version
-from release_helper.util import normalize_path
-from release_helper.util import run
+from jupyter_releaser import changelog
+from jupyter_releaser import cli
+from jupyter_releaser import npm
+from jupyter_releaser import python
+from jupyter_releaser import util
+from jupyter_releaser.tests.util import CHANGELOG_ENTRY
+from jupyter_releaser.tests.util import create_npm_package
+from jupyter_releaser.tests.util import create_python_package
+from jupyter_releaser.tests.util import HTML_URL
+from jupyter_releaser.tests.util import mock_changelog_entry
+from jupyter_releaser.tests.util import MockHTTPResponse
+from jupyter_releaser.tests.util import MockRequestResponse
+from jupyter_releaser.tests.util import PR_ENTRY
+from jupyter_releaser.tests.util import REPO_DATA
+from jupyter_releaser.tests.util import TOML_CONFIG
+from jupyter_releaser.tests.util import VERSION_SPEC
+from jupyter_releaser.util import bump_version
+from jupyter_releaser.util import normalize_path
+from jupyter_releaser.util import run
 
 
 def test_prep_git_simple(py_package, runner):
     """Standard local run with no env variables."""
-    result = runner(["prep-git", "--git-url", py_package], env=dict(GITHUB_ACTION=""))
+    result = runner(["prep-git", "--git-url", py_package], env=dict(GITHUB_ACTIONS=""))
     os.chdir(util.CHECKOUT_NAME)
     assert util.get_branch() == "bar", util.get_branch()
 
 
 def test_prep_git_pr(py_package, runner):
     """With RH_BRANCH"""
-    env = dict(RH_BRANCH="foo", GITHUB_ACTION="")
+    env = dict(RH_BRANCH="foo", GITHUB_ACTIONS="")
     result = runner(["prep-git", "--git-url", py_package], env=env)
     os.chdir(util.CHECKOUT_NAME)
     assert util.get_branch() == "foo", util.get_branch()
@@ -64,7 +64,7 @@ def test_prep_git_full(py_package, tmp_path, mocker, runner):
     )
 
     # Fake out the runner
-    mock_run = mocker.patch("release_helper.util.run")
+    mock_run = mocker.patch("jupyter_releaser.util.run")
     os.mkdir(util.CHECKOUT_NAME)
 
     runner(["prep-git"], env=env)
@@ -74,7 +74,7 @@ def test_prep_git_full(py_package, tmp_path, mocker, runner):
                 'git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"'
             ),
             call('git config --global user.name "GitHub Action"'),
-            call("git init .release_helper_checkout"),
+            call("git init .jupyter_releaser_checkout"),
             call("git remote add origin https://snuffy:abc123@github.com/baz/bar.git"),
             call("git fetch origin foo"),
             call("git fetch origin --tags"),
@@ -94,14 +94,16 @@ def test_bump_version(npm_package, runner):
 def test_bump_version_bad_version(py_package, runner):
     runner(["prep-git", "--git-url", py_package])
     with pytest.raises(CalledProcessError):
-        runner(["bump-version", "--version-spec", "a1.0.1"], env=dict(GITHUB_ACTION=""))
+        runner(
+            ["bump-version", "--version-spec", "a1.0.1"], env=dict(GITHUB_ACTIONS="")
+        )
 
 
 def test_bump_version_tag_exists(py_package, runner):
     runner(["prep-git", "--git-url", py_package])
     run("git tag v1.0.1", cwd=util.CHECKOUT_NAME)
     with pytest.raises(ValueError):
-        runner(["bump-version", "--version-spec", "1.0.1"], env=dict(GITHUB_ACTION=""))
+        runner(["bump-version", "--version-spec", "1.0.1"], env=dict(GITHUB_ACTIONS=""))
 
 
 def test_list_envvars(runner):
@@ -139,7 +141,7 @@ def test_build_changelog(py_package, mocker, runner):
     runner(["prep-git", "--git-url", py_package])
     runner(["bump-version", "--version-spec", VERSION_SPEC])
 
-    mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
+    mocked_gen = mocker.patch("jupyter_releaser.changelog.generate_activity_md")
     mocked_gen.return_value = CHANGELOG_ENTRY
     runner(["build-changelog", "--changelog-path", changelog_path])
 
@@ -162,7 +164,7 @@ def test_build_changelog_existing(py_package, mocker, runner):
     runner(["prep-git", "--git-url", py_package])
     runner(["bump-version", "--version-spec", VERSION_SPEC])
 
-    mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
+    mocked_gen = mocker.patch("jupyter_releaser.changelog.generate_activity_md")
     mocked_gen.return_value = CHANGELOG_ENTRY
     runner(["build-changelog", "--changelog-path", changelog_file])
 
@@ -190,7 +192,7 @@ def test_build_changelog_backport(py_package, mocker, runner, open_mock):
     changelog_file = "CHANGELOG.md"
     changelog_path = Path(util.CHECKOUT_NAME) / changelog_file
 
-    data = dict(title="foo", url="bar", user=dict(login="snuffy", html_url="baz"))
+    data = dict(title="foo", html_url="bar", user=dict(login="snuffy", html_url="baz"))
     open_mock.return_value = MockHTTPResponse(data)
 
     runner(["prep-git", "--git-url", py_package])
@@ -201,7 +203,7 @@ def test_build_changelog_backport(py_package, mocker, runner, open_mock):
         "Support git references etc.", "Backport PR #50 (original title"
     )
 
-    mocked_gen = mocker.patch("release_helper.changelog.generate_activity_md")
+    mocked_gen = mocker.patch("jupyter_releaser.changelog.generate_activity_md")
     mocked_gen.return_value = entry
     runner(["build-changelog", "--changelog-path", changelog_file])
     text = changelog_path.read_text(encoding="utf-8")
@@ -314,13 +316,6 @@ def test_tag_release(py_package, runner, build_mock, git_prep):
 
 
 def test_draft_release_dry_run(py_dist, mocker, runner, open_mock, git_prep):
-    open_mock.side_effect = [
-        MockHTTPResponse([REPO_DATA]),
-        MockHTTPResponse(),
-        MockHTTPResponse(),
-        MockHTTPResponse(),
-    ]
-
     # Publish the release - dry run
     runner(["draft-release", "--dry-run", "--post-version-spec", "1.1.0.dev0"])
     assert len(open_mock.call_args) == 2
@@ -338,6 +333,7 @@ def test_draft_release_final(npm_dist, runner, mocker, open_mock, git_prep):
     ]
 
     # Publish the release
+    os.environ["GITHUB_ACTIONS"] = "true"
     runner(["draft-release"])
     assert len(open_mock.call_args) == 2
 
@@ -470,7 +466,7 @@ def test_publish_release_py(py_dist, runner, mocker, open_mock):
             return ""
         return orig_run(cmd, **kwargs)
 
-    mock_run = mocker.patch("release_helper.util.run", wraps=wrapped)
+    mock_run = mocker.patch("jupyter_releaser.util.run", wraps=wrapped)
 
     dist_dir = py_dist / util.CHECKOUT_NAME / "dist"
     runner(["publish-release", HTML_URL, "--dist-dir", dist_dir])
@@ -497,7 +493,7 @@ def test_publish_release_npm(npm_dist, runner, mocker, open_mock):
 
 
 def test_config_file(py_package, runner, mocker, git_prep):
-    config = Path(util.CHECKOUT_NAME) / util.RELEASE_HELPER_CONFIG
+    config = Path(util.CHECKOUT_NAME) / util.jupyter_releaser_CONFIG
     config.write_text(TOML_CONFIG, encoding="utf-8")
 
     orig_run = util.run
@@ -514,7 +510,7 @@ def test_config_file(py_package, runner, mocker, git_prep):
             return ""
         return orig_run(cmd, **kwargs)
 
-    mock_run = mocker.patch("release_helper.util.run", wraps=wrapped)
+    mock_run = mocker.patch("jupyter_releaser.util.run", wraps=wrapped)
 
     runner(["build-python"])
     assert hooked == 3, hooked
@@ -522,7 +518,7 @@ def test_config_file(py_package, runner, mocker, git_prep):
 
 
 def test_config_file_env_override(py_package, runner, mocker, git_prep):
-    config = Path(util.CHECKOUT_NAME) / util.RELEASE_HELPER_CONFIG
+    config = Path(util.CHECKOUT_NAME) / util.jupyter_releaser_CONFIG
     config.write_text(TOML_CONFIG, encoding="utf-8")
 
     orig_run = util.run
@@ -539,7 +535,7 @@ def test_config_file_env_override(py_package, runner, mocker, git_prep):
             return ""
         return orig_run(cmd, **kwargs)
 
-    mock_run = mocker.patch("release_helper.util.run", wraps=wrapped)
+    mock_run = mocker.patch("jupyter_releaser.util.run", wraps=wrapped)
 
     os.environ["RH_DIST_DIR"] = "bar"
     runner(["build-python"])
@@ -548,7 +544,7 @@ def test_config_file_env_override(py_package, runner, mocker, git_prep):
 
 
 def test_config_file_cli_override(py_package, runner, mocker, git_prep):
-    config = Path(util.CHECKOUT_NAME) / util.RELEASE_HELPER_CONFIG
+    config = Path(util.CHECKOUT_NAME) / util.jupyter_releaser_CONFIG
     config.write_text(TOML_CONFIG, encoding="utf-8")
 
     orig_run = util.run
@@ -565,7 +561,7 @@ def test_config_file_cli_override(py_package, runner, mocker, git_prep):
             return ""
         return orig_run(cmd, **kwargs)
 
-    mock_run = mocker.patch("release_helper.util.run", wraps=wrapped)
+    mock_run = mocker.patch("jupyter_releaser.util.run", wraps=wrapped)
 
     runner(["build-python", "--dist-dir", "bar"])
     assert hooked == 3, hooked

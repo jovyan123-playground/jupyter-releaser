@@ -7,7 +7,7 @@ from glob import glob
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from release_helper import util
+from jupyter_releaser import util
 
 PYPROJECT = util.PYPROJECT
 SETUP_PY = util.SETUP_PY

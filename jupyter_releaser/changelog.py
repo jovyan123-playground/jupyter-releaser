@@ -6,7 +6,7 @@ from pathlib import Path
 from ghapi.core import GhApi
 from github_activity import generate_activity_md
 
-from release_helper import util
+from jupyter_releaser import util
 
 START_MARKER = "<!-- <START NEW CHANGELOG ENTRY> -->"
 END_MARKER = "<!-- <END NEW CHANGELOG ENTRY> -->"
@@ -34,7 +34,7 @@ def format_pr_entry(target, number, auth=None):
     gh = GhApi(owner=owner, repo=repo, token=auth)
     pull = gh.pulls.get(number)
     title = pull.title
-    url = pull.url
+    url = pull.html_url
     user_name = pull.user.login
     user_url = pull.user.html_url
     return f"- {title} [#{number}]({url}) [@{user_name}]({user_url})"
