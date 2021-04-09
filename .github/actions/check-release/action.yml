@@ -82,7 +82,7 @@ runs:
         set -eux
 
         # Set up env variables
-        export release_url=${{ steps.draft-release.outputs.release_url }}
+        export release_url=${{ steps.publish-release.outputs.release_url }}
 
         # Delete Draft Release
         jupyter-releaser delete-release ${release_url}
