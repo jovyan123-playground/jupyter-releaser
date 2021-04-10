@@ -101,6 +101,7 @@ def draft_changelog(version_spec, branch, repo, auth, dry_run):
 | Branch  | {branch}  |
 | Version Spec | {version_spec} |
 """
+    util.log(body)
 
     make_changelog_pr(auth, branch, repo, title, commit_message, body, dry_run=dry_run)
 

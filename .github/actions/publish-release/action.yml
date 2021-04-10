@@ -33,15 +33,4 @@ runs:
 
         # Publish release
         pip install -q jupyter-releaser
-
-        export TWINE_USERNAME=${TWINE_USERNAME:-"__token__"}
-
-        if [ ${RH_DRY_RUN} == 'true' ]; then
-            export TWINE_COMMAND=${TWINE_COMMAND:-"twine upload --skip-existing"}
-            export TWINE_REPOSITORY_URL=${TWINE_REPOSITORY_URL:-"https://test.pypi.org/legacy/"}
-            export RH_NPM_COMMAND=${NPM_COMMAND:-"npm publish --dry-run"}
-        fi
-
-        jupyter-releaser extract-release ${release_url}
-        jupyter-releaser forwardport-changelog ${release_url}
-        jupyter-releaser publish-release ${release_url}
+        python -m jupyter_releaser.actions.publish_release
