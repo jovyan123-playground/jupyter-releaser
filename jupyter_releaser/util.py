@@ -51,7 +51,9 @@ def run(cmd, **kwargs):
         parts[0] = normalize_path(executable)
 
     try:
-        return check_output(parts, **kwargs).decode("utf-8").strip()
+        output = check_output(parts, **kwargs).decode("utf-8").strip()
+        print(output)
+        return output
     except CalledProcessError as e:
         if quiet:
             print(
