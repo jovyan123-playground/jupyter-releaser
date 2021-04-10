@@ -224,6 +224,9 @@ def draft_release(
         files=assets,
     )
 
+    # Print the release url
+    print(release.hmtl_url)
+
     # Set the GitHub action output
     util.actions_output("release_url", release.html_url)
 
