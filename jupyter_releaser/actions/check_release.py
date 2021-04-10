@@ -4,7 +4,7 @@ from jupyter_releaser.util import run
 
 run("python -m jupyter_releaser.actions.draft_changelog")
 run("python -m jupyter_releaser.actions.draft_release")
-output = run("python -m jupyter_releaser.actions.publish_changelog")
+output = run("python -m jupyter_releaser.actions.publish_release")
 release_url = output.splitlines()[0]
 # Delete Draft Release
 run(f"jupyter-releaser delete-release {release_url}")
