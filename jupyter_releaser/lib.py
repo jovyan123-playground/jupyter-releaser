@@ -225,7 +225,7 @@ def draft_release(
     )
 
     # Print the release url
-    print(release.hmtl_url)
+    print(release.html_url)
 
     # Set the GitHub action output
     util.actions_output("release_url", release.html_url)
