@@ -12,7 +12,6 @@ runs:
   using: "composite"
   steps:
     - shell: bash
-      id: draft-release
       run: |
         set -eux
 
@@ -36,54 +35,4 @@ runs:
         pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple -q jupyter-releaser==0.10.0.dev0
 
         # Draft Changelog
-        jupyter-releaser prep-git
-        jupyter-releaser bump-version
-        jupyter-releaser build-changelog
-        jupyter-releaser draft-changelog
-        cat ${RH_CHANGELOG}
-
-        # Draft Release
-        jupyter-releaser prep-git
-        jupyter-releaser bump-version
-        jupyter-releaser check-changelog
-        #jupyter-releaser check-links
-        # Make sure npm comes before python in case it produces
-        # files for the python package
-        jupyter-releaser build-npm
-        jupyter-releaser check-npm
-        jupyter-releaser build-python
-        jupyter-releaser check-python
-        jupyter-releaser check-manifest
-        jupyter-releaser tag-release
-        jupyter-releaser draft-release
-
-    - shell: bash
-      id: publish-release
-      run: |
-        set -eux
-
-        # Set up env variables
-        export release_url=${{ steps.draft-release.outputs.release_url }}
-        export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
-        export RH_REPOSITORY=${GITHUB_REPOSITORY}
-        export RH_DRY_RUN=true
-        export TWINE_USERNAME=${TWINE_USERNAME:-"__token__"}
-        export TWINE_COMMAND=${TWINE_COMMAND:-"twine upload --skip-existing"}
-        export TWINE_REPOSITORY_URL=${TWINE_REPOSITORY_URL:-"https://test.pypi.org/legacy/"}
-        export RH_NPM_COMMAND=${NPM_COMMAND:-"npm publish --dry-run"}
-
-        # Publish Release
-        jupyter-releaser extract-release ${release_url}
-        jupyter-releaser forwardport-changelog ${release_url}
-        jupyter-releaser publish-release ${release_url}
-
-    - shell: bash
-      run: |
-        set -eux
-
-        # Set up env variables
-        export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
-        export release_url=${{ steps.publish-release.outputs.release_url }}
-
-        # Delete Draft Release
-        jupyter-releaser delete-release ${release_url}
+        python -m jupyter_release.actions.check_release
