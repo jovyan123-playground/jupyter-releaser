@@ -52,7 +52,7 @@ runs:
         export RH_DRY_RUN=true
 
         # Publish Release
-        python -m jupyter_releaser.actions.publish_release
+        python -m jupyter_releaser.actions.publish_release ${release_url}
 
     - shell: bash
       run: |
