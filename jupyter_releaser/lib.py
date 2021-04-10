@@ -481,9 +481,10 @@ def forwardport_changelog(
     # Look for the previous header
     default_log = Path(changelog_path).read_text(encoding="utf-8")
     if not prev_header in default_log:
-        raise ValueError(
+        util.log(
             f'Could not find previous header "{prev_header}" in {changelog_path} on branch {branch}'
         )
+        return
 
     # If the previous header is the current entry in the default branch, we need to move the change markers
     if prev_header in default_entry:
