@@ -40,8 +40,6 @@
 
 [@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-26..2021-03-31&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Agithub-actions+updated%3A2021-03-26..2021-03-31&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-26..2021-03-31&type=Issues)
 
-
-
 ## 0.8.1
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.8.0...15839e702c267f72849111bef86bc9a197fdc0ad))
