@@ -366,38 +366,38 @@ No merged PRs
 
 ## 0.0.3
 
-([Full Changelog](https://github.com/jovyan123-playground/jupyter-releasers-playground/compare/v0.0.2...6e228902a2dbb794f9f5cf733ab39cc005d45d49))
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.0.2...6e228902a2dbb794f9f5cf733ab39cc005d45d49))
 
-- Add cancel on individual runs [#23](https://github.com/jovyan123-playground/jupyter-releasers-playground/pull/23) ([@jovyan123-playground](https://github.com/jovyan123-playground))
-- Add github release screenshot and center align images [#22](https://github.com/jovyan123-playground/jupyter-releasers-playground/pull/22) ([@jovyan123-playground](https://github.com/jovyan123-playground))
-- Add workflow canceler and use more unique name for cache [#21](https://github.com/jovyan123-playground/jupyter-releasers-playground/pull/21) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Add cancel on individual runs [#23](https://github.com/jovyan123-playground/release-helper-playground/pull/23) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Add github release screenshot and center align images [#22](https://github.com/jovyan123-playground/release-helper-playground/pull/22) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Add workflow canceler and use more unique name for cache [#21](https://github.com/jovyan123-playground/release-helper-playground/pull/21) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 
 ### Contributors to this release
 
-([GitHub contributors page for this release](https://github.com/jovyan123-playground/jupyter-releasers-playground/graphs/contributors?from=2021-03-08&to=2021-03-08&type=c))
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-08&to=2021-03-08&type=c))
 
-[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Fjupyter-releasers-playground+involves%3Acodecov+updated%3A2021-03-08..2021-03-08&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Fjupyter-releasers-playground+involves%3Ajovyan123-playground+updated%3A2021-03-08..2021-03-08&type=Issues)
+[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-08..2021-03-08&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-08..2021-03-08&type=Issues)
 
 ## 0.0.2
 
-([Full Changelog](https://github.com/jovyan123-playground/jupyter-releasers-playground/compare/v0.0.1...75240b1d57d2e8df1ba3fc01d02e1e9ca78ef183))
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.0.1...75240b1d57d2e8df1ba3fc01d02e1e9ca78ef183))
 
-- Fix tag name [#19](https://github.com/jovyan123-playground/jupyter-releasers-playground/pull/19) ([@jovyan123-playground](https://github.com/jovyan123-playground))
-- Standardize changelog name and fix changelog_output path [#16](https://github.com/jovyan123-playground/jupyter-releasers-playground/pull/16) ([@jovyan123-playground](https://github.com/jovyan123-playground))
-- Add support for checking markdown links [#12](https://github.com/jovyan123-playground/jupyter-releasers-playground/pull/12) ([@jovyan123-playground](https://github.com/jovyan123-playground))
-- Add screenshots and remove brittle git checks [#10](https://github.com/jovyan123-playground/jupyter-releasers-playground/pull/10) ([@jovyan123-playground](https://github.com/jovyan123-playground))
-- Fix duplicate end marker [#8](https://github.com/jovyan123-playground/jupyter-releasers-playground/pull/8) ([@jovyan123-playground](https://github.com/jovyan123-playground))
-- Add ability to augment changelog with new PRs [#6](https://github.com/jovyan123-playground/jupyter-releasers-playground/pull/6) ([@jovyan123-playground](https://github.com/jovyan123-playground))
-- More debug [#5](https://github.com/jovyan123-playground/jupyter-releasers-playground/pull/5) ([@jovyan123-playground](https://github.com/jovyan123-playground))
-- Fix changelog prep workflow again [#3](https://github.com/jovyan123-playground/jupyter-releasers-playground/pull/3) ([@jovyan123-playground](https://github.com/jovyan123-playground))
-- Fix changelog prep workflow [#2](https://github.com/jovyan123-playground/jupyter-releasers-playground/pull/2) ([@jovyan123-playground](https://github.com/jovyan123-playground))
-- Ignore more coverage lines [#1](https://github.com/jovyan123-playground/jupyter-releasers-playground/pull/1) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Fix tag name [#19](https://github.com/jovyan123-playground/release-helper-playground/pull/19) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Standardize changelog name and fix changelog_output path [#16](https://github.com/jovyan123-playground/release-helper-playground/pull/16) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Add support for checking markdown links [#12](https://github.com/jovyan123-playground/release-helper-playground/pull/12) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Add screenshots and remove brittle git checks [#10](https://github.com/jovyan123-playground/release-helper-playground/pull/10) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Fix duplicate end marker [#8](https://github.com/jovyan123-playground/release-helper-playground/pull/8) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Add ability to augment changelog with new PRs [#6](https://github.com/jovyan123-playground/release-helper-playground/pull/6) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- More debug [#5](https://github.com/jovyan123-playground/release-helper-playground/pull/5) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Fix changelog prep workflow again [#3](https://github.com/jovyan123-playground/release-helper-playground/pull/3) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Fix changelog prep workflow [#2](https://github.com/jovyan123-playground/release-helper-playground/pull/2) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Ignore more coverage lines [#1](https://github.com/jovyan123-playground/release-helper-playground/pull/1) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 
 ### Contributors to this release
 
-([GitHub contributors page for this release](https://github.com/jovyan123-playground/jupyter-releasers-playground/graphs/contributors?from=2021-03-05&to=2021-03-08&type=c))
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-05&to=2021-03-08&type=c))
 
-[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Fjupyter-releasers-playground+involves%3Acodecov+updated%3A2021-03-05..2021-03-08&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Fjupyter-releasers-playground+involves%3Ajovyan123-playground+updated%3A2021-03-05..2021-03-08&type=Issues)
+[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-05..2021-03-08&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-05..2021-03-08&type=Issues)
 
 ## 0.0.1
 
