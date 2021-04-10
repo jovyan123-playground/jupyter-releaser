@@ -1,5 +1,5 @@
-name: "Draft Changelog"
-description: "Create an automated changelog entry PR"
+name: "Check Release"
+description: "Run through a dry run release cycle"
 inputs:
   token:
     description: "GitHub access token"
