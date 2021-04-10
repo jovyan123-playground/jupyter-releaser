@@ -2,6 +2,27 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.10.0
+
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.9.0...d133bc67dd537fee682167b10e6b686f9d1a0ea0))
+
+### Merged PRs
+
+- use setuptools to parse version [#138](https://github.com/jovyan123-playground/release-helper-playground/pull/138) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- add actions subpackage [#137](https://github.com/jovyan123-playground/release-helper-playground/pull/137) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- rename library [#136](https://github.com/jovyan123-playground/release-helper-playground/pull/136) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- use custom gh token [#135](https://github.com/jovyan123-playground/release-helper-playground/pull/135) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- fix yaml files [#134](https://github.com/jovyan123-playground/release-helper-playground/pull/134) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- fix handling of github ref [#133](https://github.com/jovyan123-playground/release-helper-playground/pull/133) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-31&to=2021-04-10&type=c))
+
+[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-31..2021-04-10&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-31..2021-04-10&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.9.0
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.8.1...bc7d600b5dbc88e31896a702e7bc17c32fbc5cbb))
@@ -19,7 +40,7 @@
 
 [@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-26..2021-03-31&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Agithub-actions+updated%3A2021-03-26..2021-03-31&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-26..2021-03-31&type=Issues)
 
-<!-- <END NEW CHANGELOG ENTRY> -->
+
 
 ## 0.8.1
 
