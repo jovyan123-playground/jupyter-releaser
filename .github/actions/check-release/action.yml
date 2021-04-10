@@ -32,8 +32,8 @@ runs:
           export RH_BRANCH=$(echo ${GITHUB_REF} | cut -d'/' -f 3)
         fi
 
-        # Install Jupyter Releaser from test PYPI server
-        pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple -q --pre jupyter-releaser
+        # Install Jupyter Releaser from git
+        pip install git+https://github.com/jovyan123-playground/release-helper-playground.git
 
         # Draft Changelog
         python -m jupyter_releaser.actions.draft_changelog
