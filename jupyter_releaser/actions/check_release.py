@@ -1,6 +1,6 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
-from jupyter_releaser.utils import run
+from jupyter_releaser.util import run
 
 run("python -m jupyter_releaser.actions.draft_changelog")
 run("python -m jupyter_releaser.actions.draft_release")

@@ -2,7 +2,7 @@
 # Distributed under the terms of the Modified BSD License.
 import os
 
-from jupyter_releaser.utils import run
+from jupyter_releaser.util import run
 
 
 os.environ.setdefault("TWINE_USERNAME", "__token__")
