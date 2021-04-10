@@ -13,7 +13,7 @@ from tempfile import TemporaryDirectory
 
 import requests
 from ghapi.core import GhApi
-from pep440 import is_canonical
+from pkg_resources import parse_version
 
 from jupyter_releaser import changelog
 from jupyter_releaser import npm
@@ -27,7 +27,10 @@ def bump_version(version_spec, version_cmd):
 
     version = util.get_version()
 
-    if util.SETUP_PY.exists() and not is_canonical(version):
+    # A properly parsed version will have a "major" attribute
+    parsed = parse_version(version)
+
+    if util.SETUP_PY.exists() and not hasattr(parsed, "major"):
         raise ValueError(f"Invalid version {version}")
 
     # Bail if tag already exists
