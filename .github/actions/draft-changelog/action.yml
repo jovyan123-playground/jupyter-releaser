@@ -45,4 +45,4 @@ runs:
 
         # Draft Changelog
         pip install -q jupyter-releaser
-        python -m jupyter_release.actions.draft_changelog
+        python -m jupyter_releaser.actions.draft_changelog

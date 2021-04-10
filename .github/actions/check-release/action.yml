@@ -12,6 +12,7 @@ runs:
   using: "composite"
   steps:
     - shell: bash
+      id: check-release
       run: |
         set -eux
 
@@ -34,5 +35,5 @@ runs:
         # Install Jupyter Releaser from test PYPI server
         pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple -q jupyter-releaser==0.10.0.dev0
 
-        # Draft Changelog
-        python -m jupyter_release.actions.check_release
+        # Check Release
+        python -m jupyter_releaser.actions.check_release

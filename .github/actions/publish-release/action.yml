@@ -33,4 +33,4 @@ runs:
 
         # Publish release
         pip install -q jupyter-releaser
-        python -m jupyter_release.actions.publish_release
+        python -m jupyter_releaser.actions.publish_release

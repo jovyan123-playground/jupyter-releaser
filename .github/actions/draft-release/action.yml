@@ -48,4 +48,4 @@ runs:
         export RH_DRY_RUN=${{ inputs.dry_run }}
 
         # Draft Release
-        python -m jupyter_release.actions.draft_release
+        python -m jupyter_releaser.actions.draft_release
