@@ -224,9 +224,6 @@ def draft_release(
         files=assets,
     )
 
-    # Print the release url
-    print(release.html_url)
-
     # Set the GitHub action output
     util.actions_output("release_url", release.html_url)
 
@@ -374,9 +371,6 @@ def publish_release(
         dry_run,
         release.prerelease,
     )
-
-    # Set the result as the first line of stdout
-    print(release.html_url)
 
     # Set the GitHub action output
     util.actions_output("release_url", release.html_url)

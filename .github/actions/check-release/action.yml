@@ -12,7 +12,7 @@ runs:
   using: "composite"
   steps:
     - shell: bash
-      id: check-release
+      id: draft-release
       run: |
         set -eux
 
@@ -35,5 +35,32 @@ runs:
         # Install Jupyter Releaser from test PYPI server
         pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple -q jupyter-releaser==0.10.0.dev0
 
-        # Check Release
-        python -m jupyter_releaser.actions.check_release
+        # Draft Changelog
+        python -m jupyter_releaser.actions.draft_changelog
+
+        # Draft Release
+        python -m jupyter_releaser.actions.draft_release
+
+    - shell: bash
+      id: publish-release
+      run: |
+        set -eux
+
+        # Set up env variables
+        export release_url=${{ steps.draft-release.outputs.release_url }}
+        export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
+        export RH_DRY_RUN=true
+
+        # Publish Release
+        python -m jupyter_releaser.actions.publish_release
+
+    - shell: bash
+      run: |
+        set -eux
+
+        # Set up env variables
+        export GITHUB_ACCESS_TOKEN=${{ inputs.token }}
+        export release_url=${{ steps.publish-release.outputs.release_url }}
+
+        # Delete Draft Release
+        jupyter-releaser delete-release ${release_url}
