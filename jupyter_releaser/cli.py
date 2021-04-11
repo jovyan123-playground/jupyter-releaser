@@ -335,7 +335,7 @@ def check_manifest():
     default=[
         "https://github.com/.*/(pull|issues)/.*",
         "https://github.com/search?",
-        "*localhost*",
+        "http://localhost.*",
     ],
     help="Ignore links based on regex pattern(s)",
 )
