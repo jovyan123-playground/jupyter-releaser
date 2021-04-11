@@ -65,13 +65,17 @@ def test_prep_git_full(py_package, tmp_path, mocker, runner):
 
     # Fake out the runner
     mock_run = mocker.patch("jupyter_releaser.util.run")
+    mock_run.return_value = ""
     os.mkdir(util.CHECKOUT_NAME)
 
     runner(["prep-git"], env=env)
     mock_run.assert_has_calls(
         [
             call("git config --global user.email"),
-            call().__bool__(),
+            call(
+                'git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"'
+            ),
+            call('git config --global user.name "GitHub Action"'),
             call("git init .jupyter_releaser_checkout"),
             call("git remote add origin https://snuffy:abc123@github.com/baz/bar.git"),
             call("git fetch origin foo"),
