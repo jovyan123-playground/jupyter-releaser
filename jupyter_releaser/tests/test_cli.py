@@ -70,10 +70,8 @@ def test_prep_git_full(py_package, tmp_path, mocker, runner):
     runner(["prep-git"], env=env)
     mock_run.assert_has_calls(
         [
-            call(
-                'git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"'
-            ),
-            call('git config --global user.name "GitHub Action"'),
+            call("git config --global user.email"),
+            call().__bool__(),
             call("git init .jupyter_releaser_checkout"),
             call("git remote add origin https://snuffy:abc123@github.com/baz/bar.git"),
             call("git fetch origin foo"),
