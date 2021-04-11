@@ -383,7 +383,12 @@ def prep_git(branch, repo, auth, username, url):
     """Set up git"""
     repo = repo or util.get_repo()
 
-    user_name = util.run("git config --global user.email")
+    user_name = ""
+    try:
+        user_name = util.run("git config --global user.email")
+    except Exception as e:
+        pass
+
     if not user_name:
         # Use email address for the GitHub Actions bot
         # https://github.community/t/github-actions-bot-email-address/17204/6
