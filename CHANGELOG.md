@@ -2,6 +2,31 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.11.0
+
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.10.0...f0da423d4da85932eeaa6ece5bbf8b85c1249277))
+
+### Enhancements made
+
+- only set git config if needed and ignore localhost links [#144](https://github.com/jovyan123-playground/release-helper-playground/pull/144) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+- Install jupyter-releaser from git for now [#143](https://github.com/jovyan123-playground/release-helper-playground/pull/143) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+
+### Bugs fixed
+
+- fix handling of git config [#145](https://github.com/jovyan123-playground/release-helper-playground/pull/145) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+
+### Maintenance and upkeep improvements
+
+- Update check release action metadata [#142](https://github.com/jovyan123-playground/release-helper-playground/pull/142) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-04-10&to=2021-04-12&type=c))
+
+[@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-04-10..2021-04-12&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-04-10..2021-04-12&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.10.0
 
 ([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.9.0...d1e8b75866d976e7655a674907dbfc8d69d88aee))
@@ -21,8 +46,6 @@
 ([GitHub contributors page for this release](https://github.com/jovyan123-playground/release-helper-playground/graphs/contributors?from=2021-03-31&to=2021-04-10&type=c))
 
 [@codecov](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Acodecov+updated%3A2021-03-31..2021-04-10&type=Issues) | [@jovyan123-playground](https://github.com/search?q=repo%3Ajovyan123-playground%2Frelease-helper-playground+involves%3Ajovyan123-playground+updated%3A2021-03-31..2021-04-10&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.9.0
 
