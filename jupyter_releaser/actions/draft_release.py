@@ -5,6 +5,7 @@ from jupyter_releaser.util import run
 run("jupyter-releaser prep-git")
 run("jupyter-releaser bump-version")
 run("jupyter-releaser check-changelog")
+
 run("jupyter-releaser check-links")
 # Make sure npm comes before python in case it produces
 # files for the python package
