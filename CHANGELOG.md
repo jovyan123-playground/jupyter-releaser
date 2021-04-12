@@ -4,7 +4,7 @@
 
 ## 0.11.0
 
-([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.10.0...f0da423d4da85932eeaa6ece5bbf8b85c1249277))
+([Full Changelog](https://github.com/jovyan123-playground/release-helper-playground/compare/v0.10.0...615786c0b3a91599ca472e4d7b3336966d3c96c0))
 
 ### Enhancements made
 
@@ -17,7 +17,12 @@
 
 ### Maintenance and upkeep improvements
 
+- Add another cli example to readme [#147](https://github.com/jovyan123-playground/release-helper-playground/pull/147) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 - Update check release action metadata [#142](https://github.com/jovyan123-playground/release-helper-playground/pull/142) ([@jovyan123-playground](https://github.com/jovyan123-playground))
+
+### Other merged PRs
+
+- Automated Changelog Entry for 0.11.0 on main [#146](https://github.com/jovyan123-playground/release-helper-playground/pull/146) ([@jovyan123-playground](https://github.com/jovyan123-playground))
 
 ### Contributors to this release
 
