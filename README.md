@@ -80,6 +80,7 @@ To install the latest release locally, make sure you have
 ```bash
     jupyter-releaser --help
     jupyter-releaser build-python --help
+    jupyter-releaser check-links --help
 ```
 
 ## Configuration
