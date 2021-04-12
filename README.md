@@ -158,7 +158,7 @@ Example `package.json`:
 - [ ] Optionally add workflow for `cancel` to cancel previous workflow runs when a new one is started - see [cancel.yml](./.github/workflows/cancel.yml)
 - [ ] Make a new branch or repository on your personal fork that has a `publish-release` [workflow](./.github/workflows/publish-release.yml)
 
-  - [ ] You will need to add access tokens for [PyPI](https://packaging.python.org/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/#saving-credentials-on-github) and/or [npm](https://docs.npmjs.com/creating-and-viewing-access-tokens)
+  - [ ] You will need to add access tokens for PyPI
   - [ ] Start with `dry-run: true`, which will target the test pypi registry and use `npm publish --dry-run`
   - [ ] Then switch to the production server once it is fully working.
 
