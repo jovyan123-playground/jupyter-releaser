@@ -51,9 +51,10 @@ class ReleaseHelperGroup(click.Group):
         hooks = config.get("hooks", {})
         options = config.get("options", {})
 
-        # Group the output of the command if on GitHub Actions
-        if os.environ.get("GITHUB_ACTIONS"):
-            print(f"::group::{cmd_name}")
+        # Print a separation header
+        print(f'\n\n{"-" * 50}')
+        print(cmd_name)
+        print(f'{"-" * 50}\n\n')
 
         # Handle all of the parameters
         for param in self.commands[cmd_name].get_params(ctx):
@@ -88,9 +89,6 @@ class ReleaseHelperGroup(click.Group):
                 after_hooks = [after_hooks]
             for hook in after_hooks:
                 util.run(hook)
-
-        if os.environ.get("GITHUB_ACTIONS"):
-            print("::endgroup::")
 
         os.chdir(orig_dir)
 

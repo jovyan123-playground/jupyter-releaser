@@ -32,8 +32,11 @@ runs:
           export RH_BRANCH=$(echo ${GITHUB_REF} | cut -d'/' -f 3)
         fi
 
-        # Install Jupyter Releaser from git
-        pip install git+https://github.com/jovyan123-playground/release-helper-playground.git
+        # Install Jupyter Releaser from git unless we are testing Releaser itself
+        export repo_name=$(echo ${GITHUB_REPOSITORY} | cut -d'/' -f 3)
+        if [ $repo_name != $(python setup.py --name) ]; then
+           pip install git+https://github.com/jovyan123-playground/release-helper-playground.git
+        fi
 
         # Draft Changelog
         python -m jupyter_releaser.actions.draft_changelog
