@@ -212,7 +212,7 @@ def test_build_changelog_backport(py_package, mocker, runner, open_mock):
     assert changelog.START_MARKER in text
     assert changelog.END_MARKER in text
 
-    assert "- foo [#50](bar) [@snuffy](baz)" in text, text
+    assert "- foo [#50](bar) ([@snuffy](baz))" in text, text
 
     assert len(re.findall(changelog.START_MARKER, text)) == 1
     assert len(re.findall(changelog.END_MARKER, text)) == 1

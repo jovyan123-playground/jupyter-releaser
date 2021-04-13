@@ -20,7 +20,7 @@ A set of helper scripts and GitHub Action actions and workflows to aid in automa
   - Markdown changelog (optional)
   - Bump version configuration (if using Python)
   - Write access to GitHub repo to run GitHub Actions
-  - Access token for the test PyPI registry stored as `TEST_PYPI_TOKEN`
+  - Access token for the test [PyPI registry](https://packaging.python.org/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/#saving-credentials-on-github) stored as `TEST_PYPI_TOKEN`
 
 ## Typical Workflow
 
