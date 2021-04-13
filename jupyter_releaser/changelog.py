@@ -37,7 +37,7 @@ def format_pr_entry(target, number, auth=None):
     url = pull.html_url
     user_name = pull.user.login
     user_url = pull.user.html_url
-    return f"- {title} [#{number}]({url}) [@{user_name}]({user_url})"
+    return f"- {title} [#{number}]({url}) ([@{user_name}]({user_url}))"
 
 
 def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=False):
@@ -90,6 +90,9 @@ def get_version_entry(branch, repo, version, *, auth=None, resolve_backports=Fal
     # Remove github actions PRs
     gh_actions = "[@github-actions](https://github.com/github-actions)"
     entry = [e for e in entry if gh_actions not in e]
+
+    # Remove automated changelog PRs
+    entry = [e for e in entry if PR_PREFIX not in e]
 
     entry = "\n".join(entry).strip()
 
