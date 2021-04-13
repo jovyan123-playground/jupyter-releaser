@@ -34,7 +34,10 @@ runs:
 
         # Install Jupyter Releaser from git unless we are testing Releaser itself
         export repo_name=$(echo ${GITHUB_REPOSITORY} | cut -d'/' -f 3)
-        if [ $repo_name != $(python setup.py --name) ]; then
+        echo "repo name: ${repo_name}"
+        export package_name=$(python setup.py --name)
+        echo "package name: ${package_name}
+        if [ ${repo_name} !=  ${package_name} ]; then
            pip install git+https://github.com/jovyan123-playground/release-helper-playground.git
         fi
 
