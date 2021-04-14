@@ -30,36 +30,24 @@ A set of helper scripts and GitHub Actions to aid in automated releases of Pytho
 - Select the `Draft Changelog` workflow
 - Run the workflow with the version spec (usually the new version number)
 
-<p align="center">
-<img src="media/draft_changelog_workflow.png" alt="Draft Changelog Workflow"
-	title="Draft Changelog Workflow" width="50%"/>
-</p>
+<!-- TODO: Add Draft Changelog workflow screenshot here -->
 
 - When the run completes, review the changelog PR that was opened, making any desired edits
 
-<p align="center">
-<img src="media/changelog_pr.png" alt="Changelog Pull Request"
-	title="Changelog Pull Request" width=80% />
-</p>
+<!-- TODO: Add Changelog PR screenshot here -->
 
 - Merge the PR
 - Return to the Actions panel in the `jupyter-releaser` fork
 - Select the `Draft Release` workflow
 
-<p align="center">
-<img src="media/draft_release_workflow.png" alt="Draft Release Workflow"
-	title="Draft Release Workflow" width="50%" />
-</p>
+<!-- TODO: Add Draft Release workflow screenshot here -->
 
 - Run the workflow with the same version spec as before, and an optional post version spec if you want to go back to a dev version in the target branch.
 - When the workflow completes, go to the releases page in the target repository and verify that the new draft release is there with the correct changelog and dist files.
 - Copy the url of the draft release.
 - Run the `Publish Release` workflow from the `jupyter-releaser` fork.
 
-<p align="center">
-<img src="media/publish_release_workflow.png" alt="Publish Release Workflow"
-	title="Publish Release Workflow" width="50%" />
-</p>
+<!-- TODO: Add Publish Release workflow screenshot here -->
 
 <!-- TODO: Add Github release image here -->
 
@@ -185,6 +173,15 @@ version_info = get_version_info(__version__)
     TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
   with:
     token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+- [ ] Update or add `RELEASE.md` that describes the onboarding and release process, e.g.
+
+```markdown
+# Release Workflow
+
+- [ ] Set up a fork of `jupyter-releaser` if you have not yet done so.
+- [ ] Run through the release process, targeting this repo and the appropriate branch
 ```
 
 - [ ] Optionally add [configuration](#Configuration) to the target repository if non-standard options or hooks are needed.
